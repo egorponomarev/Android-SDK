@@ -18,6 +18,8 @@ public class FMSession {
 
 
     public static String TAG = "FMSession";
+    
+    public static String baseURL = "http://feed.fm";
 
     private static String session_token = null;
     private static String session_secret = null;
@@ -62,7 +64,7 @@ public class FMSession {
             this.auth = new FMAuth();
         }
 
-        //ToDo need to implment the Notification center portion of this constructor
+        //ToDo need to implement the Notification center portion of this constructor
 
     }
 
