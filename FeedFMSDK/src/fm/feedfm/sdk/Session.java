@@ -11,7 +11,12 @@ import fm.feedfm.sdk.innards.PostRequestTask;
 import fm.feedfm.sdk.innards.RequestFactory;
 import fm.feedfm.sdk.innards.UIResponseHandler;
 
-
+/**
+ * 
+ * 
+ * 
+ * 
+ */
 public class Session implements ISession {
 	
 	
@@ -241,7 +246,7 @@ public class Session implements ISession {
 
 
 
-	public void reportPlayElapsed(IResponseEvent event, String seconds)throws BadRequestGenerationException {
+	public void reportPlayElapsed(String seconds,IResponseEvent event )throws BadRequestGenerationException {
 
 		try {
 			
@@ -356,6 +361,14 @@ try {
 			throw new BadRequestGenerationException("Either the response event object was null or the HttpPost request object was null");
 		}
 		
+		
+	}
+
+
+	@Override
+	public void reportPlayElapsed(IResponseEvent handler, String seconds)
+			throws BadRequestGenerationException {
+		// TODO Auto-generated method stub
 		
 	}
 

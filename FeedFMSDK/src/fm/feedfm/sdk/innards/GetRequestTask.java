@@ -89,7 +89,7 @@ public class GetRequestTask extends AsyncTask<Void, Void, Void> {
 		return null;
 	}
 	
-	protected void onPostExecute(Void...params) {
+	protected void onPostExecute(Void...params) throws IOException {
 		if(this.success == true) {
 			//The request succeeded
 			this.response_handler.handleSuccess(this.response);

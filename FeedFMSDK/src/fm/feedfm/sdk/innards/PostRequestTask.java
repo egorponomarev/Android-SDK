@@ -66,8 +66,8 @@ public class PostRequestTask extends AsyncTask<Void, Void, Void> {
 	
 	
 	@Override
-	protected Void doInBackground(Void... params) {
-		// TODO Auto-generated method stub
+	protected Void doInBackground(Void... params)  {
+		
 		
 		HttpClient httpClient = new DefaultHttpClient();
 		try {
@@ -80,8 +80,8 @@ public class PostRequestTask extends AsyncTask<Void, Void, Void> {
 		} catch (ClientProtocolException e) {
 			// TODO Auto-generated catch block
 			Log.e(TAG, "There was a Client protocol exception when trying to execute a post reqeust");
+		
 			
-			e.printStackTrace();
 		} catch (IOException e) {
 			
 			Log.e(TAG, "There was an IOException when trying to execture a post request");
@@ -93,7 +93,7 @@ public class PostRequestTask extends AsyncTask<Void, Void, Void> {
 	}
 	
 
-	protected void onPostExecute(Void...params) {
+	protected void onPostExecute(Void...params) throws IOException {
 		
 		if(this.success == true) {
 			//The request succeeded

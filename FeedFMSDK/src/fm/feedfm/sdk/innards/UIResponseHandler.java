@@ -119,11 +119,12 @@ public class UIResponseHandler extends Handler implements IRawResponseHandler {
 	 * 
 	 * Since the response was a success on the server this function handles the reading of the
 	 * data off of the HttpResponse's data stream and into a string.
+	 * @throws IOException 
 	 * 
 	 * 
 	 */
 	@Override
-	public void handleSuccess(HttpResponse response) {
+	public void handleSuccess(HttpResponse response) throws IOException {
 
 		InputStream stream;
 		StringBuffer result_buffer = new StringBuffer();
@@ -155,12 +156,15 @@ public class UIResponseHandler extends Handler implements IRawResponseHandler {
 		
 			
 		} catch (IllegalStateException e) {
-			// TODO Auto-generated catch block
+		
 			
 			Log.e(TAG, "IllegalState Exeception in UIPostHandler:handleSuccess " + e.getMessage());
+			
+			throw e;
 
 		} catch (IOException e) {
 			Log.e(TAG, "IOException in UIPostHandler:handleSuccess " + e.getMessage());
+			throw e;
 		}
 		
 		
@@ -178,7 +182,7 @@ public class UIResponseHandler extends Handler implements IRawResponseHandler {
 	 */
 	@Override
 	public void handleFailure(HttpResponse response) {
-		// TODO Auto-generated method stub
+		
 		
 		int statuscode = response.getStatusLine().getStatusCode();
 		Bundle data = new Bundle();
