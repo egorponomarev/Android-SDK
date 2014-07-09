@@ -11,6 +11,8 @@ import fm.feedfm.sdk.IResponseEvent;
 import fm.feedfm.sdk.Play;
 import fm.feedfm.sdk.Session;
 import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnErrorListener;
+import android.media.MediaPlayer.OnPreparedListener;
 import android.os.Bundle;
 import android.app.Activity;
 import android.util.Log;
@@ -60,7 +62,27 @@ public class MainActivity extends Activity {
         //this.the_session = new Session(token,secret, clientID);
         mediaPlayer = new MediaPlayer();
         
+        mediaPlayer.setOnErrorListener(new OnErrorListener() {
+
+			@Override
+			public boolean onError(MediaPlayer arg0, int arg1, int arg2) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+        	
+        	
+        });
         
+        mediaPlayer.setOnPreparedListener(new OnPreparedListener() {
+
+			@Override
+			public void onPrepared(MediaPlayer arg0) {
+				mediaPlayer.start();
+				
+			}
+        	
+        	
+        });
         
         
         
@@ -356,7 +378,7 @@ public class MainActivity extends Activity {
 							mediaPlayer.setDataSource(song_url);
 							mediaPlayer.prepareAsync();
 							
-							mediaPlayer.start();
+							
 							
 						} catch (IllegalArgumentException e) {
 							// TODO Auto-generated catch block

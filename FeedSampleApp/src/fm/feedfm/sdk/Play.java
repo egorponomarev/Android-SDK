@@ -11,6 +11,8 @@ public class Play  {
 	private Station station = null;
 	private AudioFile audio_file = null;
 	
+	public static final String NOT_FOUND = "Value for key not found";
+	
 	
 	
 	public boolean success() {
@@ -46,9 +48,10 @@ public class Play  {
 		if(raw_play != null) {
 			
 			this.raw_json = raw_play;
+			String json_str = this.raw_json.toString();
 			try {
-				this.success = this.raw_json.getBoolean("success");
-				this.play_id = this.raw_json.getString("id");
+				//this.success = this.raw_json.getBoolean("success");
+				this.play_id = extractStringValue("id",this.raw_json);
 				JSONObject raw_station_json = this.raw_json.getJSONObject("station");
 				this.station = new Station(raw_station_json);
 				JSONObject raw_audio_file = this.raw_json.getJSONObject("audio_file");
@@ -91,12 +94,10 @@ public class Play  {
 			
 			if(station_object != null) {
 				
-				try {
-					id = station_object.getString("id");
-					name = station_object.getString("name");
-				} catch (JSONException e) {
-					throw new IllegalArgumentException();
-				}
+	
+				id = extractStringValue("id",station_object);
+				name = extractStringValue("name",station_object);
+				
 							
 			}
 			
@@ -242,15 +243,17 @@ public class Play  {
 			
 				
 			if(the_object != null) {
-				
+				this.the_raw_json = the_object;
 			
+				String json_str = the_raw_json.toString();
 				try {
-					this.bitrate = the_raw_json.getString("bitrate");
-					this.the_raw_json = the_object;
-					this.audio_file_id = the_raw_json.getString("id");
-					this.duration_in_seconds = the_raw_json.getString("duration_in_seconds");
-					this.codec = the_raw_json.getString("codec");
-					this.url = the_raw_json.getString("url");
+					
+					this.bitrate = extractStringValue("bitrate",this.the_raw_json);
+					
+					this.audio_file_id = extractStringValue("id",this.the_raw_json);
+					this.duration_in_seconds = extractStringValue("duration_in_seconds",this.the_raw_json);
+					this.codec = extractStringValue("codec",this.the_raw_json);
+					this.url = extractStringValue("url",this.the_raw_json);
 					JSONObject track_obj = the_raw_json.getJSONObject("track");
 					this.the_track = new Track(track_obj);
 					JSONObject release_obj = the_raw_json.getJSONObject("release");
@@ -261,6 +264,7 @@ public class Play  {
 					
 					
 				} catch (JSONException e) {
+					e.printStackTrace();
 					throw new IllegalArgumentException("Audio File JSON was malformed");
 				}
 				
@@ -305,12 +309,10 @@ public class Play  {
 				if(obj != null) {
 					
 					this.raw_track = obj;
-					try {
-						this.track_id = this.raw_track.getString("id");
-						this.track_title = this.raw_track.getString("title");
-					} catch (JSONException e) {
-						throw new IllegalArgumentException("Track json object was malformed");
-					}
+				
+						this.track_id = extractStringValue("id",this.raw_track);
+						this.track_title =extractStringValue("title",this.raw_track);
+					
 					
 					
 					
@@ -369,21 +371,16 @@ public class Play  {
 			 * @param obj -- The json object that represents the release.
 			 * @throws IllegalArgumentException
 			 */
-			public Release(JSONObject obj) throws IllegalArgumentException {
+			public Release(JSONObject obj) {
 				
 				if(obj != null) {
 					
 					this.raw_json = obj;
-					try {
-						this.release_id = this.raw_json.getString("id");
-						this.release_title = this.raw_json.getString("title");
-					} catch (JSONException e) {
+					
 						
-						throw new IllegalArgumentException("The json object representing th release was malformed");
-					}
-					
-					
-					
+					this.release_id = extractStringValue("id",this.raw_json);
+					this.release_title = extractStringValue("title",this.raw_json);
+										
 				} else {
 					
 					throw new NullPointerException("The json object representing the release was null");
@@ -445,13 +442,9 @@ public class Play  {
 				if(obj != null) {
 					
 					this.raw_json = obj;
-					try {
-						this.artist_id = this.raw_json.getString("id");
-						this.name = this.raw_json.getString("name");
-					} catch (JSONException e) {
-						throw new IllegalArgumentException("The json object representing the Artist was malformed");
-					}
-					
+				
+					this.artist_id = extractStringValue("id",this.raw_json);
+					this.name = extractStringValue("name",this.raw_json);
 					
 					
 				} else {
@@ -490,6 +483,47 @@ public class Play  {
 				
 		}
 		
+		
+	}
+	
+	
+	/**
+	 * 
+	 * Convenience method to handle the extractions of strings from JSONObject;
+	 * 
+	 * 
+	 * @param key
+	 * @param obj
+	 * @return
+	 */
+	public static String extractStringValue(String key, JSONObject obj) {
+		
+		
+		String result = NOT_FOUND;
+		
+		if(key != null) {
+			
+			if(obj != null) {
+				
+				try {
+					result = obj.getString(key);
+				} catch (JSONException e) {
+					//Ignoring error and moving on.
+				}
+				
+				
+			} else {
+				
+				throw new NullPointerException("The JSON object to extract was null");
+			}
+			
+			
+		} else {
+			
+			throw new NullPointerException("The key was null");
+		}
+		
+		return result;
 		
 	}
 	
