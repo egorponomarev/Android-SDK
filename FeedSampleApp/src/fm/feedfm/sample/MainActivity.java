@@ -1,5 +1,6 @@
 package fm.feedfm.sample;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import org.json.JSONException;
@@ -7,7 +8,9 @@ import org.json.JSONObject;
 
 import fm.feedfm.sdk.BadRequestGenerationException;
 import fm.feedfm.sdk.IResponseEvent;
+import fm.feedfm.sdk.Play;
 import fm.feedfm.sdk.Session;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.app.Activity;
 import android.util.Log;
@@ -31,14 +34,20 @@ public class MainActivity extends Activity {
 	private Button dislike = null;
 	private Button start_session = null;
 	
-	
+	//Data that is needed to establish a session with the FEED FM Server
 	private static final String secret = "1977a15cd114fe2fc0cf85e9b57b47d93241d957";
 	private static final String token = "89a91f25d4685efaafa4f01c62269bbd4842c67c";
+	
+	//The Initial CLIENT_ID is requested before a seesion is established.  The client should preserve 
+	//This client id should be preserved between creation of sessions.  It should only be requested once.
 	private static final String clientID = null;
 	
 	
 	
 	private Session the_session = null;
+	
+	
+	MediaPlayer mediaPlayer = null;
 
 	
 
@@ -49,6 +58,11 @@ public class MainActivity extends Activity {
         
         
         //this.the_session = new Session(token,secret, clientID);
+        mediaPlayer = new MediaPlayer();
+        
+        
+        
+        
         
         
         
@@ -70,8 +84,6 @@ public class MainActivity extends Activity {
 				startFeedSession(token, secret);
 				
 			}
-        	
-        	
         	
         });
         
@@ -186,6 +198,21 @@ public class MainActivity extends Activity {
     }
     
     
+    
+    /**
+     * 
+     * To be able to start a session with the Feed API 
+     * 
+     * you must get a CLIENT_ID.  This makes a request to the server for 
+     * a client id.  You should preserve this CLIENT_ID and reuse it next time
+     * the app starts.  Once a CLIENT_ID is generated you use it to initiate a 
+     * Session.  which is done by calling the constructor for the session object.
+     * 
+     * 
+     * 
+     * @param token
+     * @param secret
+     */
     private void startFeedSession(final String token,final String secret) {
     	
     	try {
@@ -234,6 +261,32 @@ public class MainActivity extends Activity {
     	
     }
     
+    /*
+     * 
+     * The FEED FM Session object is how you interact with the FEED FM server.  
+     * 
+     * You make invocations on a session object and you pass an instance of the IResponseEvent.  The
+     * Session object takes care of all the threading issues and marshalling of the requests to the
+     * UI thread.  Getting data from a request to the UI thread from a call on the Session object is done by making
+     * the call with an Instance of the IResponseEvent.  It is up to the developer to write code to handle these events 
+     * as shown below.  The IResponseEvent has too methods that will be called backed from the thread that made 
+     * the request to the FEED FM Server.  The successEvent will return a JSONObject that contains all the data from the 
+     * FEED FM sever.  For example a successful call to the the_session.play() object will contain the full JSONObject 
+     * that comes back from the call to play.  The failureEvent method is called when the request to the FEED FM 
+     * server fails.   It contains the status code of the request and the reason why the call failed and string of data
+     * which should be a JSONObject containing error data.  All other method operate in a similar fashion. 
+     * 
+     * 
+     * 
+     * 
+     * 
+     * 
+     * 
+     */
+    
+    
+    
+    
     
     
     
@@ -241,6 +294,40 @@ public class MainActivity extends Activity {
      * 
      * This is code that is used to demonstrate in the UI 
      * or anywhere else on how to play a song. Using the FEED FM API
+     * 
+     *  A successful call will contain a JSON object that look similar to this
+     *  
+     *  {
+				  "success": true,
+				  "play": {
+				    "id": "27555",
+				    "station": {
+				      "id": "599",
+				      "name": "East Bay"
+				    },
+				    "audio_file": {
+				      "id": "665",
+				      "duration_in_seconds": "300",
+				      "track": {
+				          "id": "15224887",
+				          "title": "3030"
+				      },
+				      "release": {
+				          "id": "1483477",
+				          "title": "Deltron 3030"
+				      },
+				      "artist": {
+				          "id": "766824",
+				          "name": "Del the Funky Homosapien"
+				      },
+				      "codec": "aac",
+				      "bitrate": "128",
+				      "url": "http://feed.fm/audiofile-665-original.aac"
+				    }
+				  }
+				}
+     * 
+     * 
      * 
      * 
      */
@@ -257,11 +344,47 @@ public class MainActivity extends Activity {
 					Log.d(TAG, "Tune SUCCESS!!!");
 					
 					try {
-						JSONObject play = (JSONObject) response_object.get("play");
+						JSONObject play_json = (JSONObject) response_object.get("play");
+						Play play = new Play(play_json);
 						
-						String song_id = play.getString("id");
+						
+						Play.AudioFile audio_file = play.getAudioFile();
+						
+						String song_id = play.getPlayID();
+						String song_url = audio_file.getURL();
+						try {
+							mediaPlayer.setDataSource(song_url);
+							mediaPlayer.prepareAsync();
+							
+							mediaPlayer.start();
+							
+						} catch (IllegalArgumentException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (SecurityException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IllegalStateException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						} catch (IOException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+										
 						the_session.setCurrentID(song_id);
-					
+						if(song_url != null && song_url.length() > 0) {
+							//Now that we have a url for the audio file we can set it 
+							//to a media player and start playing.
+							
+							//Once play has been started we must inform the FEED Servers
+							//Play has started.
+							reportPlayStarted();
+							
+							
+						}
+												
+						
 					} catch (JSONException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -294,7 +417,12 @@ public class MainActivity extends Activity {
      * This demonstrates how to skip a song in the UI or 
      * anywhere else using the feed fm API.
      * 
+     * A successful call will have JSONObject that looks like this.
      * 
+     * {
+		  "success" : true,
+		  "can_skip" : true
+		}
      */
     private void skipSong() {
     	
@@ -329,6 +457,11 @@ public class MainActivity extends Activity {
     /**
      * 
      * Demonstrates how to stop play
+     * 
+     * Stopping of a play requires the stopping of the play from the media client
+     * and then informing the server of completed play
+     * 
+     * 
      */
     private void stopPlay() {
     	
@@ -338,6 +471,11 @@ public class MainActivity extends Activity {
     /**
      * 
      * Demonstrates how to dislike a play
+     * 
+     * {
+		  "success" : true
+		}
+		   
      * 
      * 
      */
@@ -379,6 +517,13 @@ public class MainActivity extends Activity {
      * Demonstates how to like a play
      * 
      * 
+     * 
+     * {
+		  "success" : true
+		}
+   
+     * 
+     * 
      */
     private void likePlay() {
     	
@@ -418,6 +563,11 @@ public class MainActivity extends Activity {
      * 
      * Demonstrates how to invalidate a Play
      * 
+     * {
+		  "success" : true
+		}
+   
+     * 
      */
     private void invalidatePlay() {
     	
@@ -454,6 +604,11 @@ public class MainActivity extends Activity {
      * Demonstrates how to unlike a Play
      * 
      * 
+     * {
+		  "success" : true
+		}
+   
+     * 
      */
     private void unlikePlay() {
     	
@@ -488,6 +643,11 @@ public class MainActivity extends Activity {
     /**
      * 
      * Demonstrates how to report a Play has started
+     * 
+     * {
+		  "success" : true
+		}
+   
      * 
      */
     private void reportPlayStarted() {
@@ -528,6 +688,11 @@ public class MainActivity extends Activity {
      * Demonstrates how to report the play time elapsed
      * 
      * 
+     * {
+		  "success" : true
+		}
+   
+     * 
      * @param seconds
      */
     private void reportPlayElapsed(String seconds) {
@@ -562,6 +727,11 @@ public class MainActivity extends Activity {
     /**
      * 
      * Demonstrates how to report a play completed
+     * 
+     {
+		  "success" : true
+		}
+   
      * 
      * 
      */

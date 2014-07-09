@@ -51,6 +51,8 @@ public class Session implements ISession {
 	private boolean started_playing = false;
 	private boolean isTuned = false;
 	
+	private Play active_play = null;
+	
 	
 	/**
 	 * Constructor
@@ -284,12 +286,26 @@ public class Session implements ISession {
 
 	@Override
 	public Play getActivePlay() {
-		if(this.current_id != null) {
-			return new Play(this.current_id);
-		}
-		return null;
+		return this.active_play;
 	}
 
+	public void setActivePlay(Play the_play) {
+		
+		if(the_play != null) {
+			this.active_play = null;
+			
+		}
+	}
+	
+	public void setActivePlay(JSONObject the_play) {
+		
+		if(the_play != null) {
+			
+			this.active_play = new Play(the_play);
+		}
+	}
+	
+	
 
 	@Override
 	public boolean hasActivePlayStarted() {
