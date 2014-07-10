@@ -117,6 +117,7 @@ public class MainActivity extends Activity {
 						
 						//Once play has been started we must inform the FEED Servers
 						//Play has started.
+						
 						setReadyState(the_session.getActivePlay().getAudioFile().getTrack().getTrackTitle(), the_session.getActivePlay().getAudioFile().getRelease().getReleaseTitle());
 						reportPlayStarted();
 					}
@@ -127,6 +128,10 @@ public class MainActivity extends Activity {
 			}      	
         });
         
+        //This button will skip the current play 
+        //and request another play from the server;
+        skip = (Button)this.findViewById(R.id.skip);
+        skip.setEnabled(false);
 
         //OnClick Handler for the Skip Play Button
         //This when the skip button is pressed.
@@ -154,11 +159,7 @@ public class MainActivity extends Activity {
 			}       	
         });
         
-            
-        //This button will skip the current play 
-        //and request another play from the server;
-        skip = (Button)this.findViewById(R.id.skip);
-        skip.setEnabled(false);
+       
         
         //This button will stop the current play
         //It is the same as pause
@@ -268,9 +269,8 @@ public class MainActivity extends Activity {
 
 			@Override
 			public void onPrepared(MediaPlayer arg0) {
-				setReadyState(the_session.getActivePlay().getAudioFile().getTrack().getTrackTitle(), the_session.getActivePlay().getAudioFile().getRelease().getReleaseTitle());
 				mediaPlayer.start();
-				
+			     
 			}
         	
         	
@@ -503,6 +503,9 @@ public class MainActivity extends Activity {
 						
 						String title_of_track = play.getAudioFile().getTrack().getTrackTitle();
 						String title_of_release =play.getAudioFile().getRelease().getReleaseTitle();
+						txtTracktitle.setText(title_of_track);
+						txtReleasetitle.setText(title_of_release);
+				
 						
 						
 						try {
