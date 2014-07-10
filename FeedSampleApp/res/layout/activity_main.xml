@@ -18,7 +18,35 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/start_session" />
+
+        
     
+
+        <TextView
+            android:id="@+id/lblrelease_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+          
+            android:text="@string/Release" />
+        
+           <TextView
+            android:id="@+id/release_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="" />
+           
+                 <TextView
+            android:id="@+id/lbltrack_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+          
+            android:text="@string/Track" />
+        
+        <TextView
+            android:id="@+id/track_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="" />
     
     <Button
         android:id="@+id/play"

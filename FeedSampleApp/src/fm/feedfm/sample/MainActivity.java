@@ -11,6 +11,7 @@ import fm.feedfm.sdk.IResponseEvent;
 import fm.feedfm.sdk.Play;
 import fm.feedfm.sdk.Session;
 import android.media.MediaPlayer;
+import android.media.MediaPlayer.OnCompletionListener;
 import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.os.Bundle;
@@ -22,12 +23,13 @@ import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.MediaController;
 import android.widget.MediaController.MediaPlayerControl;
+import android.widget.TextView;
 
 public class MainActivity extends Activity {
 	
 	private static final String TAG ="MainActivity";
 	
-	private Button start = null;
+	private Button play = null;
 	private Button skip = null;
 	private Button stop = null;
 	private Button invalidate = null;
@@ -35,6 +37,10 @@ public class MainActivity extends Activity {
 	private Button unlike = null;
 	private Button dislike = null;
 	private Button start_session = null;
+	
+	
+	TextView txtTracktitle;
+	TextView txtReleasetitle;
 	
 	//Data that is needed to establish a session with the FEED FM Server
 	private static final String secret = "1977a15cd114fe2fc0cf85e9b57b47d93241d957";
@@ -56,48 +62,20 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        //Loading the view
         setContentView(R.layout.activity_main);
         
         
-        //this.the_session = new Session(token,secret, clientID);
-        mediaPlayer = new MediaPlayer();
+       
         
-        mediaPlayer.setOnErrorListener(new OnErrorListener() {
-
-			@Override
-			public boolean onError(MediaPlayer arg0, int arg1, int arg2) {
-				// TODO Auto-generated method stub
-				return false;
-			}
-        	
-        	
-        });
+        //Instantiating the controls for the application
         
-        mediaPlayer.setOnPreparedListener(new OnPreparedListener() {
-
-			@Override
-			public void onPrepared(MediaPlayer arg0) {
-				mediaPlayer.start();
-				
-			}
-        	
-        	
-        });
-        
-        
-        
-        
-        
-        start = (Button)this.findViewById(R.id.play);
-        skip = (Button)this.findViewById(R.id.skip);
-        stop = (Button)this.findViewById(R.id.stop);
-        invalidate =(Button)this.findViewById(R.id.invalidate);
-        like = (Button)this.findViewById(R.id.like);
-        unlike = (Button)this.findViewById(R.id.unlike);
-        dislike = (Button)this.findViewById(R.id.dislike);
+        //Gets the start session button and is used to instantiate a seesion with the 
+        //FEED.fm server
         start_session = (Button)this.findViewById(R.id.start_session);
         
-        
+        //The onclick handler for starting a session with the server.
         start_session.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -109,9 +87,21 @@ public class MainActivity extends Activity {
         	
         });
         
+        txtTracktitle = (TextView)findViewById(R.id.track_title);
+        txtReleasetitle = (TextView)findViewById(R.id.release_title);
+        
+        
+        //This button will start the play. 
+        //It is only visible when a song can be played
+        play = (Button)this.findViewById(R.id.play);
+        play.setEnabled(false);
+        
         
         //OnClick Handler for the Start Play Button
-        start.setOnClickListener(new OnClickListener() {
+        // This will start a series of actions that will ultimate if
+        //successful lead the playing of a song.
+        
+        play.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View arg0) {
@@ -120,7 +110,16 @@ public class MainActivity extends Activity {
 					if(!the_session.isTuned()) {					
 						playSong();
 										
-					}		
+					} else {
+						
+						//Now that we have a url for the audio file we can set it 
+						//to a media player and start playing.
+						
+						//Once play has been started we must inform the FEED Servers
+						//Play has started.
+						setReadyState(the_session.getActivePlay().getAudioFile().getTrack().getTrackTitle(), the_session.getActivePlay().getAudioFile().getRelease().getReleaseTitle());
+						reportPlayStarted();
+					}
 				} else {
 					
 					Log.e(TAG, "The Session object is null");
@@ -128,7 +127,11 @@ public class MainActivity extends Activity {
 			}      	
         });
         
+
         //OnClick Handler for the Skip Play Button
+        //This when the skip button is pressed.
+        //If there is a song already tuned in it will inform the 
+        //Server of a skip and then request a new song to be played.
         skip.setOnClickListener(new OnClickListener(){
 
 			@Override
@@ -138,6 +141,7 @@ public class MainActivity extends Activity {
 					if(the_session.isTuned()) {
 						
 						skipSong();
+						
 						
 					} else {
 						
@@ -150,28 +154,54 @@ public class MainActivity extends Activity {
 			}       	
         });
         
+            
+        //This button will skip the current play 
+        //and request another play from the server;
+        skip = (Button)this.findViewById(R.id.skip);
+        skip.setEnabled(false);
+        
+        //This button will stop the current play
+        //It is the same as pause
+        stop = (Button)this.findViewById(R.id.stop);
+        stop.setEnabled(false);
+        
         //OnClickHandler for Stopping play of a song
+        //Performs no actions with the server
         stop.setOnClickListener(new OnClickListener() {
 
 			@Override
 			public void onClick(View v) {
 				// TODO Auto-generated method stub
+				mediaPlayer.stop();
 				
 			}
         	
         	
         });
         
+        
+        //This button will call invalidate this song
+        invalidate =(Button)this.findViewById(R.id.invalidate);
+        invalidate.setEnabled(false);
+        
+        
+        //On Click Handler for the invalidate Handler
         invalidate.setOnClickListener(new OnClickListener() {
 
-			@Override
-			public void onClick(View v) {
-				invalidatePlay();
-				
-			}
-        	
-        });
+   			@Override
+   			public void onClick(View v) {
+   				invalidatePlay();
+   				
+   			}
+           	
+           });
         
+        
+        like = (Button)this.findViewById(R.id.like);
+        like.setEnabled(false);
+        
+        
+        //On click handler for the like button
         like.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -182,18 +212,26 @@ public class MainActivity extends Activity {
         	
         });
         
+        unlike = (Button)this.findViewById(R.id.unlike);
+        unlike.setEnabled(false);
         
+        //The onclick handler for Unlick Button
         unlike.setOnClickListener(new OnClickListener() {
 
-			@Override
-			public void onClick(View v) {
-				unlikePlay();
-				
-			}
-        	
-        	
+     			@Override
+     			public void onClick(View v) {
+     				unlikePlay();
+     				
+     			}
+             	
+             	
         });
         
+        dislike = (Button)this.findViewById(R.id.dislike);
+        dislike.setEnabled(false);
+        
+     
+        //The on click handler for the DislikeButton;
         dislike.setOnClickListener(new OnClickListener() {
 
 			@Override
@@ -206,10 +244,98 @@ public class MainActivity extends Activity {
         });
         
         
+        //this.the_session = new Session(token,secret, clientID);
+        //Initiating the media player
+        mediaPlayer = new MediaPlayer();
+        
+        //Listening to see if there is an error after prepare is called on the media player.
+        
+        //If an error is called then something is wrong and the audio will not play
+        mediaPlayer.setOnErrorListener(new OnErrorListener() {
+
+			@Override
+			public boolean onError(MediaPlayer arg0, int arg1, int arg2) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+        	
+        	
+        });
+        
+        //Setting up the Media player Prepared listner.
+        //This is called after PreparedAsync() has been been succesfully called
+        mediaPlayer.setOnPreparedListener(new OnPreparedListener() {
+
+			@Override
+			public void onPrepared(MediaPlayer arg0) {
+				setReadyState(the_session.getActivePlay().getAudioFile().getTrack().getTrackTitle(), the_session.getActivePlay().getAudioFile().getRelease().getReleaseTitle());
+				mediaPlayer.start();
+				
+			}
+        	
+        	
+        });
         
         
+        //Establishes the on completion listener for the 
+        mediaPlayer.setOnCompletionListener(new OnCompletionListener() {
+
+			@Override
+			public void onCompletion(MediaPlayer arg0) {
+				// TODO Auto-generated method stub
+				
+			}
+        	
+        	
+        });
+           
         
     }
+    
+    public void setReadyState(String track_title, String release_title) {
+    	
+    	play.setEnabled(true);
+    	skip.setEnabled(false) ;
+    	stop.setEnabled(false) ;
+    	invalidate.setEnabled(false);
+    	like.setEnabled(false);
+    	dislike.setEnabled(false);
+    	
+    	setTitles(track_title,release_title);
+    	
+    }
+    
+    
+    public void setPlayingState(String track_title, String release_title) {
+    	
+    	
+    	play.setEnabled(false);
+    	skip.setEnabled(true) ;
+    	stop.setEnabled(true) ;
+    	invalidate.setEnabled(true);
+    	like.setEnabled(true);
+    	dislike.setEnabled(true);
+    	setTitles(track_title, release_title);
+    	
+    	
+    	
+    }
+
+	private void setTitles(String track_title, String release_title) {
+		if(track_title != null && track_title.length() > 0) {
+    		txtTracktitle.setText(track_title);
+    	} else {
+    		txtTracktitle.setText("unknown");
+    	}
+    	
+    	if(release_title != null && release_title.length() >0) {
+    		txtReleasetitle.setText(release_title);
+    	} else {
+    		txtReleasetitle.setText("unknown");
+    	}
+	}
+    
+    
 
 
     @Override
@@ -250,12 +376,12 @@ public class MainActivity extends Activity {
 					
 					try {
 						
-						String ClientID = response_object.getString("client_id");
-						
-						
-						
+						String ClientID = response_object.getString("client_id");					
 						the_session = new Session(token,secret, ClientID);
-						;
+						//A Session has now been set up so the play button can now be active.
+						 play.setEnabled(true);
+					        
+						
 					} catch (JSONException e) {
 						Log.e(TAG,"Error getting client ID out of successful call to feed fm for client id");
 					}
@@ -374,6 +500,11 @@ public class MainActivity extends Activity {
 						
 						String song_id = play.getPlayID();
 						String song_url = audio_file.getURL();
+						
+						String title_of_track = play.getAudioFile().getTrack().getTrackTitle();
+						String title_of_release =play.getAudioFile().getRelease().getReleaseTitle();
+						
+						
 						try {
 							mediaPlayer.setDataSource(song_url);
 							mediaPlayer.prepareAsync();
@@ -395,17 +526,8 @@ public class MainActivity extends Activity {
 						}
 										
 						the_session.setCurrentID(song_id);
-						if(song_url != null && song_url.length() > 0) {
-							//Now that we have a url for the audio file we can set it 
-							//to a media player and start playing.
-							
-							//Once play has been started we must inform the FEED Servers
-							//Play has started.
-							reportPlayStarted();
-							
-							
-						}
-												
+						the_session.setActivePlay(play);
+																	
 						
 					} catch (JSONException e) {
 						// TODO Auto-generated catch block
@@ -456,6 +578,7 @@ public class MainActivity extends Activity {
 				public void successEvent(JSONObject response_object) {
 					// TODO Auto-generated method stub
 					Log.d(TAG, "Skip SUCCESS!!!");
+					playSong();
 				}
 
 				@Override

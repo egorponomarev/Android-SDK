@@ -11,7 +11,9 @@
 	<string name="Like">Like</string>
 	<string name="Unlike">Unlike</string>
 	<string name="Dislike">Dislike</string>
-    <string name="Error">Error</string>
+    <string name="Track">Track</string>
+     <string name="Release">Release</string>
+      <string name="Error">Error</string>
      <string name="start_session">StartSession</string>
 
 </resources>
