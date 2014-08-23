@@ -2,82 +2,125 @@ package com.feedfm.android.playersdk;
 
 import android.content.Context;
 import android.content.Intent;
-import android.util.Base64;
-import android.widget.Toast;
+import android.util.Pair;
 
-import com.feedfm.android.playersdk.model.Client;
+import com.feedfm.android.playersdk.model.Placement;
+import com.feedfm.android.playersdk.model.Station;
+import com.feedfm.android.playersdk.service.bus.Credentials;
+import com.feedfm.android.playersdk.service.bus.SingleEventBus;
+import com.feedfm.android.playersdk.service.bus.StatusMessage;
+import com.feedfm.android.playersdk.service.webservice.PlayerService;
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
-import retrofit.Callback;
-import retrofit.RestAdapter;
-import retrofit.RetrofitError;
-import retrofit.client.Response;
-import retrofit.http.Header;
-import retrofit.http.Headers;
-import retrofit.http.POST;
+import java.util.List;
 
 /**
  * Created by mharkins on 8/21/14.
  */
 public class Player {
+    public static final String TAG = Player.class.getSimpleName();
+
+    /**
+     * Singleton
+     */
     private static Player mInstance;
 
-    public static final String EVENT_CLIENT_ID_RECEIVED = "com.feedfm.android.playersdk.event.clientid";
-    public static final String EXTRA_CLIENT_ID = "com.feedfm.android.playersdk.extra.clientid";
+    private Bus eventBus = SingleEventBus.getInstance();
+    private PlayerServiceListener mPrivateServiceListener;
 
-    //TODO: Context will be removed from here and we'll use the Service as context
-    private Context mContext;
+    // Client Listener
+    private ClientListener mClientListener;
 
+    private Player(Context context, ClientListener clientListener) {
+        mClientListener = clientListener;
 
-    private AuthInterface mService;
+        mPrivateServiceListener = new PlayerServiceListener();
+        eventBus.register(mPrivateServiceListener);
 
-    private Player(Context context) {
-        mContext = context;
-
-        String apiVersion = context.getString(R.string.api_version);
-
-        RestAdapter restAdapter = new RestAdapter.Builder()
-                .setLogLevel(RestAdapter.LogLevel.FULL)
-                .setEndpoint("https://feed.fm/api/" + apiVersion)
-                .build();
-
-        mService = restAdapter.create(AuthInterface.class);
+        // Start the Service
+        Intent intent = new Intent(context, PlayerService.class);
+        context.startService(intent);
     }
 
-    public static Player getInstance(Context context) {
+    public static Player getInstance(Context context, ClientListener clientListener) {
         if (mInstance == null) {
-            mInstance = new Player(context);
+            mInstance = new Player(context, clientListener);
         }
         return mInstance;
     }
 
-    public void setCredentials(String token, String secret) throws Exception{
-        String concat = token + ":" + secret;
-        String base64Auth = Base64.encodeToString(concat.getBytes(), Base64.NO_WRAP | Base64.DEFAULT);
-        if (!base64Auth.equals("ZDQwYjdjYzk4YTAwMWZjOWJlOGRkM2ZkMzJjM2EwYzQ5NWQwZGI0MjpiNTljNmQ5YzFiNWE5MWQxMjVmMDk4ZWY5YzJhNzE2NWRjMWJkNTE3")) {
-            throw new Exception("Wrong Authorization code: " + base64Auth);
-        }
-        mService.getClientId("Basic " + base64Auth, new Callback<Client>() {
-            @Override
-            public void success(Client client, Response response) {
-                if (client.isSuccess()) {
-                    Toast.makeText(mContext, String.format("Client Id: %s", client.getClientId()), Toast.LENGTH_LONG).show();
-                    Intent intent = new Intent(EVENT_CLIENT_ID_RECEIVED);
-                    intent.putExtra(EXTRA_CLIENT_ID, client.getClientId());
-                    mContext.sendBroadcast(intent);
-                } else {
-                    Toast.makeText(mContext, "Client Id Request Unsuccessful", Toast.LENGTH_LONG).show();
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                Toast.makeText(mContext, "Client Id Request failed", Toast.LENGTH_LONG).show();
-            }
-        });
+    public ClientListener getPlayerListener() {
+        return mClientListener;
     }
 
-    interface AuthInterface {
-        @POST("/client")
-        public void getClientId(@Header("Authorization") String authorization, Callback<Client> callback);
+    public void setPlayerListener(ClientListener mClientListener) {
+        this.mClientListener = mClientListener;
+    }
+
+    public void setCredentials(String token, String secret) {
+        Credentials credentials = new Credentials(token, secret);
+        if (credentials.isValid()) {
+            eventBus.post(credentials);
+        }
+    }
+
+    public void setPlacementId(int placementId) {
+        eventBus.post(new Placement(placementId));
+    }
+
+    public void setStationId(int stationId) {
+        eventBus.post(new Station(stationId));
+    }
+
+    private class PlayerServiceListener {
+        public PlayerServiceListener() {
+        }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onServiceStatusChange(StatusMessage message) {
+            switch (message.getStatus()) {
+                case STARTED:
+                    mClientListener.onPlayerInitialized();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onPlacementChanged(Pair<Placement, List<Station>> placementInfo) {
+            mClientListener.onPlacementChanged(placementInfo.first, placementInfo.second);
+        }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onStationChanged(Station station) {
+            mClientListener.onStationChanged(station);
+        }
+    }
+
+    /**
+     * Implement this interface to get callbacks from the Player
+     */
+    public interface ClientListener {
+        public void onPlayerInitialized();
+
+        public void onPlacementChanged(Placement placement, List<Station> stationList);
+
+        public void onStationChanged(Station station);
+
+        public void onTrackChanged(Placement placement, List<Station> stationList);
+
+        public void onPlaybackStateChanged(Placement placement, List<Station> stationList);
+
+        public void onSkipFailed(Placement placement, List<Station> stationList);
+
+        /**
+         * Called when the user is not located in the US. No music will be available to play.
+         */
+        public void onNotInUS();
     }
 }
