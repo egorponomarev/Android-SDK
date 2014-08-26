@@ -135,6 +135,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Tune", Toast.LENGTH_LONG).show();
+            mPlayer.tune();
         }
     };
 
@@ -142,6 +143,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Play", Toast.LENGTH_LONG).show();
+            mPlayer.play();
         }
     };
 
@@ -149,6 +151,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Pause", Toast.LENGTH_LONG).show();
+            mPlayer.pause();
         }
     };
 
@@ -156,6 +159,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Skip", Toast.LENGTH_LONG).show();
+            mPlayer.skip();
         }
     };
 
@@ -163,6 +167,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Like", Toast.LENGTH_LONG).show();
+            mPlayer.like();
         }
     };
 
@@ -170,6 +175,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Unlike", Toast.LENGTH_LONG).show();
+            mPlayer.unlike();
         }
     };
 
@@ -177,6 +183,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
         @Override
         public void onClick(View v) {
             Toast.makeText(getActivity(), "Dislike", Toast.LENGTH_LONG).show();
+            mPlayer.dislike();
         }
     };
 
@@ -210,7 +217,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
                 mSelectedStationIndex = position;
 
                 HashMap<String, Integer> item = (HashMap<String, Integer>) adapter.getItem(position);
-                Integer stationId = Integer.parseInt(String.valueOf(item.get("Id")));
+                String stationId = String.valueOf(item.get("Id"));
                 mPlayer.setStationId(stationId);
             }
         });

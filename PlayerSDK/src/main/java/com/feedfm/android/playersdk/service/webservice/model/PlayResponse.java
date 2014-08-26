@@ -8,4 +8,8 @@ import com.google.gson.annotations.SerializedName;
  */
 public class PlayResponse extends FeedFMResponse {
     @SerializedName("play") private Play play;
+
+    public Play getPlay() {
+        return play;
+    }
 }

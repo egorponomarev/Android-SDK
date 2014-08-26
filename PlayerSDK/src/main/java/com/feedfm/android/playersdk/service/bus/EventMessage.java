@@ -3,14 +3,14 @@ package com.feedfm.android.playersdk.service.bus;
 /**
  * Created by mharkins on 8/22/14.
  */
-public class StatusMessage {
+public class EventMessage {
     public enum Status {
         STARTED
     }
 
     private Status mStatus;
 
-    public StatusMessage(Status status) {
+    public EventMessage(Status status) {
         mStatus = status;
     }
 

@@ -7,8 +7,9 @@ import android.util.Pair;
 import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Station;
 import com.feedfm.android.playersdk.service.bus.Credentials;
+import com.feedfm.android.playersdk.service.bus.EventMessage;
+import com.feedfm.android.playersdk.service.bus.PlayerAction;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
-import com.feedfm.android.playersdk.service.bus.StatusMessage;
 import com.feedfm.android.playersdk.service.webservice.PlayerService;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
@@ -69,9 +70,38 @@ public class Player {
         eventBus.post(new Placement(placementId));
     }
 
-    public void setStationId(int stationId) {
+    public void setStationId(String stationId) {
         eventBus.post(new Station(stationId));
     }
+
+    public void tune() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.TUNE));
+    }
+
+    public void play() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.PLAY));
+    }
+
+    public void pause() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.PAUSE));
+    }
+
+    public void skip() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.SKIP));
+    }
+
+    public void like() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.LIKE));
+    }
+
+    public void dislike() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
+    }
+
+    public void unlike() {
+        eventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
+    }
+
 
     private class PlayerServiceListener {
         public PlayerServiceListener() {
@@ -79,7 +109,7 @@ public class Player {
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onServiceStatusChange(StatusMessage message) {
+        public void onServiceStatusChange(EventMessage message) {
             switch (message.getStatus()) {
                 case STARTED:
                     mClientListener.onPlayerInitialized();
