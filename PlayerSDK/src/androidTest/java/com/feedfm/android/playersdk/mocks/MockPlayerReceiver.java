@@ -1,4 +1,4 @@
-package com.feedfm.android.playersdk;
+package com.feedfm.android.playersdk.mocks;
 
 import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Station;
@@ -9,18 +9,18 @@ import com.squareup.otto.Subscribe;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class PlayerReceiverMock {
+public class MockPlayerReceiver {
 
-    protected boolean postedCredentials = false;
-    protected boolean postedPlacement = false;
-    protected boolean postedStation = false;
-    protected boolean postedTune = false;
-    protected boolean postedPlay = false;
-    protected boolean postedPause = false;
-    protected boolean postedSkip = false;
-    protected boolean postedLike = false;
-    protected boolean postedDislike = false;
-    protected boolean postedUnlike = false;
+    public boolean postedCredentials = false;
+    public boolean postedPlacement = false;
+    public boolean postedStation = false;
+    public boolean postedTune = false;
+    public boolean postedPlay = false;
+    public boolean postedPause = false;
+    public boolean postedSkip = false;
+    public boolean postedLike = false;
+    public boolean postedDislike = false;
+    public boolean postedUnlike = false;
 
     @Subscribe
     public void handlePostCredentials(Credentials creds) {

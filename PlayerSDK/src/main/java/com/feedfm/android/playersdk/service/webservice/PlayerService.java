@@ -29,13 +29,13 @@ import java.util.List;
 public class PlayerService extends Service implements MediaPlayerManager.Listener {
     public static final String TAG = PlayerService.class.getSimpleName();
 
-    private static Bus eventBus = SingleEventBus.getInstance();
+    protected static Bus eventBus = SingleEventBus.getInstance();
 
-    private Webservice mWebservice;
-    private MediaPlayerManager mMediaPlayerManager;
+    protected Webservice mWebservice;
+    protected MediaPlayerManager mMediaPlayerManager;
 
     // Client State data
-    private String mClientId;
+    protected String mClientId;
     private List<Station> mStationList;
 
     private Placement mSelectedPlacement = null;
@@ -108,14 +108,14 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         Station station = wrapper.getObject();
         if (mStationList != null) {
             for (Station s : mStationList) {
-                if (s.getId() == station.getId()) {
+                if (s.getId().equals(station.getId())) {
                     mSelectedStation = s;
                     eventBus.post(mSelectedStation);
                     return;
                 }
             }
         }
-        Log.w(TAG, String.format("Station %d could not be found for current placement.", station.getId()));
+        Log.w(TAG, String.format("Station %s could not be found for current placement.", station.getId()));
     }
 
     @Subscribe

@@ -8,6 +8,7 @@ import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Station;
 import com.feedfm.android.playersdk.service.bus.Credentials;
 import com.feedfm.android.playersdk.service.bus.EventMessage;
+import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
 import com.feedfm.android.playersdk.service.webservice.PlayerService;
@@ -28,7 +29,7 @@ public class Player {
     private static Player mInstance;
 
     protected Bus mEventBus = SingleEventBus.getInstance();
-    private PlayerServiceListener mPrivateServiceListener;
+    protected PlayerServiceListener mPrivateServiceListener;
 
     // Client Listener
     private ClientListener mClientListener;
@@ -39,6 +40,10 @@ public class Player {
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
 
+        startPlayerService(context);
+    }
+
+    protected void startPlayerService(Context context) {
         // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
         context.startService(intent);
@@ -71,7 +76,7 @@ public class Player {
     }
 
     public void setStationId(String stationId) {
-        mEventBus.post(new Station(stationId));
+        mEventBus.post(new OutStationWrap(new Station(stationId)));
     }
 
     public void tune() {
@@ -103,7 +108,8 @@ public class Player {
     }
 
 
-    private class PlayerServiceListener {
+    // TODO: find a way to make this private and not break the Unit Tests
+    public class PlayerServiceListener {
         public PlayerServiceListener() {
         }
 

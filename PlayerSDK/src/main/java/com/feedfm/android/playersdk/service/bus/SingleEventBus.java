@@ -8,7 +8,7 @@ import com.squareup.otto.Bus;
 public class SingleEventBus extends Bus {
     private static SingleEventBus mInstance;
 
-    private SingleEventBus() {
+    protected SingleEventBus() {
 
     }
 

@@ -15,6 +15,10 @@ public class FeedFMResponse {
         return success;
     }
 
+    public void setSuccess(boolean success) {
+        this.success = success;
+    }
+
     public FeedFMError getError() {
         return error;
     }

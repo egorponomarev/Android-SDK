@@ -35,7 +35,7 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         this.mContext = context;
         this.mListener = listener;
 
-        initAudioManager();
+//        initAudioManager();
     }
 
     public void preTune(boolean autoPlay) {

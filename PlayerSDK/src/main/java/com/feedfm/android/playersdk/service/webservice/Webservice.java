@@ -40,7 +40,7 @@ public class Webservice {
     public static final String EXTRA_CLIENT_ID = "com.feedfm.android.playersdk.extra.clientid";
 
 
-    private RestInterface mRestService;
+    protected RestInterface mRestService;
 
     /**
      * an android.app.Service object Context
@@ -184,7 +184,7 @@ public class Webservice {
         });
     }
 
-    interface RestInterface {
+    public interface RestInterface {
         @POST("/client")
         public void getClientId(@Header("Authorization") String authorization, retrofit.Callback<ClientResponse> callback);
 

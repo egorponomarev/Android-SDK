@@ -22,6 +22,18 @@ public class FeedFMError {
         return status;
     }
 
+    public void setCode(int code) {
+        this.code = code;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
+    }
+
+    public void setStatus(int status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return String.format("{code: %d, message: \"%s\", status: %s}", getCode(), getMessage(), getStatus());
