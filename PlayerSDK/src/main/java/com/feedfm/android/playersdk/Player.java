@@ -27,17 +27,17 @@ public class Player {
      */
     private static Player mInstance;
 
-    private Bus eventBus = SingleEventBus.getInstance();
+    protected Bus mEventBus = SingleEventBus.getInstance();
     private PlayerServiceListener mPrivateServiceListener;
 
     // Client Listener
     private ClientListener mClientListener;
 
-    private Player(Context context, ClientListener clientListener) {
+    protected Player(Context context, ClientListener clientListener) {
         mClientListener = clientListener;
 
         mPrivateServiceListener = new PlayerServiceListener();
-        eventBus.register(mPrivateServiceListener);
+        mEventBus.register(mPrivateServiceListener);
 
         // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
@@ -62,44 +62,44 @@ public class Player {
     public void setCredentials(String token, String secret) {
         Credentials credentials = new Credentials(token, secret);
         if (credentials.isValid()) {
-            eventBus.post(credentials);
+            mEventBus.post(credentials);
         }
     }
 
     public void setPlacementId(int placementId) {
-        eventBus.post(new Placement(placementId));
+        mEventBus.post(new Placement(placementId));
     }
 
     public void setStationId(String stationId) {
-        eventBus.post(new Station(stationId));
+        mEventBus.post(new Station(stationId));
     }
 
     public void tune() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.TUNE));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.TUNE));
     }
 
     public void play() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.PLAY));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.PLAY));
     }
 
     public void pause() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.PAUSE));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.PAUSE));
     }
 
     public void skip() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.SKIP));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.SKIP));
     }
 
     public void like() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.LIKE));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.LIKE));
     }
 
     public void dislike() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
     }
 
     public void unlike() {
-        eventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
     }
 
 
