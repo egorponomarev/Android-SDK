@@ -122,7 +122,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onStart() {
         super.onStart();
 
-        mPlayer = Player.getInstance(getActivity(), this);
+        mPlayer = Player.getInstance(getActivity(), this, this, this);
     }
 
     @Override
