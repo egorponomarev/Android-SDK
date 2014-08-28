@@ -24,6 +24,7 @@ import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.OkClient;
 import retrofit.client.Response;
+import retrofit.http.DELETE;
 import retrofit.http.Field;
 import retrofit.http.FormUrlEncoded;
 import retrofit.http.GET;
@@ -188,6 +189,75 @@ public class Webservice {
         });
     }
 
+    public void like(String playId, final Callback<Boolean> callback) {
+        mRestService.like(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
+            @Override
+            public void success(FeedFMResponse feedFMResponse, Response response) {
+                if (feedFMResponse.isSuccess()) {
+                    callback.onSuccess(true);
+                } else {
+                    callback.onFailure(feedFMResponse.getError());
+                }
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                if (error != null) {
+                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
+                    callback.onFailure(feedFMResponse.getError());
+                } else {
+                    callback.onFailure(null);
+                }
+            }
+        });
+    }
+    public void unlike(String playId, final Callback<Boolean> callback) {
+        mRestService.unlike(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
+            @Override
+            public void success(FeedFMResponse feedFMResponse, Response response) {
+                if (feedFMResponse.isSuccess()) {
+                    callback.onSuccess(true);
+                } else {
+                    callback.onFailure(feedFMResponse.getError());
+                }
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                if (error != null) {
+                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
+                    callback.onFailure(feedFMResponse.getError());
+                } else {
+                    callback.onFailure(null);
+                }
+            }
+        });
+    }
+    public void dislike(String playId, final Callback<Boolean> callback) {
+        mRestService.dislike(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
+            @Override
+            public void success(FeedFMResponse feedFMResponse, Response response) {
+                if (feedFMResponse.isSuccess()) {
+                    callback.onSuccess(true);
+                } else {
+                    callback.onFailure(feedFMResponse.getError());
+                }
+            }
+
+            @Override
+            public void failure(RetrofitError error) {
+                if (error != null) {
+                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
+                    callback.onFailure(feedFMResponse.getError());
+                } else {
+                    callback.onFailure(null);
+                }
+            }
+        });
+    }
+
+
+
     public interface RestInterface {
         @POST("/client")
         public void getClientId(@Header("Authorization") String authorization, retrofit.Callback<ClientResponse> callback);
@@ -207,6 +277,15 @@ public class Webservice {
 
         @POST("/play/{id}/complete")
         public void playCompleted(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+
+        @POST("/play/{id}/like")
+        public void like(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+
+        @DELETE("/play/{id}/like")
+        public void unlike(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+
+        @POST("/play/{id}/dislike")
+        public void dislike(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
     }
 
     public interface Callback<T> {

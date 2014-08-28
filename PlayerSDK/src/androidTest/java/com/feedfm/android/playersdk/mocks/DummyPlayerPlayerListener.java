@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class DummyPlayerClientListener implements Player.ClientListener {
+public class DummyPlayerPlayerListener implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
     public boolean didCallPlayerInitialized = false;
     public boolean didCallPlacementChanged = false;
     public boolean didCallStationChanged = false;
@@ -17,6 +17,9 @@ public class DummyPlayerClientListener implements Player.ClientListener {
     public boolean didCallPlaybackStateChanged = false;
     public boolean didCallSkipFailed = false;
     public boolean didCallNotInUS = false;
+    public boolean didCallLiked = false;
+    public boolean didCallUnliked = false;
+    public boolean didCallDisliked = false;
 
 
     @Override
@@ -52,5 +55,20 @@ public class DummyPlayerClientListener implements Player.ClientListener {
     @Override
     public void onNotInUS() {
         didCallNotInUS = true;
+    }
+
+    @Override
+    public void onLiked() {
+        didCallLiked = true;
+    }
+
+    @Override
+    public void onUnliked() {
+        didCallUnliked = true;
+    }
+
+    @Override
+    public void onDisliked() {
+        didCallDisliked = true;
     }
 }

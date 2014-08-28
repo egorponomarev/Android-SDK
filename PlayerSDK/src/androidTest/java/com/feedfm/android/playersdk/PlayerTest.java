@@ -1,12 +1,11 @@
 package com.feedfm.android.playersdk;
 
 import com.feedfm.android.playersdk.mocks.DummyBus;
-import com.feedfm.android.playersdk.mocks.DummyPlayerClientListener;
+import com.feedfm.android.playersdk.mocks.DummyPlayerPlayerListener;
 import com.feedfm.android.playersdk.mocks.FakeMediaPlayerManager;
 import com.feedfm.android.playersdk.mocks.FakePlayer;
 import com.feedfm.android.playersdk.mocks.FakePlayerService;
 import com.feedfm.android.playersdk.mocks.FakeWebservice;
-import com.feedfm.android.playersdk.mocks.MockPlayerReceiver;
 import com.feedfm.android.playersdk.mocks.StubRestService;
 import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Station;
@@ -24,11 +23,10 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
-import org.robolectric.shadows.ShadowLog;
 
 import java.util.List;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -48,17 +46,11 @@ public class PlayerTest {
     private FakeMediaPlayerManager mediaPlayerManager;
 
 
-    private MockPlayerReceiver playerReceiver;
-
     @Before
     public void setUp() {
-        ShadowLog.stream = System.out;
-
-        playerReceiver = new MockPlayerReceiver();
-
         // No need for Listener.
         // We replace the Bus event handling with Mocking though
-        player = FakePlayer.getInstance(Robolectric.application, new DummyPlayerClientListener());
+        player = FakePlayer.getInstance(Robolectric.application, null, null, null);
         service = new FakePlayerService();
 
         bus = new DummyBus(player, service);
@@ -106,7 +98,7 @@ public class PlayerTest {
 
         restInterface.mPlacementResponseMock = new Gson().fromJson(JsonData.placementResponse, PlacementResponse.class);
 
-        DummyPlayerClientListener clientListener = new DummyPlayerClientListener() {
+        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener() {
             @Override
             public void onStationChanged(Station station) {
                 super.onStationChanged(station);
@@ -124,13 +116,13 @@ public class PlayerTest {
                 }
         };
 
-        player.setPlayerListener(clientListener);
+        player.setNavListener(listener);
 
         player.setPlacementId(10955);
-        assertTrue(clientListener.didCallPlacementChanged);
+        assertTrue(listener.didCallPlacementChanged);
 
         player.setStationId("2116");
-        assertTrue(clientListener.didCallStationChanged);
+        assertTrue(listener.didCallStationChanged);
     }
 
     @Test
@@ -186,13 +178,8 @@ public class PlayerTest {
     public void testSkip() {
         initCredentials();
 
-        DummyPlayerClientListener clientListener = new DummyPlayerClientListener() {
-            @Override
-            public void onSkipFailed() {
-                super.onSkipFailed();
-            }
-        };
-        player.setPlayerListener(clientListener);
+        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        player.setNavListener(listener);
 
         restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
         restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
@@ -206,7 +193,7 @@ public class PlayerTest {
 
         player.skip();
 
-        assertTrue(!clientListener.didCallSkipFailed);
+        assertTrue(!listener.didCallSkipFailed);
 
         assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.STARTED);
         assertTrue(mediaPlayerManager.getActiveMediaPlayer().getPlay().getId().equals("142049138"));
@@ -217,27 +204,72 @@ public class PlayerTest {
 
         player.skip();
 
-        assertTrue(clientListener.didCallSkipFailed);
+        assertTrue(listener.didCallSkipFailed);
         assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.STARTED);
         assertTrue(mediaPlayerManager.getActiveMediaPlayer().getPlay().getId().equals("142049138"));
     }
 
     @Test
     public void testLike() {
+        initCredentials();
+
+        restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
+
+        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        player.setSocialListener(listener);
         player.like();
-        assertTrue(playerReceiver.postedLike);
+
+        assertFalse(listener.didCallLiked);
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
+
+        player.play();
+        player.like();
+
+        assertTrue(listener.didCallLiked);
     }
 
     @Test
     public void testUnlike() {
+        initCredentials();
+
+        restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
+
+        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        player.setSocialListener(listener);
         player.unlike();
-        assertTrue(playerReceiver.postedUnlike);
+
+        assertFalse(listener.didCallUnliked);
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
+
+        player.play();
+        player.unlike();
+
+        assertTrue(listener.didCallUnliked);
     }
 
     @Test
     public void testDislike() {
+        initCredentials();
+
+        restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
+
+        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        player.setSocialListener(listener);
         player.dislike();
-        assertTrue(playerReceiver.postedDislike);
+
+        assertFalse(listener.didCallDisliked);
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
+
+        player.play();
+        player.dislike();
+
+        assertTrue(listener.didCallDisliked);
     }
 
     @After

@@ -11,12 +11,12 @@ public class FakePlayer extends Player {
 
     private FakePlayerService mServiceMock;
 
-    private FakePlayer(Context context, ClientListener clientListener) {
-        super(context, clientListener);
+    private FakePlayer(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
+        super(context, playerListener, navListener, socialListener);
     }
 
-    public static FakePlayer getInstance(Context context, ClientListener clientListener) {
-        return new FakePlayer(context, clientListener);
+    public static FakePlayer getInstance(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
+        return new FakePlayer(context, playerListener, navListener, socialListener);
     }
 
     @Override

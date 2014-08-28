@@ -214,26 +214,32 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     }
 
     private void skip() {
-        if (mMediaPlayerManager.isPaused() || mMediaPlayerManager.isPlaying()) {
-            FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-            mWebservice.skip(mediaPlayer.getPlay().getId(), new Webservice.Callback<Boolean>() {
-                @Override
-                public void onSuccess(Boolean success) {
-                    if (success) {
-                        mMediaPlayerManager.stop();
-                        play();
-                    }
-                }
-
-                @Override
-                public void onFailure(FeedFMError error) {
-                    if (error != null) {
-                        Toast.makeText(PlayerService.this, "Cannot Skip: " + error.toString(), Toast.LENGTH_LONG).show();
-                    }
-                    eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
-                }
-            });
+        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
+            Log.i(TAG, "Could not Skip track. No active Play");
+            return;
         }
+
+        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
+        final String playId = mediaPlayer.getPlay().getId();
+
+        mWebservice.skip(playId, new Webservice.Callback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean success) {
+                if (success) {
+                    mMediaPlayerManager.stop();
+                    play();
+                }
+            }
+
+            @Override
+            public void onFailure(FeedFMError error) {
+                if (error != null) {
+                    Toast.makeText(PlayerService.this, "Cannot Skip: " + error.toString(), Toast.LENGTH_LONG).show();
+                    Log.e(TAG, String.format("Skip (%s): failed", playId));
+                }
+                eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
+            }
+        });
     }
 
     private void pause() {
@@ -242,13 +248,84 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             mediaPlayer.pause();
 
             mActiveStatus = Status.PAUSED;
+        } else {
+            Log.i(TAG, "Could not Pause track. Not playing.");
         }
     }
+
     private void like() {
+        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
+            Log.w(TAG, "Could not Like track. No active Play");
+            return;
+        }
+
+        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
+        final String playId = mediaPlayer.getPlay().getId();
+        mWebservice.like(playId, new Webservice.Callback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean success) {
+                if (success) {
+                    eventBus.post(new EventMessage(EventMessage.Status.LIKE));
+                }
+            }
+
+            @Override
+            public void onFailure(FeedFMError error) {
+                if (error != null) {
+                    Log.e(TAG, String.format("Like (%s): failed - %s", playId, error.toString()));
+                }
+            }
+        });
     }
+
     private void unlike() {
+        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
+            Log.i(TAG, "Could not Like track. No active Play");
+            return;
+        }
+
+        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
+        final String playId = mediaPlayer.getPlay().getId();
+        mWebservice.unlike(playId, new Webservice.Callback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean success) {
+                if (success) {
+                    eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
+                }
+            }
+
+            @Override
+            public void onFailure(FeedFMError error) {
+                if (error != null) {
+                    Log.e(TAG, String.format("Unlike (%s): failed - %s", playId, error.toString()));
+                }
+            }
+        });
     }
+
     private void dislike() {
+        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
+            Log.i(TAG, "Could not Like track. No active Play");
+            return;
+        }
+
+        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
+        final String playId = mediaPlayer.getPlay().getId();
+        mWebservice.unlike(playId, new Webservice.Callback<Boolean>() {
+            @Override
+            public void onSuccess(Boolean success) {
+                if (success) {
+                    eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
+                }
+            }
+
+            @Override
+            public void onFailure(FeedFMError error) {
+                if (error != null) {
+                    Log.e(TAG, String.format("Dislike (%s): failed - %s", playId, error.toString()));
+                }
+            }
+        });
     }
 
     @Override
@@ -288,6 +365,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             @Override
             public void onSuccess(Boolean success) {
                 Toast.makeText(PlayerService.this, "Track Completed: " + success, Toast.LENGTH_LONG).show();
+                play();
             }
 
             @Override

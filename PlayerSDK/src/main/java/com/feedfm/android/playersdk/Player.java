@@ -31,11 +31,15 @@ public class Player {
     protected Bus mEventBus = SingleEventBus.getInstance();
     protected PlayerServiceListener mPrivateServiceListener;
 
-    // Client Listener
-    private ClientListener mClientListener;
+    // PLayer Listener
+    private PlayerListener mPlayerListener;
+    private NavListener mNavListener;
+    private SocialListener mSocialListener;
 
-    protected Player(Context context, ClientListener clientListener) {
-        mClientListener = clientListener;
+    protected Player(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
+        setPlayerListener(playerListener);
+        setNavListener(navListener);
+        setSocialListener(socialListener);
 
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
@@ -49,19 +53,23 @@ public class Player {
         context.startService(intent);
     }
 
-    public static Player getInstance(Context context, ClientListener clientListener) {
+    public static Player getInstance(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
         if (mInstance == null) {
-            mInstance = new Player(context, clientListener);
+            mInstance = new Player(context, playerListener, navListener, socialListener);
         }
         return mInstance;
     }
 
-    public ClientListener getPlayerListener() {
-        return mClientListener;
+    public void setPlayerListener(PlayerListener mPlayerListener) {
+        this.mPlayerListener = mPlayerListener;
     }
 
-    public void setPlayerListener(ClientListener mClientListener) {
-        this.mClientListener = mClientListener;
+    public void setSocialListener(SocialListener mSocialListener) {
+        this.mSocialListener = mSocialListener;
+    }
+
+    public void setNavListener(NavListener mNavListener) {
+        this.mNavListener = mNavListener;
     }
 
     public void setCredentials(String token, String secret) {
@@ -118,10 +126,19 @@ public class Player {
         public void onServiceStatusChange(EventMessage message) {
             switch (message.getStatus()) {
                 case STARTED:
-                    mClientListener.onPlayerInitialized();
+                    if (mPlayerListener != null) mPlayerListener.onPlayerInitialized();
                     break;
                 case SKIP_FAILED:
-                    mClientListener.onSkipFailed();
+                    if (mNavListener != null) mNavListener.onSkipFailed();
+                case LIKE:
+                    if (mSocialListener != null) mSocialListener.onLiked();
+                    break;
+                case UNLIKE:
+                    if (mSocialListener != null) mSocialListener.onUnliked();
+                    break;
+                case DISLIKE:
+                    if (mSocialListener != null) mSocialListener.onDisliked();
+                    break;
                 default:
                     break;
             }
@@ -130,22 +147,32 @@ public class Player {
         @SuppressWarnings("unused")
         @Subscribe
         public void onPlacementChanged(Pair<Placement, List<Station>> placementInfo) {
-            mClientListener.onPlacementChanged(placementInfo.first, placementInfo.second);
+            if (mNavListener != null) mNavListener.onPlacementChanged(placementInfo.first, placementInfo.second);
         }
 
         @SuppressWarnings("unused")
         @Subscribe
         public void onStationChanged(Station station) {
-            mClientListener.onStationChanged(station);
+            if (mNavListener != null) mNavListener.onStationChanged(station);
         }
     }
 
     /**
      * Implement this interface to get callbacks from the Player
      */
-    public interface ClientListener {
+    public interface PlayerListener {
         public void onPlayerInitialized();
 
+        /**
+         * Called when the user is not located in the US. No music will be available to play.
+         */
+        public void onNotInUS();
+    }
+
+    /**
+     * Implement this interface to get callbacks from the Player
+     */
+    public interface NavListener {
         public void onPlacementChanged(Placement placement, List<Station> stationList);
 
         public void onStationChanged(Station station);
@@ -160,5 +187,11 @@ public class Player {
          * Called when the user is not located in the US. No music will be available to play.
          */
         public void onNotInUS();
+    }
+
+    public interface SocialListener {
+        public void onLiked();
+        public void onUnliked();
+        public void onDisliked();
     }
 }

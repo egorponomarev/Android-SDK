@@ -26,7 +26,7 @@ import java.util.List;
 /**
  * Created by mharkins on 8/22/14.
  */
-public class PlayFragment extends Fragment implements Player.ClientListener {
+public class PlayFragment extends Fragment implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
 
     private Player mPlayer;
 
@@ -246,6 +246,21 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
 
     @Override
     public void onNotInUS() {
+
+    }
+
+    @Override
+    public void onLiked() {
+
+    }
+
+    @Override
+    public void onUnliked() {
+
+    }
+
+    @Override
+    public void onDisliked() {
 
     }
 }

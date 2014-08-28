@@ -89,4 +89,31 @@ public class StubRestService implements Webservice.RestInterface {
             callback.success(mFeedFMResponseMock, null);
         }
     }
+
+    @Override
+    public void like(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
+        if (mFeedFMResponseMock == null) {
+            callback.failure(null);
+        } else {
+            callback.success(mFeedFMResponseMock, null);
+        }
+    }
+
+    @Override
+    public void unlike(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
+        if (mFeedFMResponseMock == null) {
+            callback.failure(null);
+        } else {
+            callback.success(mFeedFMResponseMock, null);
+        }
+    }
+
+    @Override
+    public void dislike(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
+        if (mFeedFMResponseMock == null) {
+            callback.failure(null);
+        } else {
+            callback.success(mFeedFMResponseMock, null);
+        }
+    }
 }
