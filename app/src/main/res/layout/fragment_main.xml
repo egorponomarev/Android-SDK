@@ -47,6 +47,19 @@
             android:layout_toRightOf="@+id/pause"
             android:text="Skip" />
 
+        <ProgressBar
+            android:id="@+id/spinner"
+            android:visibility="gone"
+            style="?android:attr/progressBarStyleLarge"
+            android:indeterminateOnly="true"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_below="@+id/play"
+            android:layout_above="@+id/current_progress"
+            android:layout_alignLeft="@+id/tune"
+            android:layout_alignStart="@+id/tune"
+            android:layout_centerHorizontal="true" />
+
         <Button
             android:id="@+id/like"
             android:layout_width="wrap_content"
@@ -73,6 +86,34 @@
             android:layout_toEndOf="@+id/unlike"
             android:layout_toRightOf="@+id/unlike"
             android:text="Dislike" />
+
+        <TextView
+            android:id="@+id/current_progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/dislike"
+            android:text="00:00"
+            />
+
+        <TextView
+            android:id="@+id/duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_below="@+id/dislike"
+            android:text="10:00"
+            />
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_toRightOf="@id/current_progress"
+            android:layout_toLeftOf="@id/duration"
+            android:layout_below="@+id/dislike"
+            android:layout_marginLeft="5dp"
+            android:layout_marginRight="5dp" />
     </RelativeLayout>
 
     <LinearLayout

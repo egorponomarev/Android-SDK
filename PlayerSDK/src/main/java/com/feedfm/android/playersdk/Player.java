@@ -5,11 +5,15 @@ import android.content.Intent;
 import android.util.Pair;
 
 import com.feedfm.android.playersdk.model.Placement;
+import com.feedfm.android.playersdk.model.Play;
 import com.feedfm.android.playersdk.model.Station;
+import com.feedfm.android.playersdk.service.bus.BufferUpdate;
 import com.feedfm.android.playersdk.service.bus.Credentials;
 import com.feedfm.android.playersdk.service.bus.EventMessage;
 import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
+import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
+import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
 import com.feedfm.android.playersdk.service.webservice.PlayerService;
 import com.squareup.otto.Bus;
@@ -123,11 +127,14 @@ public class Player {
 
         @SuppressWarnings("unused")
         @Subscribe
+        public void onServiceReady(PlayerLibraryInfo playerLibraryInfo) {
+            if (mPlayerListener != null) mPlayerListener.onPlayerInitialized(playerLibraryInfo);
+        }
+
+        @SuppressWarnings("unused")
+        @Subscribe
         public void onServiceStatusChange(EventMessage message) {
             switch (message.getStatus()) {
-                case STARTED:
-                    if (mPlayerListener != null) mPlayerListener.onPlayerInitialized();
-                    break;
                 case SKIP_FAILED:
                     if (mNavListener != null) mNavListener.onSkipFailed();
                 case LIKE:
@@ -155,13 +162,33 @@ public class Player {
         public void onStationChanged(Station station) {
             if (mNavListener != null) mNavListener.onStationChanged(station);
         }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onTrackChanged(Play play) {
+            if (mNavListener != null) mNavListener.onTrackChanged(play);
+        }
+
+
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onBufferUpdate(BufferUpdate update) {
+            if (mNavListener != null) mNavListener.onBufferUpdate(update.getPlay(), update.getPercentage());
+        }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onProgressUpdate(ProgressUpdate update) {
+            if (mNavListener != null) mNavListener.onProgressUpdate(update.getPlay(), update.getElapsedTime(), update.getTotalTime());
+        }
     }
 
     /**
      * Implement this interface to get callbacks from the Player
      */
     public interface PlayerListener {
-        public void onPlayerInitialized();
+        public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo);
 
         /**
          * Called when the user is not located in the US. No music will be available to play.
@@ -177,7 +204,7 @@ public class Player {
 
         public void onStationChanged(Station station);
 
-        public void onTrackChanged(Placement placement, List<Station> stationList);
+        public void onTrackChanged(Play play);
 
         public void onPlaybackStateChanged(Placement placement, List<Station> stationList);
 
@@ -187,6 +214,10 @@ public class Player {
          * Called when the user is not located in the US. No music will be available to play.
          */
         public void onNotInUS();
+
+        public void onBufferUpdate(Play play, int percentage);
+
+        public void onProgressUpdate(Play play, int elapsedTime, int totalTime);
     }
 
     public interface SocialListener {

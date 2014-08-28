@@ -2,6 +2,8 @@ package com.feedfm.android.playersdk.mocks;
 
 import com.feedfm.android.playersdk.Player;
 import com.feedfm.android.playersdk.model.Placement;
+import com.feedfm.android.playersdk.model.Play;
+import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
 
 import java.util.List;
@@ -9,7 +11,7 @@ import java.util.List;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class DummyPlayerPlayerListener implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
+public class DummyPlayerListener implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
     public boolean didCallPlayerInitialized = false;
     public boolean didCallPlacementChanged = false;
     public boolean didCallStationChanged = false;
@@ -21,9 +23,14 @@ public class DummyPlayerPlayerListener implements Player.PlayerListener, Player.
     public boolean didCallUnliked = false;
     public boolean didCallDisliked = false;
 
+    public boolean didCallBufferUpdate = false;
+    public boolean didCallProgressUpdate = false;
+    public int bufferUpdate = 0;
+    public int progressUpdate = 0;
+
 
     @Override
-    public void onPlayerInitialized() {
+    public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo) {
         didCallPlayerInitialized = true;
     }
 
@@ -38,7 +45,7 @@ public class DummyPlayerPlayerListener implements Player.PlayerListener, Player.
     }
 
     @Override
-    public void onTrackChanged(Placement placement, List<Station> stationList) {
+    public void onTrackChanged(Play play) {
         didCallTrackChanged = true;
     }
 
@@ -57,6 +64,13 @@ public class DummyPlayerPlayerListener implements Player.PlayerListener, Player.
         didCallNotInUS = true;
     }
 
+
+    @Override
+    public void onBufferUpdate(Play play, int percentage) {
+        didCallBufferUpdate = true;
+        bufferUpdate = percentage;
+    }
+
     @Override
     public void onLiked() {
         didCallLiked = true;
@@ -70,5 +84,11 @@ public class DummyPlayerPlayerListener implements Player.PlayerListener, Player.
     @Override
     public void onDisliked() {
         didCallDisliked = true;
+    }
+
+    @Override
+    public void onProgressUpdate(Play play, int elapsedTime, int totalTime) {
+        didCallProgressUpdate = true;
+        progressUpdate = elapsedTime;
     }
 }

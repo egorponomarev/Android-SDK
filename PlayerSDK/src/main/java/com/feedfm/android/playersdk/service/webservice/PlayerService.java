@@ -7,15 +7,20 @@ import android.util.Log;
 import android.util.Pair;
 import android.widget.Toast;
 
+import com.feedfm.android.playersdk.R;
 import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Play;
+import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
 import com.feedfm.android.playersdk.service.FeedFMMediaPlayer;
 import com.feedfm.android.playersdk.service.MediaPlayerManager;
+import com.feedfm.android.playersdk.service.ProgressTracker;
+import com.feedfm.android.playersdk.service.bus.BufferUpdate;
 import com.feedfm.android.playersdk.service.bus.Credentials;
 import com.feedfm.android.playersdk.service.bus.EventMessage;
 import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
+import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
 import com.feedfm.android.playersdk.service.webservice.model.FeedFMError;
 import com.squareup.otto.Bus;
@@ -26,13 +31,14 @@ import java.util.List;
 /**
  * Created by mharkins on 8/21/14.
  */
-public class PlayerService extends Service implements MediaPlayerManager.Listener {
+public class PlayerService extends Service implements MediaPlayerManager.Listener, ProgressTracker.OnProgressListener {
     public static final String TAG = PlayerService.class.getSimpleName();
 
     protected static Bus eventBus = SingleEventBus.getInstance();
 
     protected Webservice mWebservice;
     protected MediaPlayerManager mMediaPlayerManager;
+    private ProgressTracker mProgressTracker;
 
     // Client State data
     protected String mClientId;
@@ -40,6 +46,8 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
     private Placement mSelectedPlacement = null;
     private Station mSelectedStation = null;
+
+    private boolean mDidTune = false;
 
     private static enum Status {
         IDLE,
@@ -59,13 +67,18 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
         mWebservice = new Webservice(this);
         mMediaPlayerManager = new MediaPlayerManager(this, this);
+        mProgressTracker = new ProgressTracker(this);
 
         eventBus.register(this);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        eventBus.post(new EventMessage(EventMessage.Status.STARTED));
+        PlayerLibraryInfo playerLibraryInfo = new PlayerLibraryInfo();
+        playerLibraryInfo.versionName = getString(R.string.sdk_version);
+
+
+        eventBus.post(playerLibraryInfo);
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -90,7 +103,11 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             public void onSuccess(Pair<Placement, List<Station>> result) {
                 // Save user Placement
                 mSelectedPlacement = result.first;
+                mSelectedStation = null;
                 mStationList = result.second;
+
+                // TODO: perhaps cancel a tuning request?
+                mMediaPlayerManager.clearPendingQueue();
 
                 eventBus.post(result);
             }
@@ -110,6 +127,10 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             for (Station s : mStationList) {
                 if (s.getId().equals(station.getId())) {
                     mSelectedStation = s;
+
+                    // TODO: perhaps cancel a tuning request?
+                    mMediaPlayerManager.clearPendingQueue();
+
                     eventBus.post(mSelectedStation);
                     return;
                 }
@@ -204,6 +225,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         if (mMediaPlayerManager.isPaused()) {
             FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
             mediaPlayer.start();
+            mProgressTracker.resume();
 
             mActiveStatus = Status.PLAYING;
         } else if (mMediaPlayerManager.isReadyForPlay()) {
@@ -226,7 +248,8 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             @Override
             public void onSuccess(Boolean success) {
                 if (success) {
-                    mMediaPlayerManager.stop();
+                    mProgressTracker.stop();
+                    mMediaPlayerManager.skip();
                     play();
                 }
             }
@@ -246,6 +269,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         if (mMediaPlayerManager.isPlaying()) {
             FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
             mediaPlayer.pause();
+            mProgressTracker.pause();
 
             mActiveStatus = Status.PAUSED;
         } else {
@@ -342,6 +366,11 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
     @Override
     public void onPlayStart(Play play) {
+        mDidTune = false;
+
+        eventBus.post(play);
+        mProgressTracker.start(play);
+
         mWebservice.playStarted(play.getId(), new Webservice.Callback<Boolean>() {
             @Override
             public void onSuccess(Boolean canSkip) {
@@ -358,22 +387,39 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     }
 
     @Override
-    public void onPlayCompleted(Play play) {
-        Toast.makeText(PlayerService.this, "Done with play:" + play.getAudioFile().getTrack().getTitle(), Toast.LENGTH_LONG).show();
+    public void onPlayCompleted(Play play, boolean isSkipped) {
+        mProgressTracker.stop();
 
-        mWebservice.playCompleted(play.getId(), new Webservice.Callback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean success) {
-                Toast.makeText(PlayerService.this, "Track Completed: " + success, Toast.LENGTH_LONG).show();
-                play();
-            }
+        // Keep cycling through plays.
+        play();
 
-            @Override
-            public void onFailure(FeedFMError error) {
-                Toast.makeText(PlayerService.this, "Track Completed: " + error.toString(), Toast.LENGTH_LONG).show();
-            }
-        });
+        if (!isSkipped) {
+            Toast.makeText(PlayerService.this, "Done with play:" + play.getAudioFile().getTrack().getTitle(), Toast.LENGTH_LONG).show();
 
+            mWebservice.playCompleted(play.getId(), new Webservice.Callback<Boolean>() {
+                @Override
+                public void onSuccess(Boolean success) {
+                    Toast.makeText(PlayerService.this, "Track Completed: " + success, Toast.LENGTH_LONG).show();
+                }
+
+                @Override
+                public void onFailure(FeedFMError error) {
+                    Toast.makeText(PlayerService.this, "Track Completed: " + error.toString(), Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onBufferingUpdate(Play play, int percent) {
+        eventBus.post(new BufferUpdate(play, percent));
+
+        // Tune the next song once the buffering of the current song is complete.
+        // TODO: Do this better than with a flag.
+        if (!mDidTune && percent == 100) {
+            mDidTune = true;
+            tune(false);
+        }
     }
 
     @Override
@@ -386,5 +432,12 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         super.onDestroy();
 
         mMediaPlayerManager.release();
+    }
+
+    @Override
+    public void onProgressUpdate(Play play, int elapsed, int totalDuration) {
+        FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
+
+        eventBus.post(new ProgressUpdate(play, mediaPlayer.getCurrentPosition() / 1000, mediaPlayer.getDuration() / 1000));
     }
 }

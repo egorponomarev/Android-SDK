@@ -1,7 +1,7 @@
 package com.feedfm.android.playersdk;
 
 import com.feedfm.android.playersdk.mocks.DummyBus;
-import com.feedfm.android.playersdk.mocks.DummyPlayerPlayerListener;
+import com.feedfm.android.playersdk.mocks.DummyPlayerListener;
 import com.feedfm.android.playersdk.mocks.FakeMediaPlayerManager;
 import com.feedfm.android.playersdk.mocks.FakePlayer;
 import com.feedfm.android.playersdk.mocks.FakePlayerService;
@@ -95,10 +95,9 @@ public class PlayerTest {
     public void testPlayerInitializations() {
         initCredentials();
 
-
         restInterface.mPlacementResponseMock = new Gson().fromJson(JsonData.placementResponse, PlacementResponse.class);
 
-        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener() {
+        DummyPlayerListener listener = new DummyPlayerListener() {
             @Override
             public void onStationChanged(Station station) {
                 super.onStationChanged(station);
@@ -178,7 +177,7 @@ public class PlayerTest {
     public void testSkip() {
         initCredentials();
 
-        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        DummyPlayerListener listener = new DummyPlayerListener();
         player.setNavListener(listener);
 
         restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
@@ -215,7 +214,7 @@ public class PlayerTest {
 
         restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
 
-        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        DummyPlayerListener listener = new DummyPlayerListener();
         player.setSocialListener(listener);
         player.like();
 
@@ -236,7 +235,7 @@ public class PlayerTest {
 
         restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
 
-        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        DummyPlayerListener listener = new DummyPlayerListener();
         player.setSocialListener(listener);
         player.unlike();
 
@@ -257,7 +256,7 @@ public class PlayerTest {
 
         restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
 
-        DummyPlayerPlayerListener listener = new DummyPlayerPlayerListener();
+        DummyPlayerListener listener = new DummyPlayerListener();
         player.setSocialListener(listener);
         player.dislike();
 

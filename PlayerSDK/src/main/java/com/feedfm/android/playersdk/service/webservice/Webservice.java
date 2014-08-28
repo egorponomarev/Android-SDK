@@ -110,7 +110,7 @@ public class Webservice {
 
     // TODO: add formats and max_bitrate
     public void tune(String clientId, Integer placementId, String stationId, final Webservice.Callback<Play> callback) {
-        mRestService.tune(WebserviceUtils.getAuthorization(mCredentials), clientId, new retrofit.Callback<PlayResponse>() {
+        mRestService.tune(WebserviceUtils.getAuthorization(mCredentials), clientId, placementId, stationId, new retrofit.Callback<PlayResponse>() {
             @Override
             public void success(PlayResponse playResponse, Response response) {
                 if (playResponse.isSuccess()) {
@@ -267,7 +267,7 @@ public class Webservice {
 
         @FormUrlEncoded
         @POST("/play")
-        public void tune(@Header("Authorization") String authorization, @Field("client_id") String clientId, retrofit.Callback<PlayResponse> callback);
+        public void tune(@Header("Authorization") String authorization, @Field("client_id") String clientId, @Field("placement_id") Integer placementId, @Field("station_id") String stationId, retrofit.Callback<PlayResponse> callback);
 
         @POST("/play/{id}/start")
         public void playStarted(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<PlayStartResponse> callback);

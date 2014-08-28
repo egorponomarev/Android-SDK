@@ -20,7 +20,7 @@ import java.util.Queue;
 /**
  * Created by mharkins on 8/25/14.
  */
-public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener {
+public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnBufferingUpdateListener {
     private static final String TAG = MediaPlayerManager.class.getSimpleName();
 
     private Context mContext;
@@ -96,6 +96,24 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         }
     }
 
+    /**
+     * Clear the Pre-tuned media players.
+     */
+    public void clearPendingQueue() {
+        FeedFMMediaPlayer activeMediaPlayer = getActiveMediaPlayer();
+        for (FeedFMMediaPlayer mp: mQueue) {
+            if (activeMediaPlayer != mp) {
+                mQueue.remove(mp);
+                mp.reset();
+                mMediaPlayerPool.offer(mp);
+            }
+        }
+        if (mTuningMediaPlayer != null) {
+            mTuningMediaPlayer.reset();
+            mMediaPlayerPool.offer(mTuningMediaPlayer);
+        }
+    }
+
     public FeedFMMediaPlayer getMediaPlayerForPlay(Play play) {
         for (FeedFMMediaPlayer mediaPlayer : mQueue) {
             if (mediaPlayer.getPlay().getId().equals(play.getId())) {
@@ -165,14 +183,14 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         }
     }
 
-    public void stop() {
+    public void skip() {
         FeedFMMediaPlayer mediaPlayer = mQueue.peek();
         if (mediaPlayer == null) {
             mListener.onQueueDone();
         } else {
             if (mediaPlayer.getState() == FeedFMMediaPlayer.State.PAUSED || mediaPlayer.getState() == FeedFMMediaPlayer.State.STARTED) {
                 mQueue.poll();
-                mediaPlayer.reset();
+                mediaPlayer.skip();
                 mMediaPlayerPool.offer(mediaPlayer);
             }
         }
@@ -190,6 +208,8 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         FeedFMMediaPlayer mediaPlayer = new FeedFMMediaPlayer();
         mediaPlayer.setOnPreparedListener(this);
         mediaPlayer.setOnErrorListener(this);
+        mediaPlayer.setOnBufferingUpdateListener(this);
+        mediaPlayer.setOnCompletionListener(this);
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
 
@@ -205,7 +225,8 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         return mediaPlayer;
     }
 
-    private void newNotification(Play play) {
+    private int mNotificationId = 1234532;
+    public void newNotification(Play play) {
         PendingIntent pi = PendingIntent.getService(mContext.getApplicationContext(), 0,
                 new Intent(mContext.getApplicationContext(), PlayerService.class),
                 PendingIntent.FLAG_UPDATE_CURRENT);
@@ -217,11 +238,10 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
         mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
 
-        int NOTIFICATION_ID = 555;
         NotificationManager mNotificationManager =
                 (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
         // NOTIFICATION_ID allows you to update the notification later on.
-        mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
+        mNotificationManager.notify(mNotificationId, mBuilder.build());
     }
 
     /**
@@ -259,7 +279,15 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         mp.reset();
         mMediaPlayerPool.add(mediaPlayer);
 
-        mListener.onPlayCompleted(mediaPlayer.getPlay());
+        mListener.onPlayCompleted(mediaPlayer.getPlay(), mediaPlayer.isSkipped());
+    }
+
+    @Override
+    public void onBufferingUpdate(MediaPlayer mp, int percent) {
+        FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) mp;
+        if (mediaPlayer.getState() == FeedFMMediaPlayer.State.STARTED || mediaPlayer.getState() == FeedFMMediaPlayer.State.PAUSED) {
+            mListener.onBufferingUpdate(mediaPlayer.getPlay(), percent);
+        }
     }
 
     private void initAudioManager() {
@@ -275,13 +303,13 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
                         break;
                     case AudioManager.AUDIOFOCUS_LOSS:
                         // You have lost the audio focus for a presumably long time.
-                        // You must stop all audio playback.
+                        // You must skip all audio playback.
                         // Because you should expect not to have focus back for a long time, this would be a good place to clean up your resources as much as possible.
                         // For example, you should release the MediaPlayer.
                         break;
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                         // You have temporarily lost audio focus, but should receive it back shortly.
-                        // You must stop all audio playback, but you can keep your resources because you will probably get focus back shortly.
+                        // You must skip all audio playback, but you can keep your resources because you will probably get focus back shortly.
                         break;
                     case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                         // You have temporarily lost audio focus, but you are
@@ -302,14 +330,14 @@ public void onAudioFocusChange(int focusChange) {
             break;
 
         case AudioManager.AUDIOFOCUS_LOSS:
-            // Lost focus for an unbounded amount of time: stop playback and release media player
-            if (mMediaPlayer.isPlaying()) mMediaPlayer.stop();
+            // Lost focus for an unbounded amount of time: skip playback and release media player
+            if (mMediaPlayer.isPlaying()) mMediaPlayer.skip();
             mMediaPlayer.release();
             mMediaPlayer = null;
             break;
 
         case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-            // Lost focus for a short time, but we have to stop
+            // Lost focus for a short time, but we have to skip
             // playback. We don't release the media player because playback
             // is likely to resume
             if (mMediaPlayer.isPlaying()) mMediaPlayer.pause();
@@ -350,8 +378,10 @@ public void onAudioFocusChange(int focusChange) {
 
         public void onPlayStart(Play play);
 
-        public void onPlayCompleted(Play play);
+        public void onPlayCompleted(Play play, boolean isSkipped);
 
         public void onQueueDone();
+
+        public void onBufferingUpdate(Play play, int percent);
     }
 }

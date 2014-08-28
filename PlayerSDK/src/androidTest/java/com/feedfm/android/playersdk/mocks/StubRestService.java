@@ -55,7 +55,7 @@ public class StubRestService implements Webservice.RestInterface {
     }
 
     @Override
-    public void tune(@Header("Authorization") String authorization, @Field("client_id") String clientId, Callback<PlayResponse> callback) {
+    public void tune(@Header("Authorization") String authorization, @Field("client_id") String clientId, @Field("placement_id") Integer placementId, @Field("station_id") String stationId, retrofit.Callback<PlayResponse> callback) {
         if (mPlayResponseMock == null) {
             callback.failure(null);
         } else {

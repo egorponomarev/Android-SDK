@@ -1,5 +1,7 @@
 package com.feedfm.android.feedfmplayer.fragment;
 
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -10,16 +12,22 @@ import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.SimpleAdapter;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.feedfm.android.feedfmplayer.R;
+import com.feedfm.android.feedfmplayer.util.TimeUtils;
 import com.feedfm.android.playersdk.Player;
 import com.feedfm.android.playersdk.model.Placement;
+import com.feedfm.android.playersdk.model.Play;
+import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -41,11 +49,18 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private Button mBtnUnlike;
     private Button mBtnDislike;
 
+    private TextView mTxtCurrentProgress;
+    private TextView mTxtDuration;
+
+    private ProgressBar mProgressBar;
+
     private ListView mStationsView;
     private ListView mPlacementsView;
 
     private int mSelectedStationIndex = -1;
     private int mSelectedPlacementsIndex = -1;
+
+    private long mTrackStartedTimestamp;
 
     public PlayFragment() {
     }
@@ -69,6 +84,10 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mBtnUnlike = (Button) rootView.findViewById(R.id.unlike);
         mBtnDislike = (Button) rootView.findViewById(R.id.dislike);
 
+        mProgressBar = (ProgressBar) rootView.findViewById(R.id.progress);
+        mTxtCurrentProgress = (TextView) rootView.findViewById(R.id.current_progress);
+        mTxtDuration = (TextView) rootView.findViewById(R.id.duration);
+
         mStationsView = (ListView) rootView.findViewById(R.id.stations);
         mPlacementsView = (ListView) rootView.findViewById(R.id.placements);
 
@@ -91,8 +110,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mStationsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
 
         List<HashMap<String, Integer>> fillMaps = new ArrayList<HashMap<String, Integer>>();
-        for(Integer p: mPlacements) {
-            HashMap<String, Integer> map= new HashMap<String, Integer>();
+        for (Integer p : mPlacements) {
+            HashMap<String, Integer> map = new HashMap<String, Integer>();
             map.put("Placement", p);
             fillMaps.add(map);
         }
@@ -101,8 +120,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
                 getActivity(),
                 fillMaps,
                 android.R.layout.simple_list_item_1,
-                new String [] { "Placement"},
-                new int[] {android.R.id.text1});
+                new String[]{"Placement"},
+                new int[]{android.R.id.text1});
         mPlacementsView.setAdapter(adapter);
         mPlacementsView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -188,8 +207,19 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     };
 
     @Override
-    public void onPlayerInitialized() {
+    public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo) {
         mPlayer.setCredentials("d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42", "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517");
+
+        final PackageManager pm = getActivity().getApplicationContext().getPackageManager();
+        ApplicationInfo ai;
+        try {
+            ai = pm.getApplicationInfo(getActivity().getPackageName(), 0);
+
+        } catch (final PackageManager.NameNotFoundException e) {
+            ai = null;
+        }
+        final String applicationName = (String) (ai != null ? pm.getApplicationLabel(ai) : "(unknown)");
+        getActivity().setTitle(applicationName + " (sdk: " + playerLibraryInfo.versionName + ")");
     }
 
     @Override
@@ -197,8 +227,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mPlacementsView.setSelection(mSelectedPlacementsIndex);
 
         List<HashMap<String, String>> fillMaps = new ArrayList<HashMap<String, String>>();
-        for(Station s: stationList) {
-            HashMap<String, String> map= new HashMap<String, String>();
+        for (Station s : stationList) {
+            HashMap<String, String> map = new HashMap<String, String>();
             map.put("Id", s.getId() + "");
             map.put("Station", s.getName());
             fillMaps.add(map);
@@ -208,8 +238,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
                 getActivity(),
                 fillMaps,
                 R.layout.list_item,
-                new String [] { "Id", "Station"},
-                new int[] {R.id.id, R.id.name});
+                new String[]{"Id", "Station"},
+                new int[]{R.id.id, R.id.name});
         mStationsView.setAdapter(adapter);
         mStationsView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
@@ -226,12 +256,17 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     @Override
     public void onStationChanged(Station station) {
         mStationsView.setSelection(mSelectedStationIndex);
-        Toast.makeText(getActivity(), String.format("Station set to: %s (%d)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
+        Toast.makeText(getActivity(), String.format("Station set to: %s (%s)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
     }
 
     @Override
-    public void onTrackChanged(Placement placement, List<Station> stationList) {
+    public void onTrackChanged(Play play) {
+        mTrackStartedTimestamp = new Date().getTime();
 
+        mProgressBar.setSecondaryProgress(0);
+        mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
+
+        mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
     }
 
     @Override
@@ -247,6 +282,18 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     @Override
     public void onNotInUS() {
 
+    }
+
+    @Override
+    public void onBufferUpdate(Play play, int percentage) {
+        mProgressBar.setSecondaryProgress((percentage * play.getAudioFile().getDurationInSeconds()) / 100);
+    }
+
+    @Override
+    public void onProgressUpdate(Play play, int elapsedTime, int totalTime) {
+        mProgressBar.setProgress(elapsedTime);
+        mTxtCurrentProgress.setText(TimeUtils.toProgressFormat(elapsedTime));
+        mTxtDuration.setText(TimeUtils.toProgressFormat(totalTime));
     }
 
     @Override

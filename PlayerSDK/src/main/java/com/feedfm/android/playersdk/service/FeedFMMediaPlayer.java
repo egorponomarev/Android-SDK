@@ -9,14 +9,17 @@ import java.io.IOException;
 /**
  * Created by mharkins on 8/25/14.
  */
-public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
+public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnBufferingUpdateListener {
     private State mState = State.IDLE;
     private Play mPlay;
     private boolean mAutoPlay;
 
+    private boolean mSkipped = false;
+
     private OnPreparedListener mOnPreparedListener;
     private OnCompletionListener mOnCompletionListener;
     private OnErrorListener mOnErrorListener;
+    private OnBufferingUpdateListener mOnBufferingUpdateListener;
 
     public static enum State {
         IDLE,
@@ -59,6 +62,10 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
         this.mState = state;
     }
 
+    public boolean isSkipped() {
+        return mSkipped;
+    }
+
     @Override
     public void setDataSource(String path) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
         synchronized (this) {
@@ -91,6 +98,12 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
         }
     }
 
+    public void skip() {
+        mSkipped = true;
+        reset();
+        mSkipped = false;
+    }
+
     @Override
     public void reset() {
         synchronized (this) {
@@ -121,11 +134,20 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     }
 
     @Override
+    public void setOnBufferingUpdateListener(OnBufferingUpdateListener listener) {
+        super.setOnBufferingUpdateListener(this);
+
+        mOnBufferingUpdateListener = listener;
+    }
+
+    @Override
     public void onCompletion(MediaPlayer mp) {
-        synchronized (mState) {
-            mState = State.COMPLETE;
+        if (!mSkipped) {
+            synchronized (mState) {
+                mState = State.COMPLETE;
+            }
+            mOnCompletionListener.onCompletion(mp);
         }
-        mOnCompletionListener.onCompletion(mp);
     }
 
     @Override
@@ -142,5 +164,11 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
             mState = State.PREPARED;
         }
         mOnPreparedListener.onPrepared(mp);
+    }
+
+    @Override
+    public void onBufferingUpdate(MediaPlayer mp, int percent) {
+        // Only send buffering update if the song isn't done buffering.
+        mOnBufferingUpdateListener.onBufferingUpdate(mp, percent);
     }
 }

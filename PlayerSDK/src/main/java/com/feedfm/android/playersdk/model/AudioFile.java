@@ -10,7 +10,7 @@ public class AudioFile {
     private String id;
 
     @SerializedName("duration_in_seconds")
-    private String durationInSeconds;
+    private int durationInSeconds;
     @SerializedName("codec")
     private String codec;
     @SerializedName("bitrate")
@@ -31,7 +31,7 @@ public class AudioFile {
         return id;
     }
 
-    public String getDurationInSeconds() {
+    public int getDurationInSeconds() {
         return durationInSeconds;
     }
 
