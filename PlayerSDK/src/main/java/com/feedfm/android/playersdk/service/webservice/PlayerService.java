@@ -51,7 +51,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     }
 
     private Status mActiveStatus = Status.IDLE;
-    private boolean mCanSkip;
+    protected boolean mCanSkip;
 
     @Override
     public void onCreate() {
@@ -227,7 +227,10 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
                 @Override
                 public void onFailure(FeedFMError error) {
-                    Toast.makeText(PlayerService.this, "Cannot Skip: " + error.toString(), Toast.LENGTH_LONG).show();
+                    if (error != null) {
+                        Toast.makeText(PlayerService.this, "Cannot Skip: " + error.toString(), Toast.LENGTH_LONG).show();
+                    }
+                    eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
                 }
             });
         }

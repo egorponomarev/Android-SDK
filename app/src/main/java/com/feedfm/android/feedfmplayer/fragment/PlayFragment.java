@@ -240,7 +240,7 @@ public class PlayFragment extends Fragment implements Player.ClientListener {
     }
 
     @Override
-    public void onSkipFailed(Placement placement, List<Station> stationList) {
+    public void onSkipFailed() {
 
     }
 

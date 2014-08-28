@@ -15,11 +15,11 @@ import java.util.List;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class FakeBus extends SingleEventBus {
-    private FakePlayer mPlayer;
-    private FakePlayerService mService;
+public class DummyBus extends SingleEventBus {
+    FakePlayer mPlayer;
+    FakePlayerService mService;
 
-    public FakeBus(FakePlayer player, FakePlayerService service) {
+    public DummyBus(FakePlayer player, FakePlayerService service) {
         super();
         this.mPlayer = player;
         this.mService = service;

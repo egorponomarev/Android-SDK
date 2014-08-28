@@ -1,7 +1,8 @@
 package com.feedfm.android.playersdk;
 
+import com.feedfm.android.playersdk.mocks.DummyBus;
 import com.feedfm.android.playersdk.mocks.DummyPlayerClientListener;
-import com.feedfm.android.playersdk.mocks.FakeBus;
+import com.feedfm.android.playersdk.mocks.FakeMediaPlayerManager;
 import com.feedfm.android.playersdk.mocks.FakePlayer;
 import com.feedfm.android.playersdk.mocks.FakePlayerService;
 import com.feedfm.android.playersdk.mocks.FakeWebservice;
@@ -9,8 +10,11 @@ import com.feedfm.android.playersdk.mocks.MockPlayerReceiver;
 import com.feedfm.android.playersdk.mocks.StubRestService;
 import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Station;
+import com.feedfm.android.playersdk.service.FeedFMMediaPlayer;
 import com.feedfm.android.playersdk.service.webservice.model.ClientResponse;
 import com.feedfm.android.playersdk.service.webservice.model.PlacementResponse;
+import com.feedfm.android.playersdk.service.webservice.model.PlayResponse;
+import com.feedfm.android.playersdk.service.webservice.model.PlayStartResponse;
 import com.google.gson.Gson;
 
 import org.junit.After;
@@ -25,7 +29,7 @@ import org.robolectric.shadows.ShadowLog;
 import java.util.List;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -36,10 +40,14 @@ import static org.junit.Assert.assertTrue;
 @RunWith(RobolectricTestRunner.class)
 public class PlayerTest {
     private FakePlayer player;
-    private FakeBus bus;
+    private DummyBus bus;
+
     private FakePlayerService service;
     private FakeWebservice webservice;
     private StubRestService restInterface;
+    private FakeMediaPlayerManager mediaPlayerManager;
+
+
     private MockPlayerReceiver playerReceiver;
 
     @Before
@@ -53,14 +61,17 @@ public class PlayerTest {
         player = FakePlayer.getInstance(Robolectric.application, new DummyPlayerClientListener());
         service = new FakePlayerService();
 
-        bus = new FakeBus(player, service);
+        bus = new DummyBus(player, service);
 
         webservice = new FakeWebservice(service);
         restInterface = new StubRestService();
 
+        mediaPlayerManager = new FakeMediaPlayerManager(service, service);
+
 
         service.onCreate();
         service.setWebservice(webservice);
+        service.setMediaPlayerManager(mediaPlayerManager);
         webservice.setRestService(restInterface);
         service.onStartCommand(null, 0, 0);
     }
@@ -69,12 +80,7 @@ public class PlayerTest {
     public void testSetCredentials() {
         String oldClientId = service.getClientIdString();
 
-        String clientResponse = "{\n" +
-                "    \"success\": true,\n" +
-                "    \"client_id\": \"0i5k9tpwn42huxr0rrhboai\"\n" +
-                "}";
-
-        restInterface.mClientResponseMock = new Gson().fromJson(clientResponse, ClientResponse.class);
+        restInterface.mClientResponseMock = new Gson().fromJson(JsonData.clientIdResponse, ClientResponse.class);
 
         // This set of credential tests isn't strictly necessary
         player.setCredentials(null, "secret");
@@ -89,12 +95,7 @@ public class PlayerTest {
     }
 
     private void initCredentials() {
-        String clientResponse = "{\n" +
-                "    \"success\": true,\n" +
-                "    \"client_id\": \"0i5k9tpwn42huxr0rrhboai\"\n" +
-                "}";
-
-        restInterface.mClientResponseMock = new Gson().fromJson(clientResponse, ClientResponse.class);
+        restInterface.mClientResponseMock = new Gson().fromJson(JsonData.clientIdResponse, ClientResponse.class);
         player.setCredentials("token", "secret");
     }
 
@@ -102,28 +103,8 @@ public class PlayerTest {
     public void testPlayerInitializations() {
         initCredentials();
 
-        String placementResponse = "{\n" +
-                "    \"success\": true,\n" +
-                "    \"placement\": {\n" +
-                "        \"id\": \"10955\",\n" +
-                "        \"name\": \"GrioSDK\"\n" +
-                "    },\n" +
-                "    \"stations\": [\n" +
-                "        {\n" +
-                "            \"id\": \"727\",\n" +
-                "            \"name\": \"Pretty Lights Music\",\n" +
-                "            \"has_thumbnail\": 0,\n" +
-                "            \"options\": {}\n" +
-                "        },\n" +
-                "        {\n" +
-                "            \"id\": \"2116\",\n" +
-                "            \"name\": \"RockstressFM\",\n" +
-                "            \"has_thumbnail\": 0,\n" +
-                "            \"options\": {}\n" +
-                "        }\n" +
-                "    ]\n" +
-                "}";
-        restInterface.mPlacementResponseMock = new Gson().fromJson(placementResponse, PlacementResponse.class);
+
+        restInterface.mPlacementResponseMock = new Gson().fromJson(JsonData.placementResponse, PlacementResponse.class);
 
         DummyPlayerClientListener clientListener = new DummyPlayerClientListener() {
             @Override
@@ -154,26 +135,91 @@ public class PlayerTest {
 
     @Test
     public void testTune() {
+        initCredentials();
+
+        // Tune in a first Play
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
         player.tune();
-        assertTrue(playerReceiver.postedTune);
+
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.PREPARED);
+
+        // Tune a second Play while still not starting first one.
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play2, PlayResponse.class);
+        player.tune();
+        assertNull(mediaPlayerManager.getMediaPlayerForPlay(restInterface.mPlayResponseMock.getPlay()));
     }
 
     @Test
     public void testPlay() {
+        initCredentials();
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
+
         player.play();
-        assertTrue(playerReceiver.postedPlay);
+
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.STARTED);
+        assertTrue(service.getCanSkip());
     }
 
     @Test
     public void testPause() {
+        initCredentials();
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
+
+        // Pausing after having tuned shouldn't do anything.
+        player.tune();
         player.pause();
-        assertTrue(playerReceiver.postedPause);
+
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.PREPARED);
+
+
+        player.play();
+        player.pause();
+
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.PAUSED);
     }
 
     @Test
     public void testSkip() {
+        initCredentials();
+
+        DummyPlayerClientListener clientListener = new DummyPlayerClientListener() {
+            @Override
+            public void onSkipFailed() {
+                super.onSkipFailed();
+            }
+        };
+        player.setPlayerListener(clientListener);
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
+
+        player.play();
+
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.STARTED);
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play2, PlayResponse.class);
+        restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
+
         player.skip();
-        assertTrue(playerReceiver.postedSkip);
+
+        assertTrue(!clientListener.didCallSkipFailed);
+
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.STARTED);
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getPlay().getId().equals("142049138"));
+
+        restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
+        restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartNoSkip, PlayStartResponse.class);
+        restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.failure, PlayResponse.class);
+
+        player.skip();
+
+        assertTrue(clientListener.didCallSkipFailed);
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getState() == FeedFMMediaPlayer.State.STARTED);
+        assertTrue(mediaPlayerManager.getActiveMediaPlayer().getPlay().getId().equals("142049138"));
     }
 
     @Test

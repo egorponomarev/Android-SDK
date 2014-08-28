@@ -178,8 +178,12 @@ public class Webservice {
 
             @Override
             public void failure(RetrofitError error) {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                callback.onFailure(feedFMResponse.getError());
+                if (error != null) {
+                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
+                    callback.onFailure(feedFMResponse.getError());
+                } else {
+                    callback.onFailure(null);
+                }
             }
         });
     }

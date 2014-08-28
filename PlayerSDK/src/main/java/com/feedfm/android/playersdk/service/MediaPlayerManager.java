@@ -84,11 +84,12 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
 
         try {
             // TODO: Perhaps setDataSource and prepareAsync could be added to the setPlay method in the CustomMediaPlayer object.
+            mQueue.offer(mTuningMediaPlayer);
+
             mTuningMediaPlayer.setDataSource(play.getAudioFile().getUrl());
             mTuningMediaPlayer.prepareAsync();
-
-            mQueue.offer(mTuningMediaPlayer);
             mTuningMediaPlayer = null;
+
         } catch (IOException e) {
             // TODO-XX handle otherwise.
             e.printStackTrace();
@@ -182,7 +183,7 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
      *
      * @return
      */
-    private FeedFMMediaPlayer initNewMediaPlayer() {
+    protected FeedFMMediaPlayer initNewMediaPlayer() {
         int instanceCount = mQueue.size() + mMediaPlayerPool.size() + (mTuningMediaPlayer == null ? 0 : 1);
         Log.d(TAG, "New Instance of FeedFMMediaPlayer. Total: " + instanceCount);
 
@@ -191,6 +192,7 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         mediaPlayer.setOnErrorListener(this);
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
         mediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
+
         /*
         //TODO: WIFI Lock
         WifiLock wifiLock = ((WifiManager) getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "mylock");

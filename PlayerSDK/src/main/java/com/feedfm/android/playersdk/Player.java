@@ -26,7 +26,7 @@ public class Player {
     /**
      * Singleton
      */
-    private static Player mInstance;
+    static Player mInstance;
 
     protected Bus mEventBus = SingleEventBus.getInstance();
     protected PlayerServiceListener mPrivateServiceListener;
@@ -120,6 +120,8 @@ public class Player {
                 case STARTED:
                     mClientListener.onPlayerInitialized();
                     break;
+                case SKIP_FAILED:
+                    mClientListener.onSkipFailed();
                 default:
                     break;
             }
@@ -152,7 +154,7 @@ public class Player {
 
         public void onPlaybackStateChanged(Placement placement, List<Station> stationList);
 
-        public void onSkipFailed(Placement placement, List<Station> stationList);
+        public void onSkipFailed();
 
         /**
          * Called when the user is not located in the US. No music will be available to play.

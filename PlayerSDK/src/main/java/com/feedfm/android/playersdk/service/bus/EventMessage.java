@@ -5,7 +5,8 @@ package com.feedfm.android.playersdk.service.bus;
  */
 public class EventMessage {
     public enum Status {
-        STARTED
+        STARTED,
+        SKIP_FAILED
     }
 
     private Status mStatus;

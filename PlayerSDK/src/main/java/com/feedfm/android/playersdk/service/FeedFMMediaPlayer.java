@@ -102,6 +102,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     @Override
     public void setOnPreparedListener(OnPreparedListener listener) {
         super.setOnPreparedListener(this);
+
         mOnPreparedListener = listener;
     }
 

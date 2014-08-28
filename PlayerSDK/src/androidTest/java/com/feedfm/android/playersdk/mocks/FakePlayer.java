@@ -24,7 +24,7 @@ public class FakePlayer extends Player {
         // do nothing
     }
 
-    public void setEventBus(FakeBus bus) {
+    public void setEventBus(DummyBus bus) {
         mEventBus = bus;
     }
 

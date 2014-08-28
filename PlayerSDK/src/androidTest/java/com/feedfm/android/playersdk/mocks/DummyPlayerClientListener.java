@@ -45,7 +45,7 @@ public class DummyPlayerClientListener implements Player.ClientListener {
     }
 
     @Override
-    public void onSkipFailed(Placement placement, List<Station> stationList) {
+    public void onSkipFailed() {
         didCallSkipFailed = true;
     }
 

@@ -2,6 +2,7 @@ package com.feedfm.android.playersdk.mocks;
 
 import android.util.Log;
 
+import com.feedfm.android.playersdk.service.MediaPlayerManager;
 import com.feedfm.android.playersdk.service.webservice.PlayerService;
 import com.feedfm.android.playersdk.service.webservice.Webservice;
 
@@ -10,15 +11,22 @@ import com.feedfm.android.playersdk.service.webservice.Webservice;
  */
 public class FakePlayerService extends PlayerService{
     public void setWebservice(Webservice webservice) {
-        Log.d(TAG, "Setting Webservice");
         mWebservice = webservice;
+    }
+
+    public void setMediaPlayerManager(MediaPlayerManager mediaPlayerManager) {
+        mMediaPlayerManager = mediaPlayerManager;
     }
 
     public String getClientIdString() {
         return mClientId;
     }
 
-    public void setEventBus(FakeBus bus) {
+    public void setEventBus(DummyBus bus) {
         eventBus = bus;
+    }
+
+    public boolean getCanSkip() {
+        return mCanSkip;
     }
 }
