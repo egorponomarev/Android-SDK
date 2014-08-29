@@ -20,32 +20,32 @@
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
             android:onClick="tune"
-            android:text="Tune" />
+            android:text="Tune"/>
 
-        <Button
+        <ImageButton
             android:id="@+id/play"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignTop="@+id/tune"
             android:layout_toRightOf="@+id/tune"
             android:onClick="play"
-            android:text="Play" />
+            android:src="@android:drawable/ic_media_play"/>
 
-        <Button
+        <ImageButton
             android:id="@+id/pause"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignTop="@+id/play"
             android:layout_toRightOf="@+id/play"
-            android:text="Pause" />
+            android:src="@android:drawable/ic_media_pause"/>
 
-        <Button
+        <ImageButton
             android:id="@+id/skip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_toEndOf="@+id/pause"
             android:layout_toRightOf="@+id/pause"
-            android:text="Skip" />
+            android:src="@android:drawable/ic_media_ff"/>
 
         <ProgressBar
             android:id="@+id/spinner"
@@ -64,35 +64,74 @@
             android:id="@+id/like"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignLeft="@+id/play"
-            android:layout_alignStart="@+id/play"
-            android:layout_below="@+id/play"
+            android:layout_toEndOf="@id/skip"
+            android:layout_toRightOf="@id/skip"
             android:text="Like" />
 
         <Button
             android:id="@+id/unlike"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignLeft="@+id/pause"
-            android:layout_alignStart="@+id/pause"
-            android:layout_below="@+id/pause"
+            android:layout_toEndOf="@id/like"
+            android:layout_toRightOf="@id/like"
             android:text="Unlike" />
 
         <Button
             android:id="@+id/dislike"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/pause"
-            android:layout_toEndOf="@+id/unlike"
-            android:layout_toRightOf="@+id/unlike"
+            android:layout_toEndOf="@id/unlike"
+            android:layout_toRightOf="@id/unlike"
             android:text="Dislike" />
+
+        <TextView
+            android:id="@+id/title_prefix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/dislike"
+            android:text="Title: "/>
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@+id/album_prefix"
+            android:layout_toRightOf="@+id/album_prefix"
+            android:layout_below="@+id/dislike"/>
+        <TextView
+            android:id="@+id/artist_prefix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/title"
+            android:text="Artist: "/>
+        <TextView
+            android:id="@+id/artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@+id/album_prefix"
+            android:layout_toRightOf="@+id/album_prefix"
+            android:layout_below="@+id/title"/>
+        <TextView
+            android:id="@+id/album_prefix"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@+id/artist"
+            android:text="Album: "/>
+        <TextView
+            android:id="@+id/album"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@+id/album_prefix"
+            android:layout_toRightOf="@+id/album_prefix"
+            android:layout_below="@+id/artist"/>
 
         <TextView
             android:id="@+id/current_progress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:layout_below="@+id/dislike"
+            android:layout_below="@id/album"
             android:text="00:00"
             />
 
@@ -101,7 +140,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentRight="true"
-            android:layout_below="@+id/dislike"
+            android:layout_below="@id/album"
             android:text="10:00"
             />
         <ProgressBar
@@ -111,7 +150,7 @@
             style="@android:style/Widget.ProgressBar.Horizontal"
             android:layout_toRightOf="@id/current_progress"
             android:layout_toLeftOf="@id/duration"
-            android:layout_below="@+id/dislike"
+            android:layout_below="@id/album"
             android:layout_marginLeft="5dp"
             android:layout_marginRight="5dp" />
     </RelativeLayout>

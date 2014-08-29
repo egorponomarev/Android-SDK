@@ -6,16 +6,16 @@ import android.util.Pair;
 
 import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Play;
+import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
+import com.feedfm.android.playersdk.service.PlayerService;
 import com.feedfm.android.playersdk.service.bus.BufferUpdate;
 import com.feedfm.android.playersdk.service.bus.Credentials;
 import com.feedfm.android.playersdk.service.bus.EventMessage;
 import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
-import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
-import com.feedfm.android.playersdk.service.PlayerService;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
@@ -83,11 +83,11 @@ public class Player {
         }
     }
 
-    public void setPlacementId(int placementId) {
+    public void setPlacementId(Integer placementId) {
         mEventBus.post(new Placement(placementId));
     }
 
-    public void setStationId(String stationId) {
+    public void setStationId(Integer stationId) {
         mEventBus.post(new OutStationWrap(new Station(stationId)));
     }
 
@@ -154,7 +154,8 @@ public class Player {
         @SuppressWarnings("unused")
         @Subscribe
         public void onPlacementChanged(Pair<Placement, List<Station>> placementInfo) {
-            if (mNavListener != null) mNavListener.onPlacementChanged(placementInfo.first, placementInfo.second);
+            if (mNavListener != null)
+                mNavListener.onPlacementChanged(placementInfo.first, placementInfo.second);
         }
 
         @SuppressWarnings("unused")
@@ -170,17 +171,18 @@ public class Player {
         }
 
 
-
         @SuppressWarnings("unused")
         @Subscribe
         public void onBufferUpdate(BufferUpdate update) {
-            if (mNavListener != null) mNavListener.onBufferUpdate(update.getPlay(), update.getPercentage());
+            if (mNavListener != null)
+                mNavListener.onBufferUpdate(update.getPlay(), update.getPercentage());
         }
 
         @SuppressWarnings("unused")
         @Subscribe
         public void onProgressUpdate(ProgressUpdate update) {
-            if (mNavListener != null) mNavListener.onProgressUpdate(update.getPlay(), update.getElapsedTime(), update.getTotalTime());
+            if (mNavListener != null)
+                mNavListener.onProgressUpdate(update.getPlay(), update.getElapsedTime(), update.getTotalTime());
         }
     }
 
@@ -222,7 +224,9 @@ public class Player {
 
     public interface SocialListener {
         public void onLiked();
+
         public void onUnliked();
+
         public void onDisliked();
     }
 }

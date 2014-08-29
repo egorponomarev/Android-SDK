@@ -7,15 +7,15 @@ import com.google.gson.annotations.SerializedName;
  */
 public class Station {
     @SerializedName("id")
-    private String id;
+    private Integer id;
     @SerializedName("name")
     private String name;
 
-    public Station(String id) {
+    public Station(Integer id) {
         this.id = id;
     }
 
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 

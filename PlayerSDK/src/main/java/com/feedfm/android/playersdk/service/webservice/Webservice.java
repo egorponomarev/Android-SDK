@@ -81,12 +81,14 @@ public class Webservice {
     }
 
     public void tune(String clientId,
-                     Integer placementId,
-                     String stationId,
+                     Placement placement,
+                     Station station,
                      AudioFormat[] audioFormats,
                      Integer maxBitrate,
                      Webservice.Callback<Play> serviceCallback) {
         String audioFormatStr = WebserviceUtils.getAudioFormatStr(audioFormats);
+        Integer placementId = placement == null ? null : placement.getId();
+        Integer stationId = station == null ? null : station.getId();
 
         mRestService.tune(WebserviceUtils.getAuth(mCredentials),
                 clientId,
@@ -177,7 +179,7 @@ public class Webservice {
         public void tune(@Header("Authorization") String authorization,
                          @Field("client_id") String clientId,
                          @Field("placement_id") Integer placementId,
-                         @Field("station_id") String stationId,
+                         @Field("station_id") Integer stationId,
                          @Field("formats") String formats,
                          @Field("max_bitrate") Integer maxBitrate,
                          retrofit.Callback<PlayResponse> callback);

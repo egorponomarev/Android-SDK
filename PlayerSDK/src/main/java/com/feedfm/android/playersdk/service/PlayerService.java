@@ -22,8 +22,8 @@ import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
 import com.feedfm.android.playersdk.service.webservice.DefaultWebserviceCallback;
 import com.feedfm.android.playersdk.service.webservice.Webservice;
-import com.feedfm.android.playersdk.service.webservice.model.AudioFormat;
 import com.feedfm.android.playersdk.service.webservice.model.FeedFMError;
+import com.feedfm.android.playersdk.service.webservice.model.PlayerInfo;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
@@ -41,22 +41,20 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     protected MediaPlayerManager mMediaPlayerManager;
     private ProgressTracker mProgressTracker;
 
+    private PlayerInfo mPlayerInfo;
+
     // Client State data
-    protected String mClientId;
-    private List<Station> mStationList;
-
-    private Placement mSelectedPlacement = null;
-    private Station mSelectedStation = null;
-
     private boolean mDidTune = false;
-    protected boolean mCanSkip;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
+        mPlayerInfo = new PlayerInfo();
+
         mWebservice = new Webservice(this);
         mMediaPlayerManager = new MediaPlayerManager(this, this);
+
         mProgressTracker = new ProgressTracker(this);
 
         eventBus.register(this);
@@ -85,6 +83,18 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         return null;
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        mMediaPlayerManager.release();
+    }
+
+    /**
+     * *************************************
+     * Bus receivers
+     */
+
     @Subscribe
     @SuppressWarnings("unused")
     public void setCredentials(Credentials credentials) {
@@ -96,13 +106,14 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     @Subscribe
     @SuppressWarnings("unused")
     public void setPlacementId(Placement placement) {
-        mWebservice.setPlacementId(placement.getId(), new DefaultWebserviceCallback<Pair<Placement,List<Station>>>() {
+        mWebservice.setPlacementId(placement.getId(), new DefaultWebserviceCallback<Pair<Placement, List<Station>>>() {
             @Override
             public void onSuccess(Pair<Placement, List<Station>> result) {
+                mPlayerInfo.setStationList(result.second);
+
                 // Save user Placement
-                mSelectedPlacement = result.first;
-                mSelectedStation = null;
-                mStationList = result.second;
+                mPlayerInfo.setPlacement(result.first);
+                mPlayerInfo.setStation(null);
 
                 // TODO: perhaps cancel a tuning request?
                 mMediaPlayerManager.clearPendingQueue();
@@ -116,57 +127,61 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     @SuppressWarnings("unused")
     public void setStationId(OutStationWrap wrapper) {
         Station station = wrapper.getObject();
-        if (mStationList != null) {
-            for (Station s : mStationList) {
+
+        if (mPlayerInfo.hasStationList()) {
+            for (Station s : mPlayerInfo.getStationList()) {
                 if (s.getId().equals(station.getId())) {
-                    mSelectedStation = s;
+                    mPlayerInfo.setStation(s);
 
                     // TODO: perhaps cancel a tuning request?
                     mMediaPlayerManager.clearPendingQueue();
 
-                    eventBus.post(mSelectedStation);
+                    eventBus.post(s);
                     return;
                 }
             }
         }
+
         Log.w(TAG, String.format("Station %s could not be found for current placement.", station.getId()));
     }
 
     @Subscribe
     @SuppressWarnings("unused")
     public void onPlayerAction(PlayerAction playerAction) {
-        if (mClientId != null) {
-            switch (playerAction.getAction()) {
-                case TUNE:
-                    tune(false);
-                    break;
-                case PLAY:
-                    play();
-                    break;
-                case SKIP:
-                    skip();
-                    break;
-                case PAUSE:
-                    pause();
-                    break;
-                case LIKE:
-                    like();
-                    break;
-                case UNLIKE:
-                    unlike();
-                    break;
-                case DISLIKE:
-                    dislike();
-                    break;
-            }
+        switch (playerAction.getAction()) {
+            case TUNE:
+                tune(false);
+                break;
+            case PLAY:
+                play();
+                break;
+            case SKIP:
+                skip();
+                break;
+            case PAUSE:
+                pause();
+                break;
+            case LIKE:
+                like();
+                break;
+            case UNLIKE:
+                unlike();
+                break;
+            case DISLIKE:
+                dislike();
+                break;
         }
     }
+
+    /*
+     * Bus receivers
+     ****************************************/
 
     public void getClientId() {
         mWebservice.getClientId(new DefaultWebserviceCallback<String>() {
             @Override
             public void onSuccess(String clientId) {
-                mClientId = clientId;
+                mPlayerInfo.setClientId(clientId);
             }
         });
     }
@@ -183,9 +198,9 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
         mMediaPlayerManager.preTune(autoPlay);
         mWebservice.tune(
-                mClientId,
-                mSelectedPlacement != null ? mSelectedPlacement.getId() : null,
-                mSelectedStation != null ? mSelectedStation.getId() : null,
+                mPlayerInfo.getClientId(),
+                mPlayerInfo.getPlacement(),
+                mPlayerInfo.getStation(),
                 null, // For now don't put in the AudioFormat
                 null,
                 new DefaultWebserviceCallback<Play>() {
@@ -239,6 +254,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             @Override
             public void onFailure(FeedFMError error) {
                 super.onFailure(error);
+
                 eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
             }
         });
@@ -265,9 +281,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         mWebservice.like(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
-                if (success) {
-                    eventBus.post(new EventMessage(EventMessage.Status.LIKE));
-                }
+                eventBus.post(new EventMessage(EventMessage.Status.LIKE));
             }
         });
     }
@@ -283,9 +297,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         mWebservice.unlike(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
-                if (success) {
-                    eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
-                }
+                eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
             }
         });
     }
@@ -301,12 +313,15 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         mWebservice.dislike(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
-                if (success) {
-                    eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
-                }
+                eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
             }
         });
     }
+
+    /**
+     * ******************************************************
+     * MediaPlayerManager.Listener implementation
+     */
 
     @Override
     public void onPrepared(FeedFMMediaPlayer mp) {
@@ -328,9 +343,9 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         mWebservice.playStarted(play.getId(), new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean canSkip) {
-                mCanSkip = canSkip;
+                mPlayerInfo.setSkippable(canSkip);
 
-                if (!mCanSkip) {
+                if (!canSkip) {
                     Toast.makeText(PlayerService.this, "Skip: " + canSkip, Toast.LENGTH_LONG).show();
                 }
             }
@@ -373,12 +388,14 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         Toast.makeText(PlayerService.this, "Done with queued Plays", Toast.LENGTH_LONG).show();
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
+    /*
+     * MediaPlayerManager.Listener implementation
+     **********************************************************/
 
-        mMediaPlayerManager.release();
-    }
+    /**
+     * *******************************************************
+     * ProgressTracker.OnProgressListener implementation
+     */
 
     @Override
     public void onProgressUpdate(Play play, int elapsed, int totalDuration) {
@@ -386,4 +403,8 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
         eventBus.post(new ProgressUpdate(play, mediaPlayer.getCurrentPosition() / 1000, mediaPlayer.getDuration() / 1000));
     }
+
+    /*
+     * ProgressTracker.OnProgressListener implementation
+     **********************************************************/
 }

@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.SimpleAdapter;
@@ -47,12 +48,17 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     // Views
     private Button mBtnTune;
-    private Button mBtnPlay;
-    private Button mBtnPause;
-    private Button mBtnSkip;
+    private ImageButton mBtnPlay;
+    private ImageButton mBtnPause;
+    private ImageButton mBtnSkip;
     private Button mBtnLike;
     private Button mBtnUnlike;
     private Button mBtnDislike;
+
+    private TextView mTxtTitle;
+    private TextView mTxtArtist;
+    private TextView mTxtAlbum;
+
 
     private TextView mTxtCurrentProgress;
     private TextView mTxtDuration;
@@ -64,8 +70,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     private int mSelectedStationIndex = -1;
     private int mSelectedPlacementsIndex = -1;
-
-    private long mTrackStartedTimestamp;
 
     public PlayFragment() {
     }
@@ -82,12 +86,16 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
 
         mBtnTune = (Button) rootView.findViewById(R.id.tune);
-        mBtnPlay = (Button) rootView.findViewById(R.id.play);
-        mBtnPause = (Button) rootView.findViewById(R.id.pause);
-        mBtnSkip = (Button) rootView.findViewById(R.id.skip);
+        mBtnPlay = (ImageButton) rootView.findViewById(R.id.play);
+        mBtnPause = (ImageButton) rootView.findViewById(R.id.pause);
+        mBtnSkip = (ImageButton) rootView.findViewById(R.id.skip);
         mBtnLike = (Button) rootView.findViewById(R.id.like);
         mBtnUnlike = (Button) rootView.findViewById(R.id.unlike);
         mBtnDislike = (Button) rootView.findViewById(R.id.dislike);
+
+        mTxtTitle = (TextView) rootView.findViewById(R.id.title);
+        mTxtArtist = (TextView) rootView.findViewById(R.id.artist);
+        mTxtAlbum = (TextView) rootView.findViewById(R.id.album);
 
         mProgressBar = (ProgressBar) rootView.findViewById(R.id.progress);
         mTxtCurrentProgress = (TextView) rootView.findViewById(R.id.current_progress);
@@ -203,7 +211,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener tune = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Tune", Toast.LENGTH_LONG).show();
             mPlayer.tune();
         }
     };
@@ -211,7 +218,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener play = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Play", Toast.LENGTH_LONG).show();
             mPlayer.play();
         }
     };
@@ -219,7 +225,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener pause = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Pause", Toast.LENGTH_LONG).show();
             mPlayer.pause();
         }
     };
@@ -227,7 +232,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener skip = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Skip", Toast.LENGTH_LONG).show();
             mPlayer.skip();
         }
     };
@@ -235,7 +239,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener like = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Like", Toast.LENGTH_LONG).show();
             mPlayer.like();
         }
     };
@@ -243,7 +246,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener unlike = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Unlike", Toast.LENGTH_LONG).show();
             mPlayer.unlike();
         }
     };
@@ -251,7 +253,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private View.OnClickListener dislike = new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-            Toast.makeText(getActivity(), "Dislike", Toast.LENGTH_LONG).show();
             mPlayer.dislike();
         }
     };
@@ -297,7 +298,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
                 mSelectedStationIndex = position;
 
                 HashMap<String, Integer> item = (HashMap<String, Integer>) adapter.getItem(position);
-                String stationId = String.valueOf(item.get("Id"));
+                Integer stationId = Integer.parseInt(String.valueOf(item.get("Id")));
                 mPlayer.setStationId(stationId);
             }
         });
@@ -311,12 +312,13 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     @Override
     public void onTrackChanged(Play play) {
-        mTrackStartedTimestamp = new Date().getTime();
+        mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
+        mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
 
         mProgressBar.setSecondaryProgress(0);
-        mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
-
-        mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
+        mTxtTitle.setText(play.getAudioFile().getTrack().getTitle());
+        mTxtArtist.setText(play.getAudioFile().getArtist().getName());
+        mTxtAlbum.setText(play.getAudioFile().getRelease().getTitle());
 
         createNotification(play);
     }

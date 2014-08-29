@@ -7,17 +7,17 @@ import com.google.gson.annotations.SerializedName;
  */
 public class Artist {
     @SerializedName("id")
-    private String id;
+    private Integer id;
     @SerializedName("name")
     private String name;
 
     // TODO: remove constructor.
-    public Artist(String id, String name) {
+    public Artist(Integer id, String name) {
         this.id = id;
         this.name = name;
     }
 
-    public String getId() {
+    public Integer getId() {
         return id;
     }
 
