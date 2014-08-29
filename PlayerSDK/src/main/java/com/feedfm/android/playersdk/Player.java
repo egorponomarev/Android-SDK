@@ -15,7 +15,7 @@ import com.feedfm.android.playersdk.service.bus.PlayerAction;
 import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
-import com.feedfm.android.playersdk.service.webservice.PlayerService;
+import com.feedfm.android.playersdk.service.PlayerService;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 

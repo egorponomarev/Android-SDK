@@ -10,6 +10,12 @@ public class FeedFMError {
     @SerializedName("message") private String message;
     @SerializedName("status") private  int    status;
 
+    public FeedFMError(int code, String message, int status) {
+        this.code = code;
+        this.message = message;
+        this.status = status;
+    }
+
     public int getCode() {
         return code;
     }

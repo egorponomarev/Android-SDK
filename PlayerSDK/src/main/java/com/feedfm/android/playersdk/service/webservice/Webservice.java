@@ -8,6 +8,7 @@ import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Play;
 import com.feedfm.android.playersdk.model.Station;
 import com.feedfm.android.playersdk.service.bus.Credentials;
+import com.feedfm.android.playersdk.service.webservice.model.AudioFormat;
 import com.feedfm.android.playersdk.service.webservice.model.ClientResponse;
 import com.feedfm.android.playersdk.service.webservice.model.FeedFMError;
 import com.feedfm.android.playersdk.service.webservice.model.FeedFMResponse;
@@ -19,11 +20,8 @@ import com.squareup.okhttp.OkHttpClient;
 
 import java.util.List;
 
-import retrofit.Callback;
 import retrofit.RestAdapter;
-import retrofit.RetrofitError;
 import retrofit.client.OkClient;
-import retrofit.client.Response;
 import retrofit.http.DELETE;
 import retrofit.http.Field;
 import retrofit.http.FormUrlEncoded;
@@ -31,36 +29,25 @@ import retrofit.http.GET;
 import retrofit.http.Header;
 import retrofit.http.POST;
 import retrofit.http.Path;
-import retrofit.http.Query;
 
 /**
  * Created by mharkins on 8/22/14.
  */
 public class Webservice {
-    public static final String EVENT_CLIENT_ID_RECEIVED = "com.feedfm.android.playersdk.event.clientid";
-    public static final String EXTRA_CLIENT_ID = "com.feedfm.android.playersdk.extra.clientid";
-
-
     protected RestInterface mRestService;
-
-    /**
-     * an android.app.Service object Context
-     */
-    private Context mContext;
 
     private Credentials mCredentials;
 
     public Webservice(Context context) {
-        mContext = context;
-
         String apiVersion = context.getString(R.string.api_version);
+        String apiUrl = context.getString(R.string.api_url);
 
         OkHttpClient okHttpClient = new OkHttpClient();
 
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setLogLevel(RestAdapter.LogLevel.FULL)
                 .setClient(new OkClient(okHttpClient))
-                .setEndpoint("https://feed.fm/api/" + apiVersion)
+                .setEndpoint(apiUrl + apiVersion)
                 .build();
 
         mRestService = restAdapter.create(RestInterface.class);
@@ -70,226 +57,165 @@ public class Webservice {
         mCredentials = credentials;
     }
 
-    public void getClientId(final Webservice.Callback<String> callback) {
-        mRestService.getClientId(WebserviceUtils.getAuthorization(mCredentials), new retrofit.Callback<ClientResponse>() {
-            @Override
-            public void success(ClientResponse clientResponse, Response response) {
-                if (clientResponse.isSuccess()) {
-                    callback.onSuccess(clientResponse.getClientId());
-                } else {
-                    callback.onFailure(clientResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                callback.onFailure(feedFMResponse.getError());
-            }
-        });
+    public void getClientId(Webservice.Callback<String> callback) {
+        mRestService.getClientId(
+                WebserviceUtils.getAuth(mCredentials),
+                new DefaultRetrofitCallback<ClientResponse, String>(callback) {
+                    public String parseResponse(ClientResponse response) {
+                        return response.getClientId();
+                    }
+                });
     }
 
-    public void setPlacementId(int placementId, final Webservice.Callback<Pair<Placement, List<Station>>> callback) {
-        mRestService.setPlacementId(WebserviceUtils.getAuthorization(mCredentials), placementId, new retrofit.Callback<PlacementResponse>() {
-            @Override
-            public void success(PlacementResponse placementResponse, Response response) {
-                if (placementResponse.isSuccess()) {
-                    callback.onSuccess(new Pair(placementResponse.getPlacement(), placementResponse.getStations()));
-                } else {
-                    callback.onFailure(placementResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                callback.onFailure(feedFMResponse.getError());
-            }
-        });
+    public void setPlacementId(int placementId,
+                               Webservice.Callback<Pair<Placement, List<Station>>> serviceCallback) {
+        mRestService.setPlacementId(
+                WebserviceUtils.getAuth(mCredentials),
+                placementId,
+                new DefaultRetrofitCallback<PlacementResponse, Pair<Placement, List<Station>>>(serviceCallback) {
+                    @Override
+                    public Pair<Placement, List<Station>> parseResponse(PlacementResponse response) {
+                        return new Pair(response.getPlacement(), response.getStations());
+                    }
+                });
     }
 
-    // TODO: add formats and max_bitrate
-    public void tune(String clientId, Integer placementId, String stationId, final Webservice.Callback<Play> callback) {
-        mRestService.tune(WebserviceUtils.getAuthorization(mCredentials), clientId, placementId, stationId, new retrofit.Callback<PlayResponse>() {
-            @Override
-            public void success(PlayResponse playResponse, Response response) {
-                if (playResponse.isSuccess()) {
-                    callback.onSuccess(playResponse.getPlay());
-                } else {
-                    callback.onFailure(playResponse.getError());
-                }
-            }
+    public void tune(String clientId,
+                     Integer placementId,
+                     String stationId,
+                     AudioFormat[] audioFormats,
+                     Integer maxBitrate,
+                     Webservice.Callback<Play> serviceCallback) {
+        String audioFormatStr = WebserviceUtils.getAudioFormatStr(audioFormats);
 
-            @Override
-            public void failure(RetrofitError error) {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                callback.onFailure(feedFMResponse.getError());
-            }
-        });
+        mRestService.tune(WebserviceUtils.getAuth(mCredentials),
+                clientId,
+                placementId,
+                stationId,
+                audioFormatStr,
+                maxBitrate,
+                new DefaultRetrofitCallback<PlayResponse, Play>(serviceCallback) {
+                    @Override
+                    public Play parseResponse(PlayResponse response) {
+                        return response.getPlay();
+                    }
+                });
     }
 
-    public void playStarted(String playId, final Callback<Boolean> callback) {
-        mRestService.playStarted(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<PlayStartResponse>() {
-            @Override
-            public void success(PlayStartResponse playStartResponse, Response response) {
-                if (playStartResponse.isSuccess()) {
-                    callback.onSuccess(playStartResponse.canSkip());
-                } else {
-                    callback.onFailure(playStartResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                callback.onFailure(feedFMResponse.getError());
-            }
-        });
+    public void playStarted(String playId, Callback<Boolean> serviceCallback) {
+        mRestService.playStarted(
+                WebserviceUtils.getAuth(mCredentials), playId, new DefaultRetrofitCallback<PlayStartResponse, Boolean>(serviceCallback) {
+                    @Override
+                    public Boolean parseResponse(PlayStartResponse response) {
+                        return response.canSkip();
+                    }
+                });
     }
 
-    public void playCompleted(String playId, final Callback<Boolean> callback) {
-        mRestService.playCompleted(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
-            @Override
-            public void success(FeedFMResponse feedFMResponse, Response response) {
-                if (feedFMResponse.isSuccess()) {
-                    callback.onSuccess(true);
-                } else {
-                    callback.onFailure(feedFMResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                callback.onFailure(feedFMResponse.getError());
-            }
-        });
+    public void playCompleted(String playId, Callback<Boolean> serviceCallback) {
+        mRestService.playCompleted(
+                WebserviceUtils.getAuth(mCredentials), playId, new DefaultRetrofitCallback<FeedFMResponse, Boolean>(serviceCallback) {
+                    @Override
+                    public Boolean parseResponse(FeedFMResponse response) {
+                        return true;
+                    }
+                });
     }
 
-    public void skip(String playId, final Callback<Boolean> callback) {
-        mRestService.skip(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
-            @Override
-            public void success(FeedFMResponse feedFMResponse, Response response) {
-                if (feedFMResponse.isSuccess()) {
-                    callback.onSuccess(true);
-                } else {
-                    callback.onFailure(feedFMResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                if (error != null) {
-                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                    callback.onFailure(feedFMResponse.getError());
-                } else {
-                    callback.onFailure(null);
-                }
-            }
-        });
+    public void skip(String playId, Callback<Boolean> serviceCallback) {
+        mRestService.skip(
+                WebserviceUtils.getAuth(mCredentials), playId, new DefaultRetrofitCallback<FeedFMResponse, Boolean>(serviceCallback) {
+                    @Override
+                    public Boolean parseResponse(FeedFMResponse response) {
+                        return true;
+                    }
+                });
     }
 
-    public void like(String playId, final Callback<Boolean> callback) {
-        mRestService.like(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
-            @Override
-            public void success(FeedFMResponse feedFMResponse, Response response) {
-                if (feedFMResponse.isSuccess()) {
-                    callback.onSuccess(true);
-                } else {
-                    callback.onFailure(feedFMResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                if (error != null) {
-                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                    callback.onFailure(feedFMResponse.getError());
-                } else {
-                    callback.onFailure(null);
-                }
-            }
-        });
-    }
-    public void unlike(String playId, final Callback<Boolean> callback) {
-        mRestService.unlike(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
-            @Override
-            public void success(FeedFMResponse feedFMResponse, Response response) {
-                if (feedFMResponse.isSuccess()) {
-                    callback.onSuccess(true);
-                } else {
-                    callback.onFailure(feedFMResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                if (error != null) {
-                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                    callback.onFailure(feedFMResponse.getError());
-                } else {
-                    callback.onFailure(null);
-                }
-            }
-        });
-    }
-    public void dislike(String playId, final Callback<Boolean> callback) {
-        mRestService.dislike(WebserviceUtils.getAuthorization(mCredentials), playId, new retrofit.Callback<FeedFMResponse>() {
-            @Override
-            public void success(FeedFMResponse feedFMResponse, Response response) {
-                if (feedFMResponse.isSuccess()) {
-                    callback.onSuccess(true);
-                } else {
-                    callback.onFailure(feedFMResponse.getError());
-                }
-            }
-
-            @Override
-            public void failure(RetrofitError error) {
-                if (error != null) {
-                    FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
-                    callback.onFailure(feedFMResponse.getError());
-                } else {
-                    callback.onFailure(null);
-                }
-            }
-        });
+    public void like(String playId, Callback<Boolean> serviceCallback) {
+        mRestService.like(
+                WebserviceUtils.getAuth(mCredentials), playId, new DefaultRetrofitCallback<FeedFMResponse, Boolean>(serviceCallback) {
+                    @Override
+                    public Boolean parseResponse(FeedFMResponse response) {
+                        return true;
+                    }
+                });
     }
 
+    public void unlike(String playId, Callback<Boolean> serviceCallback) {
+        mRestService.unlike(
+                WebserviceUtils.getAuth(mCredentials), playId, new DefaultRetrofitCallback<FeedFMResponse, Boolean>(serviceCallback) {
+                    @Override
+                    public Boolean parseResponse(FeedFMResponse response) {
+                        return true;
+                    }
+                });
+    }
 
+    public void dislike(String playId, Callback<Boolean> serviceCallback) {
+        mRestService.dislike(
+                WebserviceUtils.getAuth(mCredentials), playId, new DefaultRetrofitCallback<FeedFMResponse, Boolean>(serviceCallback) {
+                    @Override
+                    public Boolean parseResponse(FeedFMResponse response) {
+                        return true;
+                    }
+                });
+    }
 
     public interface RestInterface {
         @POST("/client")
-        public void getClientId(@Header("Authorization") String authorization, retrofit.Callback<ClientResponse> callback);
+        public void getClientId(@Header("Authorization") String authorization,
+                                retrofit.Callback<ClientResponse> callback);
 
         @GET("/placement/{id}")
-        public void setPlacementId(@Header("Authorization") String authorization, @Path("id") int id, retrofit.Callback<PlacementResponse> callback);
+        public void setPlacementId(@Header("Authorization") String authorization,
+                                   @Path("id") int id,
+                                   retrofit.Callback<PlacementResponse> callback);
 
         @FormUrlEncoded
         @POST("/play")
-        public void tune(@Header("Authorization") String authorization, @Field("client_id") String clientId, @Field("placement_id") Integer placementId, @Field("station_id") String stationId, retrofit.Callback<PlayResponse> callback);
+        public void tune(@Header("Authorization") String authorization,
+                         @Field("client_id") String clientId,
+                         @Field("placement_id") Integer placementId,
+                         @Field("station_id") String stationId,
+                         @Field("formats") String formats,
+                         @Field("max_bitrate") Integer maxBitrate,
+                         retrofit.Callback<PlayResponse> callback);
 
         @POST("/play/{id}/start")
-        public void playStarted(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<PlayStartResponse> callback);
+        public void playStarted(@Header("Authorization") String authorization,
+                                @Path("id") String playId,
+                                retrofit.Callback<PlayStartResponse> callback);
 
         @POST("/play/{id}/skip")
-        public void skip(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+        public void skip(@Header("Authorization") String authorization,
+                         @Path("id") String playId,
+                         retrofit.Callback<FeedFMResponse> callback);
 
         @POST("/play/{id}/complete")
-        public void playCompleted(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+        public void playCompleted(@Header("Authorization") String authorization,
+                                  @Path("id") String playId,
+                                  retrofit.Callback<FeedFMResponse> callback);
 
         @POST("/play/{id}/like")
-        public void like(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+        public void like(@Header("Authorization") String authorization,
+                         @Path("id") String playId,
+                         retrofit.Callback<FeedFMResponse> callback);
 
         @DELETE("/play/{id}/like")
-        public void unlike(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+        public void unlike(@Header("Authorization") String authorization,
+                           @Path("id") String playId,
+                           retrofit.Callback<FeedFMResponse> callback);
 
         @POST("/play/{id}/dislike")
-        public void dislike(@Header("Authorization") String authorization, @Path("id") String playId, retrofit.Callback<FeedFMResponse> callback);
+        public void dislike(@Header("Authorization") String authorization,
+                            @Path("id") String playId,
+                            retrofit.Callback<FeedFMResponse> callback);
     }
 
     public interface Callback<T> {
         public void onSuccess(T t);
+
         public void onFailure(FeedFMError error);
     }
 }

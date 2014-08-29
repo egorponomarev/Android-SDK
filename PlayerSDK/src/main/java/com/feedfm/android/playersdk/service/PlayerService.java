@@ -1,6 +1,5 @@
-package com.feedfm.android.playersdk.service.webservice;
+package com.feedfm.android.playersdk.service;
 
-import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
@@ -14,9 +13,6 @@ import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Play;
 import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
-import com.feedfm.android.playersdk.service.FeedFMMediaPlayer;
-import com.feedfm.android.playersdk.service.MediaPlayerManager;
-import com.feedfm.android.playersdk.service.ProgressTracker;
 import com.feedfm.android.playersdk.service.bus.BufferUpdate;
 import com.feedfm.android.playersdk.service.bus.Credentials;
 import com.feedfm.android.playersdk.service.bus.EventMessage;
@@ -24,6 +20,9 @@ import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
 import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
 import com.feedfm.android.playersdk.service.bus.SingleEventBus;
+import com.feedfm.android.playersdk.service.webservice.DefaultWebserviceCallback;
+import com.feedfm.android.playersdk.service.webservice.Webservice;
+import com.feedfm.android.playersdk.service.webservice.model.AudioFormat;
 import com.feedfm.android.playersdk.service.webservice.model.FeedFMError;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
@@ -50,17 +49,6 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     private Station mSelectedStation = null;
 
     private boolean mDidTune = false;
-
-    private static enum Status {
-        IDLE,
-        TUNING,
-        TUNED,
-        PLAYING,
-        PAUSED,
-        COMPLETE
-    }
-
-    private Status mActiveStatus = Status.IDLE;
     protected boolean mCanSkip;
 
     @Override
@@ -80,11 +68,13 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         playerLibraryInfo.versionName = getString(R.string.sdk_version);
         eventBus.post(playerLibraryInfo);
 
+        // TODO: modify notification
+        // Common notification ID (Should be sent along in the startIntent, or returned in the PlayerLibraryInfo or alternate object).
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(this);
         mBuilder.setContentTitle("Feed.FM");
         mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
-
+        // Make Service live even if Application is shut down by system
         startForeground(1234532, mBuilder.build());
 
         return super.onStartCommand(intent, flags, startId);
@@ -106,7 +96,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     @Subscribe
     @SuppressWarnings("unused")
     public void setPlacementId(Placement placement) {
-        mWebservice.setPlacementId(placement.getId(), new Webservice.Callback<Pair<Placement, List<Station>>>() {
+        mWebservice.setPlacementId(placement.getId(), new DefaultWebserviceCallback<Pair<Placement,List<Station>>>() {
             @Override
             public void onSuccess(Pair<Placement, List<Station>> result) {
                 // Save user Placement
@@ -118,11 +108,6 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
                 mMediaPlayerManager.clearPendingQueue();
 
                 eventBus.post(result);
-            }
-
-            @Override
-            public void onFailure(FeedFMError error) {
-                Toast.makeText(PlayerService.this, error.toString(), Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -178,26 +163,12 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     }
 
     public void getClientId() {
-        mWebservice.getClientId(new Webservice.Callback<String>() {
+        mWebservice.getClientId(new DefaultWebserviceCallback<String>() {
             @Override
             public void onSuccess(String clientId) {
                 mClientId = clientId;
-                Toast.makeText(PlayerService.this, "Client Id: " + clientId, Toast.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onFailure(FeedFMError error) {
-                Toast.makeText(PlayerService.this, error.toString(), Toast.LENGTH_LONG).show();
             }
         });
-    }
-
-    private FeedFMMediaPlayer.State getActiveMediaPlayerState() {
-        FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-        if (mediaPlayer != null) {
-            mediaPlayer.getState();
-        }
-        return FeedFMMediaPlayer.State.IDLE;
     }
 
     public void tune(final boolean autoPlay) {
@@ -215,7 +186,9 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
                 mClientId,
                 mSelectedPlacement != null ? mSelectedPlacement.getId() : null,
                 mSelectedStation != null ? mSelectedStation.getId() : null,
-                new Webservice.Callback<Play>() {
+                null, // For now don't put in the AudioFormat
+                null,
+                new DefaultWebserviceCallback<Play>() {
 
                     @Override
                     public void onSuccess(final Play play) {
@@ -224,6 +197,8 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
                     @Override
                     public void onFailure(FeedFMError error) {
+                        super.onFailure(error);
+
                         mMediaPlayerManager.deTune();
                     }
                 });
@@ -235,7 +210,6 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             mediaPlayer.start();
             mProgressTracker.resume();
 
-            mActiveStatus = Status.PLAYING;
         } else if (mMediaPlayerManager.isReadyForPlay()) {
             mMediaPlayerManager.playNext();
         } else if (!mMediaPlayerManager.isPlaying()) {
@@ -252,7 +226,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
         final String playId = mediaPlayer.getPlay().getId();
 
-        mWebservice.skip(playId, new Webservice.Callback<Boolean>() {
+        mWebservice.skip(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
                 if (success) {
@@ -264,10 +238,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
             @Override
             public void onFailure(FeedFMError error) {
-                if (error != null) {
-                    Toast.makeText(PlayerService.this, "Cannot Skip: " + error.toString(), Toast.LENGTH_LONG).show();
-                    Log.e(TAG, String.format("Skip (%s): failed", playId));
-                }
+                super.onFailure(error);
                 eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
             }
         });
@@ -278,8 +249,6 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
             FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
             mediaPlayer.pause();
             mProgressTracker.pause();
-
-            mActiveStatus = Status.PAUSED;
         } else {
             Log.i(TAG, "Could not Pause track. Not playing.");
         }
@@ -293,18 +262,11 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
         final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
         final String playId = mediaPlayer.getPlay().getId();
-        mWebservice.like(playId, new Webservice.Callback<Boolean>() {
+        mWebservice.like(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
                 if (success) {
                     eventBus.post(new EventMessage(EventMessage.Status.LIKE));
-                }
-            }
-
-            @Override
-            public void onFailure(FeedFMError error) {
-                if (error != null) {
-                    Log.e(TAG, String.format("Like (%s): failed - %s", playId, error.toString()));
                 }
             }
         });
@@ -318,18 +280,11 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
         final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
         final String playId = mediaPlayer.getPlay().getId();
-        mWebservice.unlike(playId, new Webservice.Callback<Boolean>() {
+        mWebservice.unlike(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
                 if (success) {
                     eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
-                }
-            }
-
-            @Override
-            public void onFailure(FeedFMError error) {
-                if (error != null) {
-                    Log.e(TAG, String.format("Unlike (%s): failed - %s", playId, error.toString()));
                 }
             }
         });
@@ -343,18 +298,11 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
         final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
         final String playId = mediaPlayer.getPlay().getId();
-        mWebservice.unlike(playId, new Webservice.Callback<Boolean>() {
+        mWebservice.dislike(playId, new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean success) {
                 if (success) {
                     eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
-                }
-            }
-
-            @Override
-            public void onFailure(FeedFMError error) {
-                if (error != null) {
-                    Log.e(TAG, String.format("Dislike (%s): failed - %s", playId, error.toString()));
                 }
             }
         });
@@ -362,8 +310,6 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
 
     @Override
     public void onPrepared(FeedFMMediaPlayer mp) {
-        mActiveStatus = Status.TUNED;
-
         // Only start the prepared media player if it is the active one.
         if (mMediaPlayerManager.isActiveMediaPlayer(mp)) {
             if (mp.isAutoPlay()) {
@@ -379,17 +325,14 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         eventBus.post(play);
         mProgressTracker.start(play);
 
-        mWebservice.playStarted(play.getId(), new Webservice.Callback<Boolean>() {
+        mWebservice.playStarted(play.getId(), new DefaultWebserviceCallback<Boolean>() {
             @Override
             public void onSuccess(Boolean canSkip) {
                 mCanSkip = canSkip;
 
-                Toast.makeText(PlayerService.this, "Skip: " + canSkip, Toast.LENGTH_LONG).show();
-            }
-
-            @Override
-            public void onFailure(FeedFMError error) {
-                Toast.makeText(PlayerService.this, "failed to get Skip info: " + error.toString(), Toast.LENGTH_LONG).show();
+                if (!mCanSkip) {
+                    Toast.makeText(PlayerService.this, "Skip: " + canSkip, Toast.LENGTH_LONG).show();
+                }
             }
         });
     }
@@ -404,15 +347,10 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         if (!isSkipped) {
             Toast.makeText(PlayerService.this, "Done with play:" + play.getAudioFile().getTrack().getTitle(), Toast.LENGTH_LONG).show();
 
-            mWebservice.playCompleted(play.getId(), new Webservice.Callback<Boolean>() {
+            mWebservice.playCompleted(play.getId(), new DefaultWebserviceCallback<Boolean>() {
                 @Override
                 public void onSuccess(Boolean success) {
                     Toast.makeText(PlayerService.this, "Track Completed: " + success, Toast.LENGTH_LONG).show();
-                }
-
-                @Override
-                public void onFailure(FeedFMError error) {
-                    Toast.makeText(PlayerService.this, "Track Completed: " + error.toString(), Toast.LENGTH_LONG).show();
                 }
             });
         }

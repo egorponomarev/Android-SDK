@@ -1,9 +1,7 @@
 package com.feedfm.android.playersdk.mocks;
 
-import android.util.Log;
-
 import com.feedfm.android.playersdk.service.MediaPlayerManager;
-import com.feedfm.android.playersdk.service.webservice.PlayerService;
+import com.feedfm.android.playersdk.service.PlayerService;
 import com.feedfm.android.playersdk.service.webservice.Webservice;
 
 /**

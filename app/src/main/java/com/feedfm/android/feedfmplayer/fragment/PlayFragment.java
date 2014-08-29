@@ -30,10 +30,8 @@ import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Play;
 import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
-import com.feedfm.android.playersdk.service.webservice.PlayerService;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;

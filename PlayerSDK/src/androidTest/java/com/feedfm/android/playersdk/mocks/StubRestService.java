@@ -10,7 +10,6 @@ import com.feedfm.android.playersdk.service.webservice.model.PlayStartResponse;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;
-import retrofit.http.Field;
 import retrofit.http.Header;
 import retrofit.http.Path;
 
@@ -29,11 +28,7 @@ public class StubRestService implements Webservice.RestInterface {
     public RetrofitError mRetrofitError;
 
     public static FeedFMError makeFeedFmError() {
-        FeedFMError error = new FeedFMError();
-        error.setCode(4);
-        error.setMessage("This is a message");
-        error.setStatus(5);
-        return error;
+        return new FeedFMError(4, "This is a message", 5);
     }
 
     @Override
@@ -55,7 +50,13 @@ public class StubRestService implements Webservice.RestInterface {
     }
 
     @Override
-    public void tune(@Header("Authorization") String authorization, @Field("client_id") String clientId, @Field("placement_id") Integer placementId, @Field("station_id") String stationId, retrofit.Callback<PlayResponse> callback) {
+    public void tune(String authorization,
+                     String clientId,
+                     Integer placementId,
+                     String stationId,
+                     String audioFormats,
+                     Integer maxBitrate,
+                     retrofit.Callback<PlayResponse> callback) {
         if (mPlayResponseMock == null) {
             callback.failure(null);
         } else {
