@@ -18,7 +18,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
-            Integer[] placements = {10955, 10960};
+            int[] placements = {10955, 10960};
 
             getSupportFragmentManager().beginTransaction()
                     .add(R.id.container, PlayFragment.newFragment(placements))

@@ -1,17 +1,12 @@
 package com.feedfm.android.playersdk.service;
 
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.PowerManager;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import com.feedfm.android.playersdk.model.Play;
-import com.feedfm.android.playersdk.service.webservice.PlayerService;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -223,25 +218,6 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
 
 
         return mediaPlayer;
-    }
-
-    private int mNotificationId = 1234532;
-    public void newNotification(Play play) {
-        PendingIntent pi = PendingIntent.getService(mContext.getApplicationContext(), 0,
-                new Intent(mContext.getApplicationContext(), PlayerService.class),
-                PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(mContext);
-        mBuilder.setContentIntent(pi);
-        mBuilder.setContentTitle("Feed.FM");
-        mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
-        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
-
-        NotificationManager mNotificationManager =
-                (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
-        // NOTIFICATION_ID allows you to update the notification later on.
-        mNotificationManager.notify(mNotificationId, mBuilder.build());
     }
 
     /**

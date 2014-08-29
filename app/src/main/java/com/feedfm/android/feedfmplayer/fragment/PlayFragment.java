@@ -1,10 +1,15 @@
 package com.feedfm.android.feedfmplayer.fragment;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.NotificationCompat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,6 +22,7 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.feedfm.android.feedfmplayer.MainActivity;
 import com.feedfm.android.feedfmplayer.R;
 import com.feedfm.android.feedfmplayer.util.TimeUtils;
 import com.feedfm.android.playersdk.Player;
@@ -24,6 +30,7 @@ import com.feedfm.android.playersdk.model.Placement;
 import com.feedfm.android.playersdk.model.Play;
 import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
+import com.feedfm.android.playersdk.service.webservice.PlayerService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,7 +45,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     private Player mPlayer;
 
-    private List<Integer> mPlacements;
+    private int[] mPlacements;
 
     // Views
     private Button mBtnTune;
@@ -65,9 +72,9 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public PlayFragment() {
     }
 
-    public static PlayFragment newFragment(Integer[] placements) {
+    public static PlayFragment newFragment(int[] placements) {
         PlayFragment fragment = new PlayFragment();
-        fragment.mPlacements = Arrays.asList(placements);
+        fragment.mPlacements = placements;
         return fragment;
     }
 
@@ -90,6 +97,10 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
         mStationsView = (ListView) rootView.findViewById(R.id.stations);
         mPlacementsView = (ListView) rootView.findViewById(R.id.placements);
+
+        if (savedInstanceState != null) {
+            mPlacements = savedInstanceState.getIntArray(PLACEMENTS);
+        }
 
         return rootView;
     }
@@ -148,6 +159,47 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onStop() {
         super.onStop();
     }
+
+    public static final String PLACEMENTS = "save_placements";
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+
+        outState.putIntArray(PLACEMENTS, mPlacements);
+    }
+
+    private int mNotificationId = 1234532;
+
+    public void createNotification(Play play) {
+        Intent intent = new Intent(getActivity().getApplicationContext(), MainActivity.class);
+        intent.setAction(Intent.ACTION_MAIN);
+
+        intent.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
+                Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(getActivity().getApplicationContext(), 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(getActivity());
+        mBuilder.setContentIntent(pi);
+        mBuilder.setContentTitle("Feed.FM");
+        mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
+        mBuilder.setOngoing(true);
+        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
+
+        NotificationManager mNotificationManager =
+                (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        // NOTIFICATION_ID allows you to update the notification later on.
+        mNotificationManager.notify(mNotificationId, mBuilder.build());
+    }
+
+    public void clearNotification() {
+        NotificationManager mNotificationManager =
+                (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.cancel(mNotificationId);
+    }
+
 
     @SuppressWarnings("unused")
     private View.OnClickListener tune = new View.OnClickListener() {
@@ -267,6 +319,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
 
         mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
+
+        createNotification(play);
     }
 
     @Override

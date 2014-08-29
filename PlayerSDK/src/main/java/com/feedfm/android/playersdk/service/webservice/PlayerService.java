@@ -1,8 +1,10 @@
 package com.feedfm.android.playersdk.service.webservice;
 
+import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
+import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.util.Pair;
 import android.widget.Toast;
@@ -76,9 +78,15 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     public int onStartCommand(Intent intent, int flags, int startId) {
         PlayerLibraryInfo playerLibraryInfo = new PlayerLibraryInfo();
         playerLibraryInfo.versionName = getString(R.string.sdk_version);
-
-
         eventBus.post(playerLibraryInfo);
+
+        NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(this);
+        mBuilder.setContentTitle("Feed.FM");
+        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
+
+        startForeground(1234532, mBuilder.build());
+
         return super.onStartCommand(intent, flags, startId);
     }
 
