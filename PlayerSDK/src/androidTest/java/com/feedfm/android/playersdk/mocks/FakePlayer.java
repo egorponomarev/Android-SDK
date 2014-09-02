@@ -3,6 +3,7 @@ package com.feedfm.android.playersdk.mocks;
 import android.content.Context;
 
 import com.feedfm.android.playersdk.Player;
+import com.squareup.otto.Bus;
 
 /**
  * Created by mharkins on 8/27/14.
@@ -24,7 +25,7 @@ public class FakePlayer extends Player {
         // do nothing
     }
 
-    public void setEventBus(DummyBus bus) {
+    public void setEventBus(Bus bus) {
         mEventBus = bus;
     }
 

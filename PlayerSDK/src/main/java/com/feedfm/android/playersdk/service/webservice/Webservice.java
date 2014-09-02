@@ -1,6 +1,8 @@
 package com.feedfm.android.playersdk.service.webservice;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Pair;
 
 import com.feedfm.android.playersdk.R;
@@ -17,10 +19,16 @@ import com.feedfm.android.playersdk.service.webservice.model.PlayResponse;
 import com.feedfm.android.playersdk.service.webservice.model.PlayStartResponse;
 import com.feedfm.android.playersdk.service.webservice.util.WebserviceUtils;
 import com.squareup.okhttp.OkHttpClient;
+import com.squareup.otto.Bus;
+import com.squareup.otto.ThreadEnforcer;
 
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import retrofit.RestAdapter;
+import retrofit.android.MainThreadExecutor;
 import retrofit.client.OkClient;
 import retrofit.http.DELETE;
 import retrofit.http.Field;
@@ -34,9 +42,10 @@ import retrofit.http.Path;
  * Created by mharkins on 8/22/14.
  */
 public class Webservice {
-    protected RestInterface mRestService;
-
     private Credentials mCredentials;
+
+    protected RestInterface mRestService;
+    private ExecutorService mExecutorService;
 
     public Webservice(Context context) {
         String apiVersion = context.getString(R.string.api_version);
@@ -44,9 +53,12 @@ public class Webservice {
 
         OkHttpClient okHttpClient = new OkHttpClient();
 
+        mExecutorService = Executors.newSingleThreadExecutor();
+
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setLogLevel(RestAdapter.LogLevel.FULL)
                 .setClient(new OkClient(okHttpClient))
+                .setExecutors(mExecutorService, null)
                 .setEndpoint(apiUrl + apiVersion)
                 .build();
 

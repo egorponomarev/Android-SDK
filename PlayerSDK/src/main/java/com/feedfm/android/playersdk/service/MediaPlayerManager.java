@@ -15,14 +15,18 @@ import java.util.Queue;
 /**
  * Created by mharkins on 8/25/14.
  */
-public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnBufferingUpdateListener {
+public class MediaPlayerManager implements
+        MediaPlayer.OnPreparedListener,
+        MediaPlayer.OnErrorListener,
+        MediaPlayer.OnCompletionListener,
+        MediaPlayer.OnBufferingUpdateListener {
     private static final String TAG = MediaPlayerManager.class.getSimpleName();
 
     private Context mContext;
     private Listener mListener;
 
-    private Queue<FeedFMMediaPlayer> mMediaPlayerPool = new LinkedList<FeedFMMediaPlayer>();
-    private Queue<FeedFMMediaPlayer> mQueue = new LinkedList<FeedFMMediaPlayer>();
+    private Queue<FeedFMMediaPlayer> mMediaPlayerPool;
+    private Queue<FeedFMMediaPlayer> mQueue;
 
     private FeedFMMediaPlayer mTuningMediaPlayer;
 
@@ -30,9 +34,37 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         this.mContext = context;
         this.mListener = listener;
 
+        mMediaPlayerPool = new LinkedList<FeedFMMediaPlayer>();
+        mQueue = new LinkedList<FeedFMMediaPlayer>();
+
 //        initAudioManager();
     }
 
+    /**
+     * Called to release the memory of all the {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer}s
+     * referenced by the {@link com.feedfm.android.playersdk.service.MediaPlayerManager}
+     */
+    public void release() {
+        FeedFMMediaPlayer mediaPlayer;
+        while ((mediaPlayer = mQueue.poll()) != null) {
+            mediaPlayer.release();
+        }
+        while ((mediaPlayer = mMediaPlayerPool.poll()) != null) {
+            mediaPlayer.release();
+        }
+        if (mTuningMediaPlayer != null) {
+            mTuningMediaPlayer.release();
+            mTuningMediaPlayer = null;
+        }
+    }
+
+
+    /**
+     * Prepare a {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer} instance.
+     * This is prior to setting it's data source.
+     *
+     * @param autoPlay
+     */
     public void preTune(boolean autoPlay) {
         mTuningMediaPlayer = mMediaPlayerPool.poll();
         if (mTuningMediaPlayer == null) {
@@ -43,6 +75,9 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         mTuningMediaPlayer.setAutoPlay(autoPlay);
     }
 
+    /**
+     * Recycle the {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer} currently being tuned.
+     */
     public void deTune() {
         if (mTuningMediaPlayer != null) {
             mTuningMediaPlayer.reset();
@@ -56,7 +91,13 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
      *
      * @param play
      */
-    public void tune(Play play) {
+    public void tune(Play play) throws IllegalStateException {
+        // If the mTuningMediaPlayer is null that probably means that the tuning was interrupted
+        if (mTuningMediaPlayer == null) {
+            Log.i(TAG, String.format("Canceling tuning of: %s", play.getId()));
+            return;
+        }
+
         // Verify that we are not already tuning or playing that Play.
         // We only learn about which Play we are going to receive when we receive the data from the server.
         // The same play will be received again if the previous Play hasn't been signaled as Started yet
@@ -88,6 +129,14 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         } catch (IOException e) {
             // TODO-XX handle otherwise.
             e.printStackTrace();
+        } catch (IllegalStateException e) {
+            // Do a bit of clean up when this exception.
+            // Let the PlayerService handle the retry.
+            mQueue.remove(mTuningMediaPlayer);
+            mTuningMediaPlayer.release();
+            mTuningMediaPlayer = null;
+
+            throw e;
         }
     }
 
@@ -96,7 +145,7 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
      */
     public void clearPendingQueue() {
         FeedFMMediaPlayer activeMediaPlayer = getActiveMediaPlayer();
-        for (FeedFMMediaPlayer mp: mQueue) {
+        for (FeedFMMediaPlayer mp : mQueue) {
             if (activeMediaPlayer != mp) {
                 mQueue.remove(mp);
                 mp.reset();
@@ -106,6 +155,7 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         if (mTuningMediaPlayer != null) {
             mTuningMediaPlayer.reset();
             mMediaPlayerPool.offer(mTuningMediaPlayer);
+            mTuningMediaPlayer = null;
         }
     }
 
@@ -185,7 +235,7 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
         } else {
             if (mediaPlayer.getState() == FeedFMMediaPlayer.State.PAUSED || mediaPlayer.getState() == FeedFMMediaPlayer.State.STARTED) {
                 mQueue.poll();
-                mediaPlayer.skip();
+                mediaPlayer.silentReset();
                 mMediaPlayerPool.offer(mediaPlayer);
             }
         }
@@ -230,19 +280,55 @@ public class MediaPlayerManager implements MediaPlayer.OnPreparedListener, Media
 
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
-        FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) mp;
+        /*
+        We need to attempt to recover from the error.
+         */
 
-        Play play = mediaPlayer.getPlay();
-        Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", play.getAudioFile().getTrack().getTitle(), what, extra));
+        FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) mp;
 
         mQueue.remove(mediaPlayer);
 
-        if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
-            mp.release();
+        // Retrieve the play information of the current play.
+        boolean isActiveMediaPlayer = getActiveMediaPlayer() == mediaPlayer;
+        Play savedPlay = mediaPlayer.getPlay();
+
+        Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", savedPlay.getAudioFile().getTrack().getTitle(), what, extra));
+
+        if (what == MediaPlayer.MEDIA_ERROR_SERVER_DIED || what == MediaPlayer.MEDIA_ERROR_UNKNOWN) {
+            mediaPlayer.setOnCompletionListener(null);
+            mediaPlayer.release();
         } else {
-            mp.reset();
+            mediaPlayer.silentReset();
             mMediaPlayerPool.add(mediaPlayer);
         }
+
+        // Check if the error came from the running media player. If so, we'll need to resume where we were with the track.
+        if (isActiveMediaPlayer) {
+            FeedFMMediaPlayer.State savedState = mediaPlayer.getPrevState();
+            boolean savedAutoPlay = mediaPlayer.isAutoPlay();
+
+            switch (savedState) {
+                case IDLE:
+                case FETCHING_METADATA:
+                case STOPPED:
+                case COMPLETE:
+                case END:
+                case ERROR:
+                    break;
+                // In case we had the information for the play, re-tune and auto-play again.
+                case INITIALIZED:
+                case PREPARING:
+                case PREPARED:
+                case STARTED:
+                case PAUSED:
+                    if (savedAutoPlay) {
+                        preTune(savedAutoPlay);
+                        tune(savedPlay);
+                    }
+                    break;
+            }
+        }
+
 
         return false;
     }
@@ -334,30 +420,44 @@ public void onAudioFocusChange(int focusChange) {
         }
     }
 
-    public void release() {
-        FeedFMMediaPlayer mediaPlayer;
-        while((mediaPlayer = mQueue.poll()) != null) {
-            mediaPlayer.release();
-        }
-        while((mediaPlayer = mMediaPlayerPool.poll()) != null) {
-            mediaPlayer.release();
-        }
-        if (mTuningMediaPlayer != null) {
-            mTuningMediaPlayer.release();
-            mTuningMediaPlayer = null;
-        }
-    }
 
-
+    /**
+     * Implement this interface to listen to {@link MediaPlayerManager} events.
+     */
     public interface Listener {
+        /**
+         * Called when a {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer} is ready for playing
+         *
+         * @param mp {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer}
+         */
         public void onPrepared(FeedFMMediaPlayer mp);
 
+        /**
+         * Called when a {@link com.feedfm.android.playersdk.model.Play} starts
+         *
+         * @param play {@link com.feedfm.android.playersdk.model.Play}
+         */
         public void onPlayStart(Play play);
 
+        /**
+         * Called when a play is done.
+         *
+         * @param play      {@link com.feedfm.android.playersdk.model.Play}
+         * @param isSkipped {@code true} if the play has been skipped.
+         */
         public void onPlayCompleted(Play play, boolean isSkipped);
 
+        /**
+         * Called when there are no longer items to play.
+         */
         public void onQueueDone();
 
+        /**
+         * Called as the {@link com.feedfm.android.playersdk.model.Play} is being buffered by the {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer}
+         *
+         * @param play    {@link com.feedfm.android.playersdk.model.Play}
+         * @param percent
+         */
         public void onBufferingUpdate(Play play, int percent);
     }
 }

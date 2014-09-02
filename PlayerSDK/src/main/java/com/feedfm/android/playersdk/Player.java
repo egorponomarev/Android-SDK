@@ -2,6 +2,8 @@ package com.feedfm.android.playersdk;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Pair;
 
 import com.feedfm.android.playersdk.model.Placement;
@@ -10,15 +12,16 @@ import com.feedfm.android.playersdk.model.PlayerLibraryInfo;
 import com.feedfm.android.playersdk.model.Station;
 import com.feedfm.android.playersdk.service.PlayerService;
 import com.feedfm.android.playersdk.service.bus.BufferUpdate;
+import com.feedfm.android.playersdk.service.bus.BusProvider;
 import com.feedfm.android.playersdk.service.bus.Credentials;
 import com.feedfm.android.playersdk.service.bus.EventMessage;
 import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
 import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
-import com.feedfm.android.playersdk.service.bus.SingleEventBus;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -32,18 +35,20 @@ public class Player {
      */
     static Player mInstance;
 
-    protected Bus mEventBus = SingleEventBus.getInstance();
+    protected Bus mEventBus = BusProvider.getInstance();
     protected PlayerServiceListener mPrivateServiceListener;
 
     // PLayer Listener
-    private PlayerListener mPlayerListener;
-    private NavListener mNavListener;
-    private SocialListener mSocialListener;
+    private List<PlayerListener> mPlayerListeners = new ArrayList<PlayerListener>();
+    private List<NavListener> mNavListeners = new ArrayList<NavListener>();
+    private List<SocialListener> mSocialListeners = new ArrayList<SocialListener>();
+
+    private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 
     protected Player(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
-        setPlayerListener(playerListener);
-        setNavListener(navListener);
-        setSocialListener(socialListener);
+        registerPlayerListener(playerListener);
+        registerNavListener(navListener);
+        registerSocialListener(socialListener);
 
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
@@ -64,16 +69,28 @@ public class Player {
         return mInstance;
     }
 
-    public void setPlayerListener(PlayerListener mPlayerListener) {
-        this.mPlayerListener = mPlayerListener;
+    public void registerPlayerListener(PlayerListener playerListener) {
+        mPlayerListeners.add(playerListener);
     }
 
-    public void setSocialListener(SocialListener mSocialListener) {
-        this.mSocialListener = mSocialListener;
+    public void registerSocialListener(SocialListener socialListener) {
+        mSocialListeners.add(socialListener);
     }
 
-    public void setNavListener(NavListener mNavListener) {
-        this.mNavListener = mNavListener;
+    public void registerNavListener(NavListener navListener) {
+        mNavListeners.add(navListener);
+    }
+
+    public void unregisterPlayerListener(PlayerListener playerListener) {
+        mPlayerListeners.remove(playerListener);
+    }
+
+    public void unregisterSocialListener(SocialListener socialListener) {
+        mSocialListeners.remove(socialListener);
+    }
+
+    public void unregisterNavListener(NavListener navListener) {
+        mNavListeners.remove(navListener);
     }
 
     public void setCredentials(String token, String secret) {
@@ -128,61 +145,109 @@ public class Player {
         @SuppressWarnings("unused")
         @Subscribe
         public void onServiceReady(PlayerLibraryInfo playerLibraryInfo) {
-            if (mPlayerListener != null) mPlayerListener.onPlayerInitialized(playerLibraryInfo);
-        }
-
-        @SuppressWarnings("unused")
-        @Subscribe
-        public void onServiceStatusChange(EventMessage message) {
-            switch (message.getStatus()) {
-                case SKIP_FAILED:
-                    if (mNavListener != null) mNavListener.onSkipFailed();
-                case LIKE:
-                    if (mSocialListener != null) mSocialListener.onLiked();
-                    break;
-                case UNLIKE:
-                    if (mSocialListener != null) mSocialListener.onUnliked();
-                    break;
-                case DISLIKE:
-                    if (mSocialListener != null) mSocialListener.onDisliked();
-                    break;
-                default:
-                    break;
+            for (PlayerListener listener: mPlayerListeners) {
+                listener.onPlayerInitialized(playerLibraryInfo);
             }
         }
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onPlacementChanged(Pair<Placement, List<Station>> placementInfo) {
-            if (mNavListener != null)
-                mNavListener.onPlacementChanged(placementInfo.first, placementInfo.second);
+        public void onServiceStatusChange(final EventMessage message) {
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+
+                    switch (message.getStatus()) {
+                        case SKIP_FAILED:
+                            for (NavListener listener: mNavListeners) {
+                                listener.onSkipFailed();
+                            }
+                        case LIKE:
+                            for (SocialListener listener: mSocialListeners ) {
+                                listener.onLiked();
+                            }
+                            break;
+                        case UNLIKE:
+                            for (SocialListener listener: mSocialListeners ) {
+                                listener.onUnliked();
+                            }
+                            break;
+                        case DISLIKE:
+                            for (SocialListener listener: mSocialListeners ) {
+                                listener.onDisliked();
+                            }
+                            break;
+                        default:
+                            break;
+
+                    }
+                }
+            });
         }
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onStationChanged(Station station) {
-            if (mNavListener != null) mNavListener.onStationChanged(station);
+        public void onPlacementChanged(final Pair<Placement, List<Station>> placementInfo) {
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (NavListener listener: mNavListeners) {
+                        listener.onPlacementChanged(placementInfo.first, placementInfo.second);
+                    }
+                }
+            });
         }
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onTrackChanged(Play play) {
-            if (mNavListener != null) mNavListener.onTrackChanged(play);
+        public void onStationChanged(final Station station) {
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (NavListener listener: mNavListeners) {
+                        listener.onStationChanged(station);
+                    }
+                }
+            });
         }
-
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onBufferUpdate(BufferUpdate update) {
-            if (mNavListener != null)
-                mNavListener.onBufferUpdate(update.getPlay(), update.getPercentage());
+        public void onTrackChanged(final Play play) {
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (NavListener listener: mNavListeners) {
+                        listener.onTrackChanged(play);
+                    }
+                }
+            });
         }
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onProgressUpdate(ProgressUpdate update) {
-            if (mNavListener != null)
-                mNavListener.onProgressUpdate(update.getPlay(), update.getElapsedTime(), update.getTotalTime());
+        public void onBufferUpdate(final BufferUpdate update) {
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (NavListener listener: mNavListeners) {
+                        listener.onBufferUpdate(update.getPlay(), update.getPercentage());
+                    }
+                }
+            });
+        }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onProgressUpdate(final ProgressUpdate update) {
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (NavListener listener: mNavListeners) {
+                        listener.onProgressUpdate(update.getPlay(), update.getElapsedTime(), update.getTotalTime());
+                    }
+                }
+            });
         }
     }
 

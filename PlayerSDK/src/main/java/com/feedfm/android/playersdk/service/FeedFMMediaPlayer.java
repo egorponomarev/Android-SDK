@@ -1,6 +1,7 @@
 package com.feedfm.android.playersdk.service;
 
 import android.media.MediaPlayer;
+import android.util.Log;
 
 import com.feedfm.android.playersdk.model.Play;
 
@@ -10,7 +11,11 @@ import java.io.IOException;
  * Created by mharkins on 8/25/14.
  */
 public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPreparedListener, MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnBufferingUpdateListener {
+    private static final String TAG = FeedFMMediaPlayer.class.getSimpleName();
+
     private State mState = State.IDLE;
+    private State mPrevState;
+
     private Play mPlay;
     private boolean mAutoPlay;
 
@@ -62,6 +67,10 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
         this.mState = state;
     }
 
+    public State getPrevState() {
+        return mPrevState;
+    }
+
     public boolean isSkipped() {
         return mSkipped;
     }
@@ -69,6 +78,8 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     @Override
     public void setDataSource(String path) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
         synchronized (this) {
+            Log.d(TAG, String.format("setting DataSource to %s. Current State: %s",path, getState().name()));
+
             super.setDataSource(path);
             mState = State.INITIALIZED;
         }
@@ -98,7 +109,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
         }
     }
 
-    public void skip() {
+    public void silentReset() {
         mSkipped = true;
         reset();
         mSkipped = false;
@@ -153,6 +164,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         synchronized (mState) {
+            mPrevState = mState;
             mState = State.ERROR;
         }
         return mOnErrorListener.onError(mp, what, extra);

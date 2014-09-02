@@ -1,6 +1,6 @@
 package com.feedfm.android.playersdk;
 
-import com.feedfm.android.playersdk.mocks.DummyBus;
+import com.feedfm.android.playersdk.mocks.DummyBusProvider;
 import com.feedfm.android.playersdk.mocks.DummyPlayerListener;
 import com.feedfm.android.playersdk.mocks.FakeMediaPlayerManager;
 import com.feedfm.android.playersdk.mocks.FakePlayer;
@@ -38,7 +38,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(RobolectricTestRunner.class)
 public class PlayerTest {
     private FakePlayer player;
-    private DummyBus bus;
+    private DummyBusProvider.MockBus bus;
 
     private FakePlayerService service;
     private FakeWebservice webservice;
@@ -53,7 +53,9 @@ public class PlayerTest {
         player = FakePlayer.getInstance(Robolectric.application, null, null, null);
         service = new FakePlayerService();
 
-        bus = new DummyBus(player, service);
+        bus = (DummyBusProvider.MockBus) DummyBusProvider.getInstance();
+        bus.setPlayer(player);
+        bus.setService(service);
 
         webservice = new FakeWebservice(service);
         restInterface = new StubRestService();
@@ -115,12 +117,12 @@ public class PlayerTest {
                 }
         };
 
-        player.setNavListener(listener);
+        player.registerNavListener(listener);
 
         player.setPlacementId(10955);
         assertTrue(listener.didCallPlacementChanged);
 
-        player.setStationId("2116");
+        player.setStationId(2116);
         assertTrue(listener.didCallStationChanged);
     }
 
@@ -178,7 +180,7 @@ public class PlayerTest {
         initCredentials();
 
         DummyPlayerListener listener = new DummyPlayerListener();
-        player.setNavListener(listener);
+        player.registerNavListener(listener);
 
         restInterface.mPlayResponseMock = new Gson().fromJson(JsonData.play1, PlayResponse.class);
         restInterface.mPlayStartResponseMock = new Gson().fromJson(JsonData.playStartCanSkip, PlayStartResponse.class);
@@ -215,7 +217,7 @@ public class PlayerTest {
         restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
 
         DummyPlayerListener listener = new DummyPlayerListener();
-        player.setSocialListener(listener);
+        player.registerSocialListener(listener);
         player.like();
 
         assertFalse(listener.didCallLiked);
@@ -236,7 +238,7 @@ public class PlayerTest {
         restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
 
         DummyPlayerListener listener = new DummyPlayerListener();
-        player.setSocialListener(listener);
+        player.registerSocialListener(listener);
         player.unlike();
 
         assertFalse(listener.didCallUnliked);
@@ -257,7 +259,7 @@ public class PlayerTest {
         restInterface.mFeedFMResponseMock = new Gson().fromJson(JsonData.success, PlayResponse.class);
 
         DummyPlayerListener listener = new DummyPlayerListener();
-        player.setSocialListener(listener);
+        player.registerSocialListener(listener);
         player.dislike();
 
         assertFalse(listener.didCallDisliked);

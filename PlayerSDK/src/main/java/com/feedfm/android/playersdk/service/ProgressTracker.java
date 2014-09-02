@@ -1,6 +1,7 @@
 package com.feedfm.android.playersdk.service;
 
 import android.os.Handler;
+import android.os.Looper;
 
 import com.feedfm.android.playersdk.model.Play;
 
@@ -11,6 +12,8 @@ import java.util.Date;
  */
 public class ProgressTracker {
     private OnProgressListener mOnProgressListener;
+    private Handler mUpdateHandler = new Handler(Looper.myLooper());
+
     private long mStartTimestamp;
 
     private long mPausedTimestamp;
@@ -55,7 +58,6 @@ public class ProgressTracker {
         mOffset = now - mPausedTimestamp;
     }
 
-    private Handler mUpdateHandler = new Handler();
 
     private Runnable mUpdateProgress = new Runnable() {
         @Override

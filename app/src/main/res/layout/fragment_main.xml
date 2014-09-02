@@ -3,8 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingLeft="@dimen/activity_horizontal_margin"
-    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingLeft="5dp"
+    android:paddingRight="5dp"
     tools:context=".MainActivity$PlaceholderFragment">
 
     <RelativeLayout
@@ -19,7 +19,6 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:layout_alignParentStart="true"
-            android:onClick="tune"
             android:text="Tune"/>
 
         <ImageButton
@@ -28,7 +27,6 @@
             android:layout_height="wrap_content"
             android:layout_alignTop="@+id/tune"
             android:layout_toRightOf="@+id/tune"
-            android:onClick="play"
             android:src="@android:drawable/ic_media_play"/>
 
         <ImageButton
@@ -47,25 +45,12 @@
             android:layout_toRightOf="@+id/pause"
             android:src="@android:drawable/ic_media_ff"/>
 
-        <ProgressBar
-            android:id="@+id/spinner"
-            android:visibility="gone"
-            style="?android:attr/progressBarStyleLarge"
-            android:indeterminateOnly="true"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_below="@+id/play"
-            android:layout_above="@+id/current_progress"
-            android:layout_alignLeft="@+id/tune"
-            android:layout_alignStart="@+id/tune"
-            android:layout_centerHorizontal="true" />
-
         <Button
             android:id="@+id/like"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_toEndOf="@id/skip"
-            android:layout_toRightOf="@id/skip"
+            android:layout_alignParentLeft="true"
+            android:layout_below="@id/play"
             android:text="Like" />
 
         <Button
@@ -74,6 +59,7 @@
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/like"
             android:layout_toRightOf="@id/like"
+            android:layout_below="@id/play"
             android:text="Unlike" />
 
         <Button
@@ -82,7 +68,21 @@
             android:layout_height="wrap_content"
             android:layout_toEndOf="@id/unlike"
             android:layout_toRightOf="@id/unlike"
+            android:layout_below="@id/play"
             android:text="Dislike" />
+
+
+        <ProgressBar
+            android:id="@+id/spinner"
+            style="?android:attr/progressBarStyleLarge"
+            android:indeterminateOnly="true"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_below="@+id/play"
+            android:layout_above="@+id/title_prefix"
+            android:layout_toEndOf="@id/dislike"
+            android:layout_toRightOf="@id/dislike"
+            android:layout_centerHorizontal="true" />
 
         <TextView
             android:id="@+id/title_prefix"

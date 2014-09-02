@@ -7,7 +7,7 @@ import com.google.gson.annotations.SerializedName;
  */
 public class Placement {
     @SerializedName("id")
-    private int id;
+    private Integer id;
     @SerializedName("name")
     private String name;
 
@@ -15,7 +15,7 @@ public class Placement {
         this.id = id;
     }
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
