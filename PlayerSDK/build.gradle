@@ -24,7 +24,7 @@ android {
     buildToolsVersion "19.1.0"
 
     defaultConfig {
-        applicationId "com.feedfm.android.playersdk"
+        applicationId "fm.feed.android.playersdk"
         minSdkVersion 10
         targetSdkVersion 19
         versionCode 1
