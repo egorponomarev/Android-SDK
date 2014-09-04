@@ -13,19 +13,11 @@ public class FakePlayerService extends PlayerService{
         mWebservice = webservice;
     }
 
-    public void setMediaPlayerManager(MediaPlayerManager mediaPlayerManager) {
-        mMediaPlayerManager = mediaPlayerManager;
-    }
-
     public String getClientIdString() {
         return mPlayerInfo.getClientId();
     }
 
     public void setEventBus(Bus bus) {
         eventBus = bus;
-    }
-
-    public boolean getCanSkip() {
-        return mPlayerInfo.isSkippable();
     }
 }

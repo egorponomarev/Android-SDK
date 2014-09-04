@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName;
 /**
  * Created by mharkins on 8/21/14.
  */
-public class FeedFMError {
+public class FeedFMError extends Throwable {
     @SerializedName("code") private    int    code;
     @SerializedName("message") private String message;
     @SerializedName("status") private  int    status;

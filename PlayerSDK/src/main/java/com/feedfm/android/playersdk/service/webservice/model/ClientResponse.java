@@ -11,4 +11,9 @@ public class ClientResponse extends FeedFMResponse{
     public String getClientId() {
         return clientId;
     }
+
+    @Override
+    public String getModel() {
+        return getClientId();
+    }
 }

@@ -10,6 +10,7 @@ import com.feedfm.android.playersdk.service.webservice.model.PlayStartResponse;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;
+import retrofit.http.Field;
 import retrofit.http.Header;
 import retrofit.http.Path;
 
@@ -32,89 +33,47 @@ public class StubRestService implements Webservice.RestInterface {
     }
 
     @Override
-    public void getClientId(@Header("Authorization") String authorization, Callback<ClientResponse> callback) {
-        if (mClientResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mClientResponseMock, null);
-        }
+    public ClientResponse getClientId(@Header("Authorization") String authorization) {
+        return mClientResponseMock;
     }
 
     @Override
-    public void setPlacementId(@Header("Authorization") String authorization, @Path("id") int id, Callback<PlacementResponse> callback) {
-        if (mPlacementResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mPlacementResponseMock, null);
-        }
+    public PlacementResponse setPlacementId(@Header("Authorization") String authorization, @Path("id") int id) {
+        return mPlacementResponseMock;
     }
 
     @Override
-    public void tune(String authorization,
-                     String clientId,
-                     Integer placementId,
-                     String stationId,
-                     String audioFormats,
-                     Integer maxBitrate,
-                     retrofit.Callback<PlayResponse> callback) {
-        if (mPlayResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mPlayResponseMock, null);
-        }
+    public PlayResponse getPlay(@Header("Authorization") String authorization, @Field("client_id") String clientId, @Field("placement_id") Integer placementId, @Field("station_id") Integer stationId, @Field("formats") String formats, @Field("max_bitrate") Integer maxBitrate) {
+        return mPlayResponseMock;
     }
 
     @Override
-    public void playStarted(@Header("Authorization") String authorization, @Path("id") String playId, Callback<PlayStartResponse> callback) {
-        if (mPlayStartResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mPlayStartResponseMock, null);
-        }
+    public PlayStartResponse playStarted(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mPlayStartResponseMock;
     }
 
     @Override
-    public void skip(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
-        if (mFeedFMResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mFeedFMResponseMock, null);
-        }
+    public FeedFMResponse skip(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mFeedFMResponseMock;
     }
 
     @Override
-    public void playCompleted(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
-        if (mFeedFMResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mFeedFMResponseMock, null);
-        }
+    public FeedFMResponse playCompleted(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mFeedFMResponseMock;
     }
 
     @Override
-    public void like(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
-        if (mFeedFMResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mFeedFMResponseMock, null);
-        }
+    public FeedFMResponse like(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mFeedFMResponseMock;
     }
 
     @Override
-    public void unlike(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
-        if (mFeedFMResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mFeedFMResponseMock, null);
-        }
+    public FeedFMResponse unlike(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mFeedFMResponseMock;
     }
 
     @Override
-    public void dislike(@Header("Authorization") String authorization, @Path("id") String playId, Callback<FeedFMResponse> callback) {
-        if (mFeedFMResponseMock == null) {
-            callback.failure(null);
-        } else {
-            callback.success(mFeedFMResponseMock, null);
-        }
+    public FeedFMResponse dislike(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mFeedFMResponseMock;
     }
 }

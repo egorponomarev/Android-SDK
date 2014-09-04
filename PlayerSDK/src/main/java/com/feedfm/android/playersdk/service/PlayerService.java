@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
-import android.util.Pair;
-import android.widget.Toast;
 
 import com.feedfm.android.playersdk.R;
 import com.feedfm.android.playersdk.model.Placement;
@@ -20,31 +18,37 @@ import com.feedfm.android.playersdk.service.bus.EventMessage;
 import com.feedfm.android.playersdk.service.bus.OutStationWrap;
 import com.feedfm.android.playersdk.service.bus.PlayerAction;
 import com.feedfm.android.playersdk.service.bus.ProgressUpdate;
-import com.feedfm.android.playersdk.service.webservice.DefaultWebserviceCallback;
+import com.feedfm.android.playersdk.service.task.ClientIdTask;
+import com.feedfm.android.playersdk.service.task.PlacementIdTask;
+import com.feedfm.android.playersdk.service.task.PlayTask;
+import com.feedfm.android.playersdk.service.task.SimpleNetworkTask;
+import com.feedfm.android.playersdk.service.task.StationIdTask;
+import com.feedfm.android.playersdk.service.task.TuneTask;
 import com.feedfm.android.playersdk.service.webservice.Webservice;
 import com.feedfm.android.playersdk.service.webservice.model.FeedFMError;
 import com.feedfm.android.playersdk.service.webservice.model.PlayerInfo;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
-import java.util.List;
+import java.util.LinkedList;
+import java.util.Queue;
 
 /**
  * Created by mharkins on 8/21/14.
  */
-public class PlayerService extends Service implements MediaPlayerManager.Listener, ProgressTracker.OnProgressListener {
+public class PlayerService extends Service {
     public static final String TAG = PlayerService.class.getSimpleName();
 
     protected static Bus eventBus = BusProvider.getInstance();
 
     protected Webservice mWebservice;
-    protected MediaPlayerManager mMediaPlayerManager;
-    private ProgressTracker mProgressTracker;
-
     protected PlayerInfo mPlayerInfo;
 
-    // Client State data
-    private boolean mDidTune = false;
+    protected TaskQueueManager mPrimaryQueue = new TaskQueueManager("Primary Queue");
+    protected TaskQueueManager mTuningQueue = new TaskQueueManager("Tuning Queue");
+    protected TaskQueueManager mSecondaryQueue = new TaskQueueManager("Secondary Queue");
+
+    private Queue<FeedFMMediaPlayer> mMediaPlayerQueue = new LinkedList<FeedFMMediaPlayer>();
 
     @Override
     public void onCreate() {
@@ -53,9 +57,6 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
         mPlayerInfo = new PlayerInfo();
 
         mWebservice = new Webservice(this);
-        mMediaPlayerManager = new MediaPlayerManager(this, this);
-
-        mProgressTracker = new ProgressTracker(this);
 
         eventBus.register(this);
     }
@@ -87,7 +88,15 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     public void onDestroy() {
         super.onDestroy();
 
-        mMediaPlayerManager.release();
+        for (FeedFMMediaPlayer mediaPlayer : mMediaPlayerQueue) {
+            mediaPlayer.release();
+
+            mMediaPlayerQueue.remove(mediaPlayer);
+        }
+
+        mPrimaryQueue.clear();
+        mTuningQueue.clear();
+        mSecondaryQueue.clear();
     }
 
     /**
@@ -106,55 +115,50 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     @Subscribe
     @SuppressWarnings("unused")
     public void setPlacementId(Placement placement) {
-        mWebservice.setPlacementId(placement.getId(), new DefaultWebserviceCallback<Pair<Placement, List<Station>>>() {
+        PlacementIdTask task = new PlacementIdTask(mPrimaryQueue, mWebservice, mPlayerInfo, placement.getId()) {
             @Override
-            public void onSuccess(Pair<Placement, List<Station>> result) {
-                mPlayerInfo.setStationList(result.second);
+            public void onPlacementChanged(Placement newPlacement) {
+                eventBus.post(newPlacement);
 
-                boolean didChangePlacement =
-                        mPlayerInfo.getPlacement() == null ||
-                                !mPlayerInfo.getPlacement().getId().equals(result.first.getId());
-                if (didChangePlacement) {
-                    // Save user Placement
-                    mPlayerInfo.setPlacement(result.first);
-                    mPlayerInfo.setStation(null);
-
-                    // TODO: perhaps cancel a tuning request?
-                    mMediaPlayerManager.clearPendingQueue();
-                }
-                eventBus.post(result);
+                play();
             }
-        });
+        };
+
+        // PlacementIdTask cancels everything but:
+        // - ClientIdTask
+        mPrimaryQueue.clearLowerPriorities(task);
+
+        // Cancel any Tunings that might be taking place
+        mTuningQueue.clear();
+
+        mPrimaryQueue.offerUnique(task);
+        mPrimaryQueue.next();
     }
 
     @Subscribe
     @SuppressWarnings("unused")
     public void setStationId(OutStationWrap wrapper) {
-        Station station = wrapper.getObject();
+        Station s = wrapper.getObject();
+        final Integer stationId = s.getId();
 
-        // If the user selects the same station, do nothing.
-        boolean didChangeStation =
-                mPlayerInfo.getStation() == null ||
-                        !mPlayerInfo.getStation().getId().equals(station.getId());
-        if (!didChangeStation) {
-            return;
-        }
+        StationIdTask task = new StationIdTask(null, mPlayerInfo, stationId) {
+            @Override
+            public void onStationChanged(Station station) {
+                if (station != null) {
+                    eventBus.post(station);
 
-        if (mPlayerInfo.hasStationList()) {
-            for (Station s : mPlayerInfo.getStationList()) {
-                if (s.getId().equals(station.getId())) {
-                    mPlayerInfo.setStation(s);
-
-                    // TODO: perhaps cancel a tuning request?
-                    mMediaPlayerManager.clearPendingQueue();
-
-                    eventBus.post(s);
-                    return;
+                    play();
+                } else {
+                    Log.w(TAG, String.format("Station %s could not be found or was already selected in current placement", stationId));
                 }
             }
-        }
+        };
 
-        Log.w(TAG, String.format("Station %s could not be found for current placement.", station.getId()));
+        // StationIdTask cancels everything but:
+        // - ClientIdTask
+        mPrimaryQueue.clearLowerPriorities(task);
+        mPrimaryQueue.offerUnique(task);
+        mPrimaryQueue.next();
     }
 
     @Subscribe
@@ -162,7 +166,7 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
     public void onPlayerAction(PlayerAction playerAction) {
         switch (playerAction.getAction()) {
             case TUNE:
-                tune(false);
+                tune();
                 break;
             case PLAY:
                 play();
@@ -189,234 +193,251 @@ public class PlayerService extends Service implements MediaPlayerManager.Listene
      * Bus receivers
      ****************************************/
     public void getClientId() {
-        mWebservice.getClientId(new DefaultWebserviceCallback<String>() {
+        ClientIdTask task = new ClientIdTask(mPrimaryQueue, mWebservice) {
             @Override
-            public void onSuccess(String clientId) {
+            public void onClientIdChanged(String clientId) {
                 mPlayerInfo.setClientId(clientId);
             }
-        });
+        };
+
+        // Getting a new ClientId will cancel whatever task is currently in progress.
+        mPrimaryQueue.clearLowerPriorities(task);
+        mPrimaryQueue.offerUnique(task);
+        mPrimaryQueue.next();
     }
 
     /**
      * Downloads and loads the the next Track into a {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer}
-     *
-     * @param autoPlay {@code true} to have the track start automatically when it is reached.
      */
-    public void tune(final boolean autoPlay) {
-        if (!mMediaPlayerManager.isReadyForTuning()) {
-            FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-            if (mediaPlayer != null) {
-                mediaPlayer.setAutoPlay(true);
-            }
-            return;
+    public void tune() {
+        if (!mTuningQueue.isEmpty()) {
+            Log.i(TAG, String.format("Switching TuneTask from %s to %s", mTuningQueue.getIdentifier(), mPrimaryQueue.getIdentifier()));
+            mPrimaryQueue.offerUnique(mTuningQueue.poll());
+            mPrimaryQueue.next();
+        } else {
+            // Only tune on the Primary Queue if it is empty of a PlayTask.
+            TaskQueueManager queueManager = !mPrimaryQueue.hasTaskType(PlayTask.class) ? mPrimaryQueue : mTuningQueue;
+
+
+            // Tune in a separate Queue if we are already playing something.
+            TuneTask task = new TuneTask(queueManager, mWebservice, mPlayerInfo) {
+                @Override
+                public void onTuned(FeedFMMediaPlayer mediaPlayer, Play play) {
+                    mMediaPlayerQueue.offer(mediaPlayer);
+                }
+            };
+
+            // TuneTask is low priority and cancels nothing. It will only be queued.
+            queueManager.offerUnique(task);
+            queueManager.next();
         }
-
-        mMediaPlayerManager.preTune(autoPlay);
-        mWebservice.tune(
-                mPlayerInfo.getClientId(),
-                mPlayerInfo.getPlacement(),
-                mPlayerInfo.getStation(),
-                null, // For now don't put in the AudioFormat
-                null,
-                new DefaultWebserviceCallback<Play>() {
-
-                    @Override
-                    public void onSuccess(final Play play) {
-
-                        // This exception is called if the MediaPlayer dataSource is set while the media player is in an invalid state.
-                        // In that case we will abandon this media player and start over the tuning.
-                        try {
-                            mMediaPlayerManager.tune(play);
-                        } catch (IllegalStateException e) {
-                            mMediaPlayerManager.preTune(autoPlay);
-                            mMediaPlayerManager.tune(play);
-                        }
-                    }
-
-                    @Override
-                    public void onFailure(FeedFMError error) {
-                        super.onFailure(error);
-
-                        mMediaPlayerManager.deTune();
-                    }
-                });
     }
 
+    /**
+     * If there is currently a Playing task:
+     * <ul>
+     * <li>
+     * Don't do anything if Playing
+     * </li>
+     * <li>
+     * Resume if Paused
+     * </li>
+     * </ul>
+     * <p/>
+     * If there is no currently Playing Task:
+     * <ol>
+     * <li>If the media player queue is empty, {@link PlayerService#tune()}</li>
+     * <li>Queue up a new {@link com.feedfm.android.playersdk.service.task.PlayTask}.</li>
+     * </ol>
+     */
     private void play() {
-        if (mMediaPlayerManager.isPaused()) {
-            FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-            mediaPlayer.start();
-            mProgressTracker.resume();
+        if (mPrimaryQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
 
-        } else if (mMediaPlayerManager.isReadyForPlay()) {
-            mMediaPlayerManager.playNext();
-        } else if (!mMediaPlayerManager.isPlaying()) {
-            tune(true);
-        }
-    }
-
-    private void skip() {
-        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
-            Log.i(TAG, "Could not Skip track. No active Play");
-            return;
+            // If the Play is Paused, Resume.
+            if (playTask.isPaused()) {
+                playTask.play();
+            }
         }
 
-        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-        final String playId = mediaPlayer.getPlay().getId();
 
-        mWebservice.skip(playId, new DefaultWebserviceCallback<Boolean>() {
+        if (mMediaPlayerQueue.isEmpty()) {
+            tune();
+        }
+
+        PlayTask task = new PlayTask(mPrimaryQueue, mWebservice) {
             @Override
-            public void onSuccess(Boolean success) {
-                if (success) {
-                    mProgressTracker.stop();
-                    mMediaPlayerManager.skip();
-                    play();
+            public FeedFMMediaPlayer getMediaPlayer() {
+                return mMediaPlayerQueue.poll();
+            }
+
+            @Override
+            public void onPlayBegin(PlayTask playTask, Play play) {
+                eventBus.post(play);
+
+                final String playId = play.getId();
+
+                SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                    @Override
+                    public Boolean performRequestSynchronous() throws FeedFMError {
+                        return mWebservice.playStarted(playId);
+                    }
+
+                    @Override
+                    public void onDone(Boolean canSkip) {
+                        boolean skippable = canSkip != null && canSkip == true;
+                        if (!skippable) {
+                            if (mPrimaryQueue.isPlayingTask()) {
+                                PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+
+                                if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
+                                    playTask.setSkippable(skippable);
+                                }
+                            }
+                            eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
+                        }
+
+                    }
+
+                };
+                mSecondaryQueue.offer(playStartTask);
+                mSecondaryQueue.next();
+            }
+
+            @Override
+            public void onProgressUpdate(Play play, Integer progressInMillis, Integer durationInMillis) {
+                eventBus.post(new ProgressUpdate(play, progressInMillis / 1000, durationInMillis / 1000));
+            }
+
+            @Override
+            public void onBufferingUpdate(Play play, Integer percent) {
+                eventBus.post(new BufferUpdate(play, percent));
+
+                if (percent == 100) {
+                    // Tune the next song once the buffering of the current song is complete.
+                    tune();
                 }
             }
 
             @Override
-            public void onFailure(FeedFMError error) {
-                super.onFailure(error);
+            public void onPlayFinished(final Play play, boolean isSkipped) {
+                if (!isSkipped) {
+                    SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                        @Override
+                        public Boolean performRequestSynchronous() throws FeedFMError {
+                            return mWebservice.playCompleted(play.getId());
+                        }
 
-                eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
+                        @Override
+                        public void onDone(Boolean aBoolean) {
+
+                        }
+                    };
+                    mSecondaryQueue.offer(task);
+                    mSecondaryQueue.next();
+                }
+
+                // Keep cycling through plays.
+                PlayerService.this.play();
             }
-        });
+        };
+
+        mPrimaryQueue.clearLowerPriorities(task);
+        mPrimaryQueue.offerIfNotExist(task);
+        mPrimaryQueue.next();
+    }
+
+    private void skip() {
+        // TODO: check if Can skip!
+        // eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
+        if (mPrimaryQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+            playTask.cancel(true);
+        } else {
+            Log.i(TAG, "Could not Skip track. No active Play");
+        }
     }
 
     private void pause() {
-        if (mMediaPlayerManager.isPlaying()) {
-            FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-            mediaPlayer.pause();
-            mProgressTracker.pause();
-        } else {
-            Log.i(TAG, "Could not Pause track. Not playing.");
+        if (mPrimaryQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+
+            // If the Play is Paused, Resume.
+            if (playTask.isPlaying()) {
+                playTask.pause();
+            }
+            return;
         }
+        Log.i(TAG, "Could not Pause track. Not playing.");
     }
 
     private void like() {
-        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
-            Log.w(TAG, "Could not Like track. No active Play");
-            return;
-        }
+        if (mPrimaryQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+            final String playId = playTask.getPlay().getId();
 
-        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-        final String playId = mediaPlayer.getPlay().getId();
-        mWebservice.like(playId, new DefaultWebserviceCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean success) {
-                eventBus.post(new EventMessage(EventMessage.Status.LIKE));
-            }
-        });
+            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                @Override
+                public Boolean performRequestSynchronous() throws FeedFMError {
+                    return mWebservice.like(playId);
+                }
+
+                @Override
+                public void onDone(Boolean aBoolean) {
+                    eventBus.post(new EventMessage(EventMessage.Status.LIKE));
+                }
+            };
+            mSecondaryQueue.offer(task);
+            mSecondaryQueue.next();
+        } else {
+            Log.w(TAG, "Could not Like track. No active Play");
+        }
     }
 
     private void unlike() {
-        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
-            Log.i(TAG, "Could not Like track. No active Play");
-            return;
-        }
 
-        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-        final String playId = mediaPlayer.getPlay().getId();
-        mWebservice.unlike(playId, new DefaultWebserviceCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean success) {
-                eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
-            }
-        });
+        if (mPrimaryQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+            final String playId = playTask.getPlay().getId();
+
+            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                @Override
+                public Boolean performRequestSynchronous() throws FeedFMError {
+                    return mWebservice.unlike(playId);
+                }
+
+                @Override
+                public void onDone(Boolean aBoolean) {
+                    eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
+                }
+            };
+            mSecondaryQueue.offer(task);
+            mSecondaryQueue.next();
+        } else {
+            Log.w(TAG, "Could not Unlike track. No active Play");
+        }
     }
 
     private void dislike() {
-        if (!mMediaPlayerManager.isPaused() && !mMediaPlayerManager.isPlaying()) {
-            Log.i(TAG, "Could not Like track. No active Play");
-            return;
-        }
+        if (mPrimaryQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+            final String playId = playTask.getPlay().getId();
 
-        final FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-        final String playId = mediaPlayer.getPlay().getId();
-        mWebservice.dislike(playId, new DefaultWebserviceCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean success) {
-                eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
-            }
-        });
-    }
+            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                @Override
+                public Boolean performRequestSynchronous() throws FeedFMError {
+                    return mWebservice.dislike(playId);
+                }
 
-    /**
-     * ******************************************************
-     * MediaPlayerManager.Listener implementation
-     */
-
-    @Override
-    public void onPrepared(FeedFMMediaPlayer mp) {
-        // Only start the prepared media player if it is the active one.
-        if (mMediaPlayerManager.isActiveMediaPlayer(mp)) {
-            if (mp.isAutoPlay()) {
-                mMediaPlayerManager.playNext();
-            }
+                @Override
+                public void onDone(Boolean aBoolean) {
+                    eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
+                }
+            };
+            mSecondaryQueue.offer(task);
+            mSecondaryQueue.next();
+        } else {
+            Log.w(TAG, "Could not Dislike track. No active Play");
         }
     }
-
-    @Override
-    public void onPlayStart(Play play) {
-        mDidTune = false;
-
-        eventBus.post(play);
-        mProgressTracker.start(play);
-
-        mWebservice.playStarted(play.getId(), new DefaultWebserviceCallback<Boolean>() {
-            @Override
-            public void onSuccess(Boolean canSkip) {
-                mPlayerInfo.setSkippable(canSkip);
-            }
-        });
-    }
-
-    @Override
-    public void onPlayCompleted(Play play, boolean isSkipped) {
-        mProgressTracker.stop();
-
-        // Keep cycling through plays.
-        play();
-
-        if (!isSkipped) {
-            mWebservice.playCompleted(play.getId(), new DefaultWebserviceCallback<Boolean>() {});
-        }
-    }
-
-    @Override
-    public void onBufferingUpdate(Play play, int percent) {
-        eventBus.post(new BufferUpdate(play, percent));
-
-        // Tune the next song once the buffering of the current song is complete.
-        // TODO: Do this better than with a flag.
-        if (!mDidTune && percent == 100) {
-            mDidTune = true;
-            tune(false);
-        }
-    }
-
-    @Override
-    public void onQueueDone() {
-        Toast.makeText(PlayerService.this, "Done with queued Plays", Toast.LENGTH_LONG).show();
-    }
-
-    /*
-     * MediaPlayerManager.Listener implementation
-     **********************************************************/
-
-    /**
-     * *******************************************************
-     * ProgressTracker.OnProgressListener implementation
-     */
-
-    @Override
-    public void onProgressUpdate(Play play, int elapsed, int totalDuration) {
-        FeedFMMediaPlayer mediaPlayer = mMediaPlayerManager.getActiveMediaPlayer();
-
-        eventBus.post(new ProgressUpdate(play, mediaPlayer.getCurrentPosition() / 1000, mediaPlayer.getDuration() / 1000));
-    }
-
-    /*
-     * ProgressTracker.OnProgressListener implementation
-     **********************************************************/
 }

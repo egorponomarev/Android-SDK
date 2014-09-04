@@ -30,14 +30,17 @@ public class MediaPlayerManager implements
 
     private FeedFMMediaPlayer mTuningMediaPlayer;
 
-    public MediaPlayerManager(Context context, Listener listener) {
+    public MediaPlayerManager(Context context) {
         this.mContext = context;
-        this.mListener = listener;
 
         mMediaPlayerPool = new LinkedList<FeedFMMediaPlayer>();
         mQueue = new LinkedList<FeedFMMediaPlayer>();
 
 //        initAudioManager();
+    }
+
+    public void setListener(Listener mListener) {
+        this.mListener = mListener;
     }
 
     /**
@@ -58,23 +61,6 @@ public class MediaPlayerManager implements
         }
     }
 
-
-    /**
-     * Prepare a {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer} instance.
-     * This is prior to setting it's data source.
-     *
-     * @param autoPlay
-     */
-    public void preTune(boolean autoPlay) {
-        mTuningMediaPlayer = mMediaPlayerPool.poll();
-        if (mTuningMediaPlayer == null) {
-            mTuningMediaPlayer = initNewMediaPlayer();
-        }
-
-        mTuningMediaPlayer.setState(FeedFMMediaPlayer.State.FETCHING_METADATA);
-        mTuningMediaPlayer.setAutoPlay(autoPlay);
-    }
-
     /**
      * Recycle the {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer} currently being tuned.
      */
@@ -92,52 +78,41 @@ public class MediaPlayerManager implements
      * @param play
      */
     public void tune(Play play) throws IllegalStateException {
-        // If the mTuningMediaPlayer is null that probably means that the tuning was interrupted
-        if (mTuningMediaPlayer == null) {
-            Log.i(TAG, String.format("Canceling tuning of: %s", play.getId()));
-            return;
+        FeedFMMediaPlayer mediaPlayer = mMediaPlayerPool.poll();
+        if (mediaPlayer == null) {
+            mediaPlayer = initNewMediaPlayer();
         }
 
-        // Verify that we are not already tuning or playing that Play.
-        // We only learn about which Play we are going to receive when we receive the data from the server.
-        // The same play will be received again if the previous Play hasn't been signaled as Started yet
-        FeedFMMediaPlayer mediaPlayer = getMediaPlayerForPlay(play);
-        if (mediaPlayer != null) {
-            // TODO: this is a bit of a patch up to have a tuned track start
-            if (mTuningMediaPlayer.isAutoPlay()) {
-                mediaPlayer.setAutoPlay(true);
-                if (mediaPlayer.getState() == FeedFMMediaPlayer.State.PREPARED) {
-                    mediaPlayer.start();
-                }
-            }
-            mTuningMediaPlayer.reset();
-            mMediaPlayerPool.offer(mTuningMediaPlayer);
-            mTuningMediaPlayer = null;
-            return;
-        }
-
-        mTuningMediaPlayer.setPlay(play);
+        mediaPlayer.setState(FeedFMMediaPlayer.State.FETCHING_METADATA);
 
         try {
             // TODO: Perhaps setDataSource and prepareAsync could be added to the setPlay method in the CustomMediaPlayer object.
-            mQueue.offer(mTuningMediaPlayer);
 
-            mTuningMediaPlayer.setDataSource(play.getAudioFile().getUrl());
-            mTuningMediaPlayer.prepareAsync();
-            mTuningMediaPlayer = null;
+            mediaPlayer.setDataSource(play.getAudioFile().getUrl());
+            mediaPlayer.prepare();
 
+            mQueue.offer(mediaPlayer);
         } catch (IOException e) {
             // TODO-XX handle otherwise.
             e.printStackTrace();
-        } catch (IllegalStateException e) {
-            // Do a bit of clean up when this exception.
-            // Let the PlayerService handle the retry.
-            mQueue.remove(mTuningMediaPlayer);
-            mTuningMediaPlayer.release();
-            mTuningMediaPlayer = null;
-
-            throw e;
         }
+    }
+
+    protected FeedFMMediaPlayer initNewMediaPlayer() {
+        FeedFMMediaPlayer mediaPlayer = new FeedFMMediaPlayer();
+        mediaPlayer.setOnErrorListener(this);
+        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+
+        /*
+        //TODO: WIFI Lock
+        WifiLock wifiLock = ((WifiManager) getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "mylock");
+        wifiLock.acquire();
+        ...
+        wifiLock.release();
+         */
+
+
+        return mediaPlayer;
     }
 
     /**
@@ -242,40 +217,12 @@ public class MediaPlayerManager implements
     }
 
     /**
-     * Create and configure a new CustomMediaPlayer instance
-     *
-     * @return
-     */
-    protected FeedFMMediaPlayer initNewMediaPlayer() {
-        int instanceCount = mQueue.size() + mMediaPlayerPool.size() + (mTuningMediaPlayer == null ? 0 : 1);
-        Log.d(TAG, "New Instance of FeedFMMediaPlayer. Total: " + instanceCount);
-
-        FeedFMMediaPlayer mediaPlayer = new FeedFMMediaPlayer();
-        mediaPlayer.setOnPreparedListener(this);
-        mediaPlayer.setOnErrorListener(this);
-        mediaPlayer.setOnBufferingUpdateListener(this);
-        mediaPlayer.setOnCompletionListener(this);
-        mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-        mediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
-
-        /*
-        //TODO: WIFI Lock
-        WifiLock wifiLock = ((WifiManager) getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "mylock");
-        wifiLock.acquire();
-        ...
-        wifiLock.release();
-         */
-
-
-        return mediaPlayer;
-    }
-
-    /**
      * MediaPlayer Listener Implementations
      */
     @Override
     public void onPrepared(MediaPlayer mp) {
-        mListener.onPrepared((FeedFMMediaPlayer) mp);
+
+//        mListener.onPrepared((FeedFMMediaPlayer) mp);
     }
 
     @Override
@@ -322,7 +269,6 @@ public class MediaPlayerManager implements
                 case STARTED:
                 case PAUSED:
                     if (savedAutoPlay) {
-                        preTune(savedAutoPlay);
                         tune(savedPlay);
                     }
                     break;
@@ -425,13 +371,6 @@ public void onAudioFocusChange(int focusChange) {
      * Implement this interface to listen to {@link MediaPlayerManager} events.
      */
     public interface Listener {
-        /**
-         * Called when a {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer} is ready for playing
-         *
-         * @param mp {@link com.feedfm.android.playersdk.service.FeedFMMediaPlayer}
-         */
-        public void onPrepared(FeedFMMediaPlayer mp);
-
         /**
          * Called when a {@link com.feedfm.android.playersdk.model.Play} starts
          *

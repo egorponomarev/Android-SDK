@@ -43,7 +43,6 @@ public class PlayerTest {
     private FakePlayerService service;
     private FakeWebservice webservice;
     private StubRestService restInterface;
-    private FakeMediaPlayerManager mediaPlayerManager;
 
 
     @Before
@@ -60,12 +59,8 @@ public class PlayerTest {
         webservice = new FakeWebservice(service);
         restInterface = new StubRestService();
 
-        mediaPlayerManager = new FakeMediaPlayerManager(service, service);
-
-
         service.onCreate();
         service.setWebservice(webservice);
-        service.setMediaPlayerManager(mediaPlayerManager);
         webservice.setRestService(restInterface);
         service.onStartCommand(null, 0, 0);
     }

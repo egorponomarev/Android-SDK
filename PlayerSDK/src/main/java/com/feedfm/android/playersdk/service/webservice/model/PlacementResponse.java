@@ -20,4 +20,13 @@ public class PlacementResponse extends FeedFMResponse {
     public List<Station> getStations() {
         return stations;
     }
+
+    @Override
+    public Placement getModel() {
+        Placement placement = getPlacement();
+
+        // Set the list of Stations into the Placement object.
+        placement.setStationList(getStations());
+        return placement;
+    }
 }

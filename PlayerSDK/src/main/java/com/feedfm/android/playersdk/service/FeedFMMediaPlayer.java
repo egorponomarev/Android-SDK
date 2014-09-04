@@ -20,11 +20,11 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     private boolean mAutoPlay;
 
     private boolean mSkipped = false;
+    private int mLastBufferUpdate = 0;
 
     private OnPreparedListener mOnPreparedListener;
     private OnCompletionListener mOnCompletionListener;
     private OnErrorListener mOnErrorListener;
-    private OnBufferingUpdateListener mOnBufferingUpdateListener;
 
     public static enum State {
         IDLE,
@@ -41,6 +41,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     }
 
     public FeedFMMediaPlayer() {
+        setOnBufferingUpdateListener(this);
     }
 
     public State getState() {
@@ -78,7 +79,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     @Override
     public void setDataSource(String path) throws IOException, IllegalArgumentException, SecurityException, IllegalStateException {
         synchronized (this) {
-            Log.d(TAG, String.format("setting DataSource to %s. Current State: %s",path, getState().name()));
+            Log.d(TAG, String.format("setting DataSource to %s. Current State: %s", path, getState().name()));
 
             super.setDataSource(path);
             mState = State.INITIALIZED;
@@ -145,13 +146,6 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     }
 
     @Override
-    public void setOnBufferingUpdateListener(OnBufferingUpdateListener listener) {
-        super.setOnBufferingUpdateListener(this);
-
-        mOnBufferingUpdateListener = listener;
-    }
-
-    @Override
     public void onCompletion(MediaPlayer mp) {
         if (!mSkipped) {
             synchronized (mState) {
@@ -180,7 +174,10 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
 
     @Override
     public void onBufferingUpdate(MediaPlayer mp, int percent) {
-        // Only send buffering update if the song isn't done buffering.
-        mOnBufferingUpdateListener.onBufferingUpdate(mp, percent);
+        mLastBufferUpdate = percent;
+    }
+
+    public int getLastBufferUpdate() {
+        return mLastBufferUpdate;
     }
 }

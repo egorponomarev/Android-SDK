@@ -11,4 +11,9 @@ public class PlayStartResponse extends FeedFMResponse {
     public boolean canSkip() {
         return canSkip;
     }
+
+    @Override
+    public Object getModel() {
+        return canSkip();
+    }
 }

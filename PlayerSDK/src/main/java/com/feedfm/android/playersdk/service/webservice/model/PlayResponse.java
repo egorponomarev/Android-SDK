@@ -12,4 +12,9 @@ public class PlayResponse extends FeedFMResponse {
     public Play getPlay() {
         return play;
     }
+
+    @Override
+    public Play getModel() {
+        return getPlay();
+    }
 }
