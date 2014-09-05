@@ -20,7 +20,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
     private boolean mAutoPlay;
 
     private boolean mSkipped = false;
-    private int mLastBufferUpdate = 0;
+    private int mLastBufferUpdate;
 
     private OnPreparedListener mOnPreparedListener;
     private OnCompletionListener mOnCompletionListener;
@@ -88,6 +88,7 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
 
     @Override
     public void prepareAsync() throws IllegalStateException {
+        mLastBufferUpdate = 0;
         synchronized (this) {
             super.prepareAsync();
             mState = State.PREPARING;
@@ -161,7 +162,13 @@ public class FeedFMMediaPlayer extends MediaPlayer implements MediaPlayer.OnPrep
             mPrevState = mState;
             mState = State.ERROR;
         }
-        return mOnErrorListener.onError(mp, what, extra);
+        boolean retval = false;
+        if (mOnErrorListener != null) {
+            retval = mOnErrorListener.onError(mp, what, extra);
+        } else {
+            Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", this.getPlay().getAudioFile().getTrack().getTitle(), what, extra));
+        }
+        return retval;
     }
 
     @Override

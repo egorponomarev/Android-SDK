@@ -7,14 +7,21 @@ import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
 /**
  * Created by mharkins on 9/2/14.
  */
-public abstract class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
+public class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
+    public interface OnStationIdChanged {
+        public void onSuccess(Station station);
+    }
+
+    private OnStationIdChanged mListener;
+
     public Integer mStationId;
     public PlayerInfo mPlayerInfo;
 
-    public StationIdTask(TaskQueueManager queueManager, PlayerInfo playerInfo, Integer placementId) {
+    public StationIdTask(TaskQueueManager queueManager, OnStationIdChanged mListener, PlayerInfo mPlayerInfo, Integer mStationId) {
         super(queueManager);
-        this.mStationId = placementId;
-        this.mPlayerInfo = playerInfo;
+        this.mListener = mListener;
+        this.mStationId = mStationId;
+        this.mPlayerInfo = mPlayerInfo;
     }
 
     @Override
@@ -41,15 +48,15 @@ public abstract class StationIdTask extends PlayerAbstractTask<Object, Void, Sta
 
     @Override
     protected void onTaskFinished(Station station) {
-        onStationChanged(station);
+        if (this.mListener != null) {
+            this.mListener.onSuccess(station);
+        }
     }
 
     @Override
     protected void onTaskCancelled() {
 
     }
-
-    public abstract void onStationChanged(Station station);
 
     @Override
     public String toString() {

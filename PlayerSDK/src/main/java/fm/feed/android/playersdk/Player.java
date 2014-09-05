@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Pair;
+import android.widget.Toast;
 
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
@@ -15,6 +16,7 @@ import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
@@ -101,7 +103,7 @@ public class Player {
     }
 
     public void setPlacementId(Integer placementId) {
-        mEventBus.post(new Placement(placementId));
+        mEventBus.post(new OutPlacementWrap(new Placement(placementId)));
     }
 
     public void setStationId(Integer stationId) {
@@ -177,6 +179,16 @@ public class Player {
                                 listener.onDisliked();
                             }
                             break;
+                        case END_OF_PLAYLIST:
+                            for (NavListener listener: mNavListeners) {
+                                listener.onEndOfPlaylist();
+                            }
+                            break;
+                        case NOT_IN_US:
+                            for (PlayerListener listener: mPlayerListeners) {
+                                listener.onNotInUS();
+                            }
+                            break;
                         default:
                             break;
 
@@ -187,12 +199,12 @@ public class Player {
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onPlacementChanged(final Pair<Placement, List<Station>> placementInfo) {
+        public void onPlacementChanged(final Placement placement) {
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     for (NavListener listener: mNavListeners) {
-                        listener.onPlacementChanged(placementInfo.first, placementInfo.second);
+                        listener.onPlacementChanged(placement, placement.getStationList());
                     }
                 }
             });
@@ -273,14 +285,11 @@ public class Player {
 
         public void onTrackChanged(Play play);
 
+        public void onEndOfPlaylist();
+
         public void onPlaybackStateChanged(Placement placement, List<Station> stationList);
 
         public void onSkipFailed();
-
-        /**
-         * Called when the user is not located in the US. No music will be available to play.
-         */
-        public void onNotInUS();
 
         public void onBufferUpdate(Play play, int percentage);
 

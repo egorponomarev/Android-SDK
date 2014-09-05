@@ -7,9 +7,16 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 /**
  * Created by mharkins on 9/2/14.
  */
-public abstract class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
-    public ClientIdTask(TaskQueueManager queueManager, Webservice mWebservice) {
+public class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
+    public interface OnClientIdChanged {
+        public void onSuccess(String clientId);
+    }
+    private OnClientIdChanged mListener;
+
+    public ClientIdTask(TaskQueueManager queueManager, Webservice mWebservice, OnClientIdChanged listener) {
         super(queueManager, mWebservice);
+
+        this.mListener = listener;
     }
 
     @Override
@@ -30,13 +37,14 @@ public abstract class ClientIdTask extends NetworkAbstractTask<Object, Void, Str
 
     @Override
     protected void onTaskFinished(String clientId) {
-        onClientIdChanged(clientId);
+        if (mListener != null) {
+            mListener.onSuccess(clientId);
+        }
     }
-
-    public abstract void onClientIdChanged(String clientId);
 
     @Override
     public String toString() {
         return String.format("%s", ClientIdTask.class.getSimpleName());
     }
+
 }

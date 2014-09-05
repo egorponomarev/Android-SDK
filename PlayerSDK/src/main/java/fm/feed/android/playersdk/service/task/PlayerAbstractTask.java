@@ -3,6 +3,7 @@ package fm.feed.android.playersdk.service.task;
 import android.os.AsyncTask;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 
 import fm.feed.android.playersdk.service.TaskQueueManager;
 
@@ -26,9 +27,21 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
         this.mQueueManager = queueManager;
     }
 
+    public void setQueueManager(TaskQueueManager queueManager) {
+        this.mQueueManager = queueManager;
+    }
+
+    @Override
+    protected void onPreExecute() {
+        Log.i(getClass().getSimpleName(), String.format("%s, onPreExecute...", mQueueManager));
+        super.onPreExecute();
+    }
+
     @Deprecated
     @Override
     protected void onCancelled() {
+        Log.i(getClass().getSimpleName(), String.format("%s, onCancelled...", mQueueManager));
+
         super.onCancelled();
 
         mHandler.post(mTaskCancelled);
@@ -37,6 +50,7 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
     @Deprecated
     @Override
     protected void onPostExecute(final Result result) {
+        Log.i(getClass().getSimpleName(), String.format("%s, onPostExecute...", mQueueManager));
         super.onPostExecute(result);
 
         mHandler.post(new Runnable() {

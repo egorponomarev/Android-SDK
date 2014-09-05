@@ -49,7 +49,7 @@ public class Webservice {
         mExecutorService = Executors.newSingleThreadExecutor();
 
         RestAdapter restAdapter = new RestAdapter.Builder()
-                .setLogLevel(RestAdapter.LogLevel.FULL)
+                .setLogLevel(RestAdapter.LogLevel.BASIC)
                 .setClient(new OkClient(okHttpClient))
                 .setExecutors(mExecutorService, null)
                 .setEndpoint(apiUrl + apiVersion)
@@ -102,7 +102,7 @@ public class Webservice {
                         placementId,
                         stationId,
                         audioFormatStr,
-                        maxBitrate);
+                        192);
             }
         };
         return r.get();

@@ -33,7 +33,6 @@ import fm.feed.android.playersdk.model.PlayerLibraryInfo;
 import fm.feed.android.playersdk.model.Station;
 
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 
@@ -152,6 +151,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
             }
         });
+
+        resetProgressInfo();
     }
 
     @Override
@@ -198,6 +199,18 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
         // NOTIFICATION_ID allows you to update the notification later on.
         mNotificationManager.notify(mNotificationId, mBuilder.build());
+    }
+
+    private void resetProgressInfo() {
+        int max = 0;
+        int min = 0;
+        mTxtCurrentProgress.setText(TimeUtils.toProgressFormat(min));
+        mTxtDuration.setText(TimeUtils.toProgressFormat(max));
+
+        mProgressBar.setProgress(min);
+        mProgressBar.setSecondaryProgress(min);
+        mProgressBar.setMax(min);
+
     }
 
     public void clearNotification() {
@@ -312,10 +325,11 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     @Override
     public void onTrackChanged(Play play) {
+        resetProgressInfo();
+
         mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
         mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
 
-        mProgressBar.setSecondaryProgress(0);
         mTxtTitle.setText(play.getAudioFile().getTrack().getTitle());
         mTxtArtist.setText(play.getAudioFile().getArtist().getName());
         mTxtAlbum.setText(play.getAudioFile().getRelease().getTitle());
@@ -330,12 +344,18 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     @Override
     public void onSkipFailed() {
-
+        Toast.makeText(getActivity(), "Cannot Skip Track", Toast.LENGTH_LONG).show();
     }
 
     @Override
     public void onNotInUS() {
 
+    }
+
+    @Override
+    public void onEndOfPlaylist() {
+        Toast.makeText(getActivity(), "Reached end of Playlist", Toast.LENGTH_LONG).show();
+        resetProgressInfo();
     }
 
     @Override

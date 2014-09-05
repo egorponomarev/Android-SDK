@@ -8,7 +8,9 @@ public class EventMessage {
         SKIP_FAILED,
         LIKE,
         UNLIKE,
-        DISLIKE
+        DISLIKE,
+        END_OF_PLAYLIST,
+        NOT_IN_US
     }
 
     private Status mStatus;

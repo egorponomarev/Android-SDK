@@ -1,10 +1,15 @@
 package fm.feed.android.playersdk.service;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
+import android.media.AudioManager;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
 
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
@@ -15,6 +20,7 @@ import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
@@ -27,11 +33,6 @@ import fm.feed.android.playersdk.service.task.TuneTask;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
-import com.squareup.otto.Bus;
-import com.squareup.otto.Subscribe;
-
-import java.util.LinkedList;
-import java.util.Queue;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -48,7 +49,7 @@ public class PlayerService extends Service {
     protected TaskQueueManager mTuningQueue = new TaskQueueManager("Tuning Queue");
     protected TaskQueueManager mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
-    private Queue<FeedFMMediaPlayer> mMediaPlayerQueue = new LinkedList<FeedFMMediaPlayer>();
+    private MediaPlayerPool mMediaPlayerPool = new MediaPlayerPool();
 
     @Override
     public void onCreate() {
@@ -88,15 +89,11 @@ public class PlayerService extends Service {
     public void onDestroy() {
         super.onDestroy();
 
-        for (FeedFMMediaPlayer mediaPlayer : mMediaPlayerQueue) {
-            mediaPlayer.release();
-
-            mMediaPlayerQueue.remove(mediaPlayer);
-        }
-
         mPrimaryQueue.clear();
         mTuningQueue.clear();
         mSecondaryQueue.clear();
+
+        mMediaPlayerPool.release();
     }
 
     /**
@@ -114,15 +111,16 @@ public class PlayerService extends Service {
 
     @Subscribe
     @SuppressWarnings("unused")
-    public void setPlacementId(Placement placement) {
-        PlacementIdTask task = new PlacementIdTask(mPrimaryQueue, mWebservice, mPlayerInfo, placement.getId()) {
+    public void setPlacementId(OutPlacementWrap wrapper) {
+        Placement p = wrapper.getObject();
+        PlacementIdTask task = new PlacementIdTask(mPrimaryQueue, mWebservice, new PlacementIdTask.OnPlacementIdChanged() {
             @Override
-            public void onPlacementChanged(Placement newPlacement) {
-                eventBus.post(newPlacement);
+            public void onSuccess(Placement placement) {
+                eventBus.post(placement);
 
                 play();
             }
-        };
+        }, mPlayerInfo, p.getId());
 
         // PlacementIdTask cancels everything but:
         // - ClientIdTask
@@ -141,9 +139,9 @@ public class PlayerService extends Service {
         Station s = wrapper.getObject();
         final Integer stationId = s.getId();
 
-        StationIdTask task = new StationIdTask(null, mPlayerInfo, stationId) {
+        StationIdTask task = new StationIdTask(mPrimaryQueue, new StationIdTask.OnStationIdChanged() {
             @Override
-            public void onStationChanged(Station station) {
+            public void onSuccess(Station station) {
                 if (station != null) {
                     eventBus.post(station);
 
@@ -152,7 +150,7 @@ public class PlayerService extends Service {
                     Log.w(TAG, String.format("Station %s could not be found or was already selected in current placement", stationId));
                 }
             }
-        };
+        }, mPlayerInfo, stationId);
 
         // StationIdTask cancels everything but:
         // - ClientIdTask
@@ -193,12 +191,12 @@ public class PlayerService extends Service {
      * Bus receivers
      ****************************************/
     public void getClientId() {
-        ClientIdTask task = new ClientIdTask(mPrimaryQueue, mWebservice) {
+        ClientIdTask task = new ClientIdTask(mPrimaryQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
             @Override
-            public void onClientIdChanged(String clientId) {
+            public void onSuccess(String clientId) {
                 mPlayerInfo.setClientId(clientId);
             }
-        };
+        });
 
         // Getting a new ClientId will cancel whatever task is currently in progress.
         mPrimaryQueue.clearLowerPriorities(task);
@@ -210,26 +208,59 @@ public class PlayerService extends Service {
      * Downloads and loads the the next Track into a {@link fm.feed.android.playersdk.service.FeedFMMediaPlayer}
      */
     public void tune() {
-        if (!mTuningQueue.isEmpty()) {
+        if (mTuningQueue.isTuning()) {
             Log.i(TAG, String.format("Switching TuneTask from %s to %s", mTuningQueue.getIdentifier(), mPrimaryQueue.getIdentifier()));
+
             mPrimaryQueue.offerUnique(mTuningQueue.poll());
             mPrimaryQueue.next();
         } else {
-            // Only tune on the Primary Queue if it is empty of a PlayTask.
-            TaskQueueManager queueManager = !mPrimaryQueue.hasTaskType(PlayTask.class) ? mPrimaryQueue : mTuningQueue;
-
+            // Only tune on the Primary Queue if it is empty of a Tuning or Playing Task.
+            TaskQueueManager queueManager;
+            if (!mPrimaryQueue.isPlayingTask()) {
+                queueManager = mPrimaryQueue;
+            } else {
+                PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+                if (playTask.isBuffering()) {
+                    Log.i(TAG, "Can't Tune while still Buffering.");
+                    return;
+                }
+                queueManager = mTuningQueue;
+            }
 
             // Tune in a separate Queue if we are already playing something.
-            TuneTask task = new TuneTask(queueManager, mWebservice, mPlayerInfo) {
+            final TuneTask task = new TuneTask(queueManager, mWebservice, mMediaPlayerPool, new TuneTask.TuneTaskListener() {
                 @Override
-                public void onTuned(FeedFMMediaPlayer mediaPlayer, Play play) {
-                    mMediaPlayerQueue.offer(mediaPlayer);
+                public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
+                    // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
+                    if (!mPrimaryQueue.isPlayingTask()) {
+                        eventBus.post(play);
+                    }
                 }
-            };
+
+                @Override
+                public void onSuccess(TuneTask tuneTask, FeedFMMediaPlayer mediaPlayer, Play play) {
+
+                }
+
+                @Override
+                public void onApiError(FeedFMError mApiError) {
+                    handleApiError(mApiError);
+                }
+            }, mPlayerInfo);
 
             // TuneTask is low priority and cancels nothing. It will only be queued.
-            queueManager.offerUnique(task);
+            queueManager.offerIfNotExist(task);
             queueManager.next();
+        }
+    }
+
+    public void handleApiError(FeedFMError error) {
+        if (error.getCode() == FeedFMError.CODE_NOT_IN_US) {
+            eventBus.post(new EventMessage(EventMessage.Status.NOT_IN_US));
+        } else if (error.getCode()== FeedFMError.CODE_END_OF_PLAYLIST) {
+            eventBus.post(new EventMessage(EventMessage.Status.END_OF_PLAYLIST));
+        } else if (error.getCode()== FeedFMError.CODE_PLAYBACK_ALREADY_STARTED) {
+            Log.w(TAG, error);
         }
     }
 
@@ -257,49 +288,50 @@ public class PlayerService extends Service {
             // If the Play is Paused, Resume.
             if (playTask.isPaused()) {
                 playTask.play();
+                return;
             }
         }
 
 
-        if (mMediaPlayerQueue.isEmpty()) {
+        if (!mMediaPlayerPool.hasTunedMediaPlayer()) {
             tune();
         }
 
-        PlayTask task = new PlayTask(mPrimaryQueue, mWebservice) {
-            @Override
-            public FeedFMMediaPlayer getMediaPlayer() {
-                return mMediaPlayerQueue.poll();
-            }
-
+        PlayTask task = new PlayTask(mPrimaryQueue, mWebservice, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
                 eventBus.post(play);
 
                 final String playId = play.getId();
 
-                SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                     @Override
                     public Boolean performRequestSynchronous() throws FeedFMError {
                         return mWebservice.playStarted(playId);
                     }
 
-                    @Override
-                    public void onDone(Boolean canSkip) {
-                        boolean skippable = canSkip != null && canSkip == true;
-                        if (!skippable) {
-                            if (mPrimaryQueue.isPlayingTask()) {
-                                PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+                    private void updateSkipStatus(boolean canSkip) {
+                        if (mPrimaryQueue.isPlayingTask()) {
+                            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
 
-                                if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
-                                    playTask.setSkippable(skippable);
-                                }
+                            if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
+                                playTask.setSkippable(canSkip);
                             }
-                            eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
                         }
+                    }
+
+                    @Override
+                    public void onSuccess(Boolean canSkip) {
+                        boolean skippable = canSkip != null && canSkip == true;
+                        updateSkipStatus(skippable);
 
                     }
 
-                };
+                    @Override
+                    public void onFail() {
+                        updateSkipStatus(false);
+                    }
+                });
                 mSecondaryQueue.offer(playStartTask);
                 mSecondaryQueue.next();
             }
@@ -322,25 +354,31 @@ public class PlayerService extends Service {
             @Override
             public void onPlayFinished(final Play play, boolean isSkipped) {
                 if (!isSkipped) {
-                    SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+                    SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                         @Override
                         public Boolean performRequestSynchronous() throws FeedFMError {
                             return mWebservice.playCompleted(play.getId());
                         }
 
                         @Override
-                        public void onDone(Boolean aBoolean) {
+                        public void onSuccess(Boolean aBoolean) {
 
                         }
-                    };
+
+                        @Override
+                        public void onFail() {
+
+                        }
+                    });
                     mSecondaryQueue.offer(task);
                     mSecondaryQueue.next();
-                }
 
-                // Keep cycling through plays.
-                PlayerService.this.play();
+                    // Keep cycling through plays.
+                    PlayerService.this.play();
+                }
             }
-        };
+        });
+
 
         mPrimaryQueue.clearLowerPriorities(task);
         mPrimaryQueue.offerIfNotExist(task);
@@ -348,11 +386,17 @@ public class PlayerService extends Service {
     }
 
     private void skip() {
-        // TODO: check if Can skip!
-        // eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
         if (mPrimaryQueue.isPlayingTask()) {
             PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
-            playTask.cancel(true);
+
+            if (playTask.isSkippable()) {
+                mPrimaryQueue.remove(playTask);
+                playTask.cancel(true);
+
+                play();
+            } else {
+                eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
+            }
         } else {
             Log.i(TAG, "Could not Skip track. No active Play");
         }
@@ -376,17 +420,22 @@ public class PlayerService extends Service {
             PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
             final String playId = playTask.getPlay().getId();
 
-            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
                     return mWebservice.like(playId);
                 }
 
                 @Override
-                public void onDone(Boolean aBoolean) {
+                public void onSuccess(Boolean aBoolean) {
                     eventBus.post(new EventMessage(EventMessage.Status.LIKE));
                 }
-            };
+
+                @Override
+                public void onFail() {
+
+                }
+            });
             mSecondaryQueue.offer(task);
             mSecondaryQueue.next();
         } else {
@@ -400,17 +449,22 @@ public class PlayerService extends Service {
             PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
             final String playId = playTask.getPlay().getId();
 
-            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
                     return mWebservice.unlike(playId);
                 }
 
                 @Override
-                public void onDone(Boolean aBoolean) {
+                public void onSuccess(Boolean aBoolean) {
                     eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
                 }
-            };
+
+                @Override
+                public void onFail() {
+
+                }
+            });
             mSecondaryQueue.offer(task);
             mSecondaryQueue.next();
         } else {
@@ -423,21 +477,76 @@ public class PlayerService extends Service {
             PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
             final String playId = playTask.getPlay().getId();
 
-            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice) {
+            SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
                     return mWebservice.dislike(playId);
                 }
 
                 @Override
-                public void onDone(Boolean aBoolean) {
+                public void onSuccess(Boolean aBoolean) {
                     eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
                 }
-            };
+
+                @Override
+                public void onFail() {
+
+                }
+            });
             mSecondaryQueue.offer(task);
             mSecondaryQueue.next();
         } else {
             Log.w(TAG, "Could not Dislike track. No active Play");
+        }
+    }
+
+    private void initAudioManager() {
+        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        int result = audioManager.requestAudioFocus(new AudioManager.OnAudioFocusChangeListener() {
+            @Override
+            public void onAudioFocusChange(int focusChange) {
+                // TODO: deal with different focus changes.
+                switch (focusChange) {
+                    case AudioManager.AUDIOFOCUS_GAIN:
+                        // You have gained the audio focus.
+                        if (mPrimaryQueue.isPlayingTask()) {
+                            PlayTask task = (PlayTask) mPrimaryQueue.peek();
+                            if (task.isPaused()) {
+                                PlayerService.this.play();
+                            }
+                        }
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS:
+                        // You have lost the audio focus for a presumably long time.
+                        // You must skip all audio playback.
+                        // Because you should expect not to have focus back for a long time, this would be a good place to clean up your resources as much as possible.
+                        // For example, you should release the MediaPlayer.
+                        mPrimaryQueue.clear();
+                        mTuningQueue.clear();
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                        // You have temporarily lost audio focus, but should receive it back shortly.
+                        // You must skip all audio playback, but you can keep your resources because you will probably get focus back shortly.
+                        if (mPrimaryQueue.isPlayingTask()) {
+                            PlayTask task = (PlayTask) mPrimaryQueue.peek();
+                            task.pause();
+                        }
+                        break;
+                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                        // You have temporarily lost audio focus, but you are
+                        // allowed to continue to play audio quietly (at a low volume) instead of killing audio completely.
+                        if (mPrimaryQueue.isPlayingTask()) {
+                            PlayTask task = (PlayTask) mPrimaryQueue.peek();
+                            task.setVolume(0.1f, 0.1f);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
+        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            // could not get audio focus.
         }
     }
 }

@@ -7,18 +7,33 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 /**
  * Created by mharkins on 9/3/14.
  */
-public abstract class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, Void, Response> {
-    public SimpleNetworkTask(TaskQueueManager queueManager, Webservice mWebservice) {
+public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, Void, Response> {
+    public interface SimpleNetworkTaskListener <Response> {
+        public Response performRequestSynchronous() throws FeedFMError;
+        public void onSuccess(Response response);
+        public void onFail();
+    }
+
+    private SimpleNetworkTaskListener<Response> mListener;
+
+    public SimpleNetworkTask(TaskQueueManager queueManager, Webservice mWebservice, SimpleNetworkTaskListener<Response> listener) {
         super(queueManager, mWebservice);
+
+        this.mListener = listener;
     }
 
     @Override
     protected Response doInBackground(Object... params) {
         Response response = null;
         try {
-             response = performRequestSynchronous();
+            if (this.mListener != null) {
+                response = this.mListener.performRequestSynchronous();
+            }
         } catch (FeedFMError e) {
             e.printStackTrace();
+            if (this.mListener != null) {
+                this.mListener.onFail();
+            }
         }
 
         return response;
@@ -26,7 +41,9 @@ public abstract class SimpleNetworkTask <Response> extends NetworkAbstractTask <
 
     @Override
     protected void onTaskFinished(Response response) {
-        onDone(response);
+        if (this.mListener != null) {
+            this.mListener.onSuccess(response);
+        }
     }
 
     @Override
@@ -34,9 +51,6 @@ public abstract class SimpleNetworkTask <Response> extends NetworkAbstractTask <
 
     }
 
-    public abstract Response performRequestSynchronous() throws FeedFMError;
-
-    public abstract void onDone(Response response);
 
     @Override
     public String toString() {
