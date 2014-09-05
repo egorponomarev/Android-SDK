@@ -1,13 +1,19 @@
 package fm.feed.android.playersdk.service;
 
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
@@ -43,6 +49,8 @@ public class PlayerService extends Service {
     protected Webservice mWebservice;
     protected PlayerInfo mPlayerInfo;
 
+    private DataPersister mDataPersister;
+
     protected MainQueue mMainQueue = new MainQueue();
     protected TuningQueue mTuningQueue = new TuningQueue();
     protected TaskQueueManager mSecondaryQueue = new TaskQueueManager("Secondary Queue");
@@ -55,6 +63,7 @@ public class PlayerService extends Service {
 
         mPlayerInfo = new PlayerInfo();
 
+        mDataPersister = new DataPersister(this);
         mWebservice = new Webservice(this);
 
         eventBus.register(this);
@@ -194,17 +203,27 @@ public class PlayerService extends Service {
      * Bus receivers
      ****************************************/
     public void getClientId() {
-        ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
-            @Override
-            public void onSuccess(String clientId) {
-                mPlayerInfo.setClientId(clientId);
-            }
-        });
+        String clientId = mDataPersister.getString(DataPersister.Blob.clientId, null);
 
-        // Getting a new ClientId will cancel whatever task is currently in progress.
-        mMainQueue.clearLowerPriorities(task);
-        mMainQueue.offerUnique(task);
-        mMainQueue.next();
+        if (clientId != null) {
+            mPlayerInfo.setClientId(clientId);
+            Toast.makeText(PlayerService.this, "Retrieved existing Client ID!", Toast.LENGTH_LONG).show();
+        } else {
+            ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
+                @Override
+                public void onSuccess(String clientId) {
+                    mDataPersister.putString(DataPersister.Blob.clientId, clientId);
+                    // TODO: perhaps encrypt clientId first.
+                    mPlayerInfo.setClientId(clientId);
+                    Toast.makeText(PlayerService.this, "New Client ID!", Toast.LENGTH_LONG).show();
+                }
+            });
+
+            // Getting a new ClientId will cancel whatever task is currently in progress.
+            mMainQueue.clearLowerPriorities(task);
+            mMainQueue.offerUnique(task);
+            mMainQueue.next();
+        }
     }
 
     /**
