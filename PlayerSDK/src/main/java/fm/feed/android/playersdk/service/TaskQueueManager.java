@@ -66,7 +66,6 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
             switch (task.getStatus()) {
                 case RUNNING:
                     // If the Task Status is RUNNING, check whether it's been finished or canceled.
-
                     if (task.isCancelled()) {
                         // Remove top queue item and start the next PENDING one
                         poll();
@@ -207,21 +206,6 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
             }
         }
         return false;
-    }
-
-    /**
-     * Checks if the task on top of this Queue is a PlayTask and that it is not Cancelled.
-     *
-     * @return {@code true} if the {@link PlayTask} is not cancelled.
-     */
-    public boolean isPlayingTask() {
-        PlayerAbstractTask task = peek();
-        return (task != null && task instanceof PlayTask && !task.isCancelled());
-    }
-
-    public boolean isTuning() {
-        PlayerAbstractTask task = peek();
-        return (task != null && task instanceof TuneTask && !task.isCancelled());
     }
 
     private List<Class> copyWithout(List<Class> source, Class[] except) {

@@ -200,7 +200,9 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     }
 
     public void setVolume(float leftVolume, float rightVolume) {
-        mMediaPlayer.setVolume(leftVolume, rightVolume);
+        if (mMediaPlayer != null) {
+            mMediaPlayer.setVolume(leftVolume, rightVolume);
+        }
     }
 
     public boolean isPaused() {

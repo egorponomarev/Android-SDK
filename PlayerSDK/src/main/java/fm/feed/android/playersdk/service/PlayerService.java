@@ -1,9 +1,7 @@
 package fm.feed.android.playersdk.service;
 
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.media.AudioManager;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -45,8 +43,8 @@ public class PlayerService extends Service {
     protected Webservice mWebservice;
     protected PlayerInfo mPlayerInfo;
 
-    protected TaskQueueManager mPrimaryQueue = new TaskQueueManager("Primary Queue");
-    protected TaskQueueManager mTuningQueue = new TaskQueueManager("Tuning Queue");
+    protected MainQueue mMainQueue = new MainQueue();
+    protected TuningQueue mTuningQueue = new TuningQueue();
     protected TaskQueueManager mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
     private MediaPlayerPool mMediaPlayerPool = new MediaPlayerPool();
@@ -66,7 +64,10 @@ public class PlayerService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         PlayerLibraryInfo playerLibraryInfo = new PlayerLibraryInfo();
         playerLibraryInfo.versionName = getString(R.string.sdk_version);
+
         eventBus.post(playerLibraryInfo);
+
+        initAudioManager();
 
         // TODO: modify notification
         // Common notification ID (Should be sent along in the startIntent, or returned in the PlayerLibraryInfo or alternate object).
@@ -89,7 +90,9 @@ public class PlayerService extends Service {
     public void onDestroy() {
         super.onDestroy();
 
-        mPrimaryQueue.clear();
+        releaseAudioManager();
+
+        mMainQueue.clear();
         mTuningQueue.clear();
         mSecondaryQueue.clear();
 
@@ -113,7 +116,7 @@ public class PlayerService extends Service {
     @SuppressWarnings("unused")
     public void setPlacementId(OutPlacementWrap wrapper) {
         Placement p = wrapper.getObject();
-        PlacementIdTask task = new PlacementIdTask(mPrimaryQueue, mWebservice, new PlacementIdTask.OnPlacementIdChanged() {
+        PlacementIdTask task = new PlacementIdTask(mMainQueue, mWebservice, new PlacementIdTask.OnPlacementIdChanged() {
             @Override
             public void onSuccess(Placement placement) {
                 eventBus.post(placement);
@@ -124,13 +127,13 @@ public class PlayerService extends Service {
 
         // PlacementIdTask cancels everything but:
         // - ClientIdTask
-        mPrimaryQueue.clearLowerPriorities(task);
+        mMainQueue.clearLowerPriorities(task);
 
         // Cancel any Tunings that might be taking place
         mTuningQueue.clear();
 
-        mPrimaryQueue.offerUnique(task);
-        mPrimaryQueue.next();
+        mMainQueue.offerUnique(task);
+        mMainQueue.next();
     }
 
     @Subscribe
@@ -139,7 +142,7 @@ public class PlayerService extends Service {
         Station s = wrapper.getObject();
         final Integer stationId = s.getId();
 
-        StationIdTask task = new StationIdTask(mPrimaryQueue, new StationIdTask.OnStationIdChanged() {
+        StationIdTask task = new StationIdTask(mMainQueue, new StationIdTask.OnStationIdChanged() {
             @Override
             public void onSuccess(Station station) {
                 if (station != null) {
@@ -154,9 +157,9 @@ public class PlayerService extends Service {
 
         // StationIdTask cancels everything but:
         // - ClientIdTask
-        mPrimaryQueue.clearLowerPriorities(task);
-        mPrimaryQueue.offerUnique(task);
-        mPrimaryQueue.next();
+        mMainQueue.clearLowerPriorities(task);
+        mMainQueue.offerUnique(task);
+        mMainQueue.next();
     }
 
     @Subscribe
@@ -191,7 +194,7 @@ public class PlayerService extends Service {
      * Bus receivers
      ****************************************/
     public void getClientId() {
-        ClientIdTask task = new ClientIdTask(mPrimaryQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
+        ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
             @Override
             public void onSuccess(String clientId) {
                 mPlayerInfo.setClientId(clientId);
@@ -199,9 +202,9 @@ public class PlayerService extends Service {
         });
 
         // Getting a new ClientId will cancel whatever task is currently in progress.
-        mPrimaryQueue.clearLowerPriorities(task);
-        mPrimaryQueue.offerUnique(task);
-        mPrimaryQueue.next();
+        mMainQueue.clearLowerPriorities(task);
+        mMainQueue.offerUnique(task);
+        mMainQueue.next();
     }
 
     /**
@@ -209,17 +212,17 @@ public class PlayerService extends Service {
      */
     public void tune() {
         if (mTuningQueue.isTuning()) {
-            Log.i(TAG, String.format("Switching TuneTask from %s to %s", mTuningQueue.getIdentifier(), mPrimaryQueue.getIdentifier()));
+            Log.i(TAG, String.format("Switching TuneTask from %s to %s", mTuningQueue.getIdentifier(), mMainQueue.getIdentifier()));
 
-            mPrimaryQueue.offerUnique(mTuningQueue.poll());
-            mPrimaryQueue.next();
+            mMainQueue.offerUnique(mTuningQueue.poll());
+            mMainQueue.next();
         } else {
             // Only tune on the Primary Queue if it is empty of a Tuning or Playing Task.
             TaskQueueManager queueManager;
-            if (!mPrimaryQueue.isPlayingTask()) {
-                queueManager = mPrimaryQueue;
+            if (!mMainQueue.isPlayingTask()) {
+                queueManager = mMainQueue;
             } else {
-                PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+                PlayTask playTask = (PlayTask) mMainQueue.peek();
                 if (playTask.isBuffering()) {
                     Log.i(TAG, "Can't Tune while still Buffering.");
                     return;
@@ -232,7 +235,7 @@ public class PlayerService extends Service {
                 @Override
                 public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
                     // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
-                    if (!mPrimaryQueue.isPlayingTask()) {
+                    if (!mMainQueue.isPlayingTask()) {
                         eventBus.post(play);
                     }
                 }
@@ -257,9 +260,9 @@ public class PlayerService extends Service {
     public void handleApiError(FeedFMError error) {
         if (error.getCode() == FeedFMError.CODE_NOT_IN_US) {
             eventBus.post(new EventMessage(EventMessage.Status.NOT_IN_US));
-        } else if (error.getCode()== FeedFMError.CODE_END_OF_PLAYLIST) {
+        } else if (error.getCode() == FeedFMError.CODE_END_OF_PLAYLIST) {
             eventBus.post(new EventMessage(EventMessage.Status.END_OF_PLAYLIST));
-        } else if (error.getCode()== FeedFMError.CODE_PLAYBACK_ALREADY_STARTED) {
+        } else if (error.getCode() == FeedFMError.CODE_PLAYBACK_ALREADY_STARTED) {
             Log.w(TAG, error);
         }
     }
@@ -282,8 +285,13 @@ public class PlayerService extends Service {
      * </ol>
      */
     private void play() {
-        if (mPrimaryQueue.isPlayingTask()) {
-            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+        // Don't play if we don't have rights for it.
+        if (!mAudioFocusManager.isAudioFocusGranted()) {
+            return;
+        }
+
+        if (mMainQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             // If the Play is Paused, Resume.
             if (playTask.isPaused()) {
@@ -297,7 +305,7 @@ public class PlayerService extends Service {
             tune();
         }
 
-        PlayTask task = new PlayTask(mPrimaryQueue, mWebservice, PlayerService.this, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
+        PlayTask task = new PlayTask(mMainQueue, mWebservice, PlayerService.this, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
                 eventBus.post(play);
@@ -311,8 +319,8 @@ public class PlayerService extends Service {
                     }
 
                     private void updateSkipStatus(boolean canSkip) {
-                        if (mPrimaryQueue.isPlayingTask()) {
-                            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+                        if (mMainQueue.isPlayingTask()) {
+                            PlayTask playTask = (PlayTask) mMainQueue.peek();
 
                             if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
                                 playTask.setSkippable(canSkip);
@@ -380,17 +388,17 @@ public class PlayerService extends Service {
         });
 
 
-        mPrimaryQueue.clearLowerPriorities(task);
-        mPrimaryQueue.offerIfNotExist(task);
-        mPrimaryQueue.next();
+        mMainQueue.clearLowerPriorities(task);
+        mMainQueue.offerIfNotExist(task);
+        mMainQueue.next();
     }
 
     private void skip() {
-        if (mPrimaryQueue.isPlayingTask()) {
-            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+        if (mMainQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             if (playTask.isSkippable()) {
-                mPrimaryQueue.remove(playTask);
+                mMainQueue.remove(playTask);
                 playTask.cancel(true);
 
                 play();
@@ -403,8 +411,8 @@ public class PlayerService extends Service {
     }
 
     private void pause() {
-        if (mPrimaryQueue.isPlayingTask()) {
-            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+        if (mMainQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             // If the Play is Paused, Resume.
             if (playTask.isPlaying()) {
@@ -416,8 +424,8 @@ public class PlayerService extends Service {
     }
 
     private void like() {
-        if (mPrimaryQueue.isPlayingTask()) {
-            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+        if (mMainQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mMainQueue.peek();
             final String playId = playTask.getPlay().getId();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
@@ -445,8 +453,8 @@ public class PlayerService extends Service {
 
     private void unlike() {
 
-        if (mPrimaryQueue.isPlayingTask()) {
-            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+        if (mMainQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mMainQueue.peek();
             final String playId = playTask.getPlay().getId();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
@@ -473,8 +481,8 @@ public class PlayerService extends Service {
     }
 
     private void dislike() {
-        if (mPrimaryQueue.isPlayingTask()) {
-            PlayTask playTask = (PlayTask) mPrimaryQueue.peek();
+        if (mMainQueue.isPlayingTask()) {
+            PlayTask playTask = (PlayTask) mMainQueue.peek();
             final String playId = playTask.getPlay().getId();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
@@ -500,53 +508,52 @@ public class PlayerService extends Service {
         }
     }
 
+    private AudioFocusManager mAudioFocusManager;
+
     private void initAudioManager() {
-        AudioManager audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
-        int result = audioManager.requestAudioFocus(new AudioManager.OnAudioFocusChangeListener() {
+        mAudioFocusManager = new AudioFocusManager(this, new AudioFocusManager.Listener() {
             @Override
-            public void onAudioFocusChange(int focusChange) {
-                // TODO: deal with different focus changes.
-                switch (focusChange) {
-                    case AudioManager.AUDIOFOCUS_GAIN:
-                        // You have gained the audio focus.
-                        if (mPrimaryQueue.isPlayingTask()) {
-                            PlayTask task = (PlayTask) mPrimaryQueue.peek();
-                            if (task.isPaused()) {
-                                PlayerService.this.play();
-                            }
-                        }
-                        break;
-                    case AudioManager.AUDIOFOCUS_LOSS:
-                        // You have lost the audio focus for a presumably long time.
-                        // You must skip all audio playback.
-                        // Because you should expect not to have focus back for a long time, this would be a good place to clean up your resources as much as possible.
-                        // For example, you should release the MediaPlayer.
-                        mPrimaryQueue.clear();
-                        mTuningQueue.clear();
-                        break;
-                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                        // You have temporarily lost audio focus, but should receive it back shortly.
-                        // You must skip all audio playback, but you can keep your resources because you will probably get focus back shortly.
-                        if (mPrimaryQueue.isPlayingTask()) {
-                            PlayTask task = (PlayTask) mPrimaryQueue.peek();
-                            task.pause();
-                        }
-                        break;
-                    case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                        // You have temporarily lost audio focus, but you are
-                        // allowed to continue to play audio quietly (at a low volume) instead of killing audio completely.
-                        if (mPrimaryQueue.isPlayingTask()) {
-                            PlayTask task = (PlayTask) mPrimaryQueue.peek();
-                            task.setVolume(0.1f, 0.1f);
-                        }
-                        break;
-                    default:
-                        break;
-                }
+            public void play() {
+                PlayerService.this.play();
             }
-        }, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
-        if (result != AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            // could not get audio focus.
-        }
+
+            @Override
+            public boolean pause() {
+                boolean retval = false;
+                if (mMainQueue.isPlayingTask()) {
+                    PlayTask task = (PlayTask) mMainQueue.peek();
+                    task.pause();
+
+                    retval = true;
+                } else if (mMainQueue.isTuning() || mTuningQueue.isTuning()) {
+                    // If we are tuning, make sure to remove the Play tasks from the queues
+                    // The play task can be recreated from the Tuning Tasks.
+                    mMainQueue.removeAllPlayTasks();
+                    retval = true;
+                }
+
+                return retval;
+            }
+
+            @Override
+            public void releaseResources() {
+                mMainQueue.clear();
+                mTuningQueue.clear();
+            }
+
+            @Override
+            public void duckVolume() {
+                mMediaPlayerPool.duckVolume();
+            }
+
+            @Override
+            public void restoreVolume() {
+                mMediaPlayerPool.restoreVolume();
+            }
+        });
+    }
+
+    private void releaseAudioManager() {
+        mAudioFocusManager.release();
     }
 }

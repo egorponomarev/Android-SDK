@@ -12,6 +12,8 @@ import java.util.Queue;
 public class MediaPlayerPool {
     private static final String TAG = MediaPlayerPool.class.getSimpleName();
 
+    private boolean mShouldDuckVolume = false;
+
     Queue<FeedFMMediaPlayer> mFree = new LinkedList<FeedFMMediaPlayer>();
     Queue<FeedFMMediaPlayer> mTuning = new LinkedList<FeedFMMediaPlayer>();
     Queue<FeedFMMediaPlayer> mTuned = new LinkedList<FeedFMMediaPlayer>();
@@ -78,6 +80,9 @@ public class MediaPlayerPool {
         FeedFMMediaPlayer mediaPlayer = new FeedFMMediaPlayer();
         mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
 
+        if (mShouldDuckVolume) {
+            mediaPlayer.setVolume(0.1f, 0.1f);
+        }
 
         /*
         //TODO: WIFI Lock
@@ -91,6 +96,31 @@ public class MediaPlayerPool {
         return mediaPlayer;
     }
 
+    public void duckVolume() {
+        mShouldDuckVolume = true;
+
+
+        Queue[] queues = new Queue[] { mFree, mPlaying, mTuned, mTuning };
+        for (Queue q: queues) {
+            for (Object o: q) {
+                FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) o;
+                mediaPlayer.setVolume(0.1f, 0.1f);
+            }
+        }
+    }
+
+    public void restoreVolume() {
+        mShouldDuckVolume = false;
+
+
+        Queue[] queues = new Queue[] { mFree, mPlaying, mTuned, mTuning };
+        for (Queue q: queues) {
+            for (Object o: q) {
+                FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) o;
+                mediaPlayer.setVolume(1.0f, 1.0f);
+            }
+        }
+    }
 
     public void release() {
         Queue[] queues = new Queue[] { mFree, mPlaying, mTuned, mTuning };
