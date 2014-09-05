@@ -3,6 +3,7 @@ package fm.feed.android.testapp;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
@@ -24,6 +25,11 @@ public class MainActivity extends ActionBarActivity {
                     .add(R.id.container, PlayFragment.newFragment(placements))
                     .commit();
         }
+
+        /**
+         * This makes the volume Hardware buttons control the Media Volume at all times (otherwise, during pauses in the playback, the ring volume would be set).
+         */
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
 

@@ -297,7 +297,7 @@ public class PlayerService extends Service {
             tune();
         }
 
-        PlayTask task = new PlayTask(mPrimaryQueue, mWebservice, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
+        PlayTask task = new PlayTask(mPrimaryQueue, mWebservice, PlayerService.this, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
                 eventBus.post(play);

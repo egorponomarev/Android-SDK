@@ -1,5 +1,10 @@
 package fm.feed.android.playersdk.service.task;
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
@@ -41,11 +46,25 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     };
     private Handler mTimingHandler = new Handler(Looper.myLooper());
 
-    public PlayTask(TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, PlayTaskListener listener) {
+    private Context mContext;
+    private BroadcastReceiver mNoisyAudioBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                if (isPlaying()) {
+                    // Pause the playback
+                    pause();
+                }
+            }
+        }
+    };
+
+    public PlayTask(TaskQueueManager queueManager, Webservice mWebservice, Context context, MediaPlayerPool mediaPlayerPool, PlayTaskListener listener) {
         super(queueManager, mWebservice);
 
-        this.mMediaPlayerPool = mediaPlayerPool;
+        this.mContext = context;
         this.mListener = listener;
+        this.mMediaPlayerPool = mediaPlayerPool;
     }
 
     @Override
@@ -81,6 +100,11 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         if (this.mListener != null) {
             this.mListener.onPlayBegin(this, mPlay);
         }
+
+        // Register Noisy Audio Receiver.
+        // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
+        // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
+        mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
 
         while (!mCompleted && !isCancelled()) {
             if (mPublishProgress) {
@@ -131,16 +155,11 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     protected void onTaskCancelled() {
         Log.i(TAG, String.format("%s, onCancelled", getQueueManager().getIdentifier()));
 
-        mTimingHandler.removeCallbacks(mResetPublishProgressFlag);
-
         if (this.mListener != null) {
             this.mListener.onPlayFinished(mPlay, true);
         }
 
-        if (mMediaPlayer != null) {
-            mMediaPlayerPool.free(mMediaPlayer);
-            mMediaPlayer = null;
-        }
+        cleanup();
     }
 
     @Override
@@ -151,8 +170,17 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
             this.mListener.onPlayFinished(mPlay, false);
         }
 
-        mMediaPlayerPool.free(mMediaPlayer);
-        mMediaPlayer = null;
+        cleanup();
+    }
+
+    private void cleanup() {
+        mContext.unregisterReceiver(mNoisyAudioBroadcastReceiver);
+        mTimingHandler.removeCallbacks(mResetPublishProgressFlag);
+
+        if (mMediaPlayer != null) {
+            mMediaPlayerPool.free(mMediaPlayer);
+            mMediaPlayer = null;
+        }
     }
 
     public Play getPlay() {
