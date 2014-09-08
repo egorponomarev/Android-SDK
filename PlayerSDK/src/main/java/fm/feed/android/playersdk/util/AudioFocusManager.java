@@ -49,11 +49,6 @@ public class AudioFocusManager {
     private AudioManager.OnAudioFocusChangeListener mAudioFocusChangeListener = new AudioManager.OnAudioFocusChangeListener() {
         @Override
         public void onAudioFocusChange(int focusChange) {
-            // TODO: remove this testing hack
-            if (focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                focusChange = AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK;
-            }
-
             switch (focusChange) {
                 case AudioManager.AUDIOFOCUS_GAIN:
                     mAudioFocusGranted = true;
