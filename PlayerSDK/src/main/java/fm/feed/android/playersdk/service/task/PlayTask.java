@@ -13,9 +13,9 @@ import android.util.Log;
 
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
-import fm.feed.android.playersdk.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
+import fm.feed.android.playersdk.util.MediaPlayerPool;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -66,6 +66,11 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         this.mContext = context;
         this.mListener = listener;
         this.mMediaPlayerPool = mediaPlayerPool;
+
+        // Register Noisy Audio Receiver.
+        // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
+        // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
+        mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
     }
 
     @Override
@@ -87,13 +92,6 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         this.mDuration = this.mMediaPlayer.getDuration();
 
         this.mMediaPlayer.setOnCompletionListener(this);
-
-
-
-        // Register Noisy Audio Receiver.
-        // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
-        // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
-        mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
     }
 
     @Override
@@ -174,7 +172,6 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     }
 
     private void cleanup() {
-        mContext.unregisterReceiver(mNoisyAudioBroadcastReceiver);
         mTimingHandler.removeCallbacks(mResetPublishProgressFlag);
 
         if (mMediaPlayer != null) {
