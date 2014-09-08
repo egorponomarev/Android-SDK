@@ -5,7 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import fm.feed.android.playersdk.service.TaskQueueManager;
+import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 
 /**
  * Created by mharkins on 9/2/14.

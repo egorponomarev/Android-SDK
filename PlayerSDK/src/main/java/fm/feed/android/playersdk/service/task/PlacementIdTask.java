@@ -1,7 +1,7 @@
 package fm.feed.android.playersdk.service.task;
 
 import fm.feed.android.playersdk.model.Placement;
-import fm.feed.android.playersdk.service.TaskQueueManager;
+import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;

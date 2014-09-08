@@ -247,17 +247,22 @@ public class Webservice {
             FeedFMError feedFMError = null;
 
 //            try {
-                FeedFMResponse feedFMResponse = (FeedFMResponse) retrofitError.getBody();
-                if (feedFMResponse != null) {
-                    feedFMError = feedFMResponse.getError();
-                }
-//            } catch (InstantiationException e) {
-//                e.printStackTrace();
-//            }
+            Object body = retrofitError.getBody();
+            if (body != null && body instanceof  FeedFMResponse) {
+                feedFMError = ((FeedFMResponse) body).getError();
+            } else {
+                retrofitError.printStackTrace();
+            }
 
             handleError(feedFMError);
         }
 
+        /**
+         * Wrapper around a FeedFMError object. If {@code error} is {@code null} a generic FeedFMError will be generated.
+         *
+         * @param error
+         * @throws FeedFMError
+         */
         private void handleError(FeedFMError error) throws FeedFMError {
             if (error == null) {
                 error = new FeedFMError(-1, "Retrofit error response is null or can't be parsed", -1);

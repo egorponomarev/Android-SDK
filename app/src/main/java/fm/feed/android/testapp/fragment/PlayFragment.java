@@ -80,6 +80,13 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        mPlayer = Player.getInstance(getActivity(), this, this, this);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
@@ -159,12 +166,18 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onStart() {
         super.onStart();
 
-        mPlayer = Player.getInstance(getActivity(), this, this, this);
+        mPlayer.registerNavListener(this);
+        mPlayer.registerPlayerListener(this);
+        mPlayer.registerSocialListener(this);
     }
 
     @Override
     public void onStop() {
         super.onStop();
+
+        mPlayer.unregisterNavListener(this);
+        mPlayer.unregisterPlayerListener(this);
+        mPlayer.unregisterSocialListener(this);
     }
 
     public static final String PLACEMENTS = "save_placements";
@@ -176,9 +189,10 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         outState.putIntArray(PLACEMENTS, mPlacements);
     }
 
-    private int mNotificationId = 1234532;
-
     public void createNotification(Play play) {
+        int stringId = getActivity().getApplicationInfo().labelRes;
+        String applicationName = getString(stringId);
+
         Intent intent = new Intent(getActivity().getApplicationContext(), MainActivity.class);
         intent.setAction(Intent.ACTION_MAIN);
 
@@ -190,7 +204,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(getActivity());
         mBuilder.setContentIntent(pi);
-        mBuilder.setContentTitle("Feed.FM");
+        mBuilder.setContentTitle(applicationName);
         mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
         mBuilder.setOngoing(true);
         mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
@@ -198,7 +212,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         NotificationManager mNotificationManager =
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
         // NOTIFICATION_ID allows you to update the notification later on.
-        mNotificationManager.notify(mNotificationId, mBuilder.build());
+        mNotificationManager.notify(mPlayer.getForegroundNotificationId(), mBuilder.build());
     }
 
     private void resetProgressInfo() {
@@ -216,7 +230,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void clearNotification() {
         NotificationManager mNotificationManager =
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-        mNotificationManager.cancel(mNotificationId);
+        mNotificationManager.cancel(mPlayer.getForegroundNotificationId());
     }
 
 
@@ -335,6 +349,11 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mTxtAlbum.setText(play.getAudioFile().getRelease().getTitle());
 
         createNotification(play);
+    }
+
+    @Override
+    public void onNotificationWillShow(int notificationId) {
+//        createNotification(notificationId, play);
     }
 
     @Override

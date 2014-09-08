@@ -1,8 +1,6 @@
 package fm.feed.android.playersdk.service.task;
 
-import fm.feed.android.playersdk.model.Placement;
-import fm.feed.android.playersdk.service.MediaPlayerManager;
-import fm.feed.android.playersdk.service.TaskQueueManager;
+import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 
 /**

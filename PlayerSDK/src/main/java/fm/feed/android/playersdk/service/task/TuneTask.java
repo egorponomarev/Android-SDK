@@ -7,8 +7,8 @@ import java.io.IOException;
 
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
-import fm.feed.android.playersdk.service.MediaPlayerPool;
-import fm.feed.android.playersdk.service.TaskQueueManager;
+import fm.feed.android.playersdk.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;

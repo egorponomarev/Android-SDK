@@ -6,4 +6,6 @@ package fm.feed.android.playersdk.model;
 public class PlayerLibraryInfo {
     public String versionName;
     public int versionCode;
+
+    public int notificationId;
 }

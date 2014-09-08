@@ -1,4 +1,4 @@
-package fm.feed.android.playersdk.service;
+package fm.feed.android.playersdk.service.queue;
 
 import fm.feed.android.playersdk.service.task.PlayerAbstractTask;
 import fm.feed.android.playersdk.service.task.TuneTask;

@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk.service;
 
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -11,9 +12,7 @@ import android.widget.Toast;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.util.Date;
 
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
@@ -28,6 +27,9 @@ import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
+import fm.feed.android.playersdk.service.queue.MainQueue;
+import fm.feed.android.playersdk.service.queue.TaskQueueManager;
+import fm.feed.android.playersdk.service.queue.TuningQueue;
 import fm.feed.android.playersdk.service.task.ClientIdTask;
 import fm.feed.android.playersdk.service.task.PlacementIdTask;
 import fm.feed.android.playersdk.service.task.PlayTask;
@@ -37,6 +39,9 @@ import fm.feed.android.playersdk.service.task.TuneTask;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
+import fm.feed.android.playersdk.util.AudioFocusManager;
+import fm.feed.android.playersdk.util.DataPersister;
+import fm.feed.android.playersdk.util.MediaPlayerPool;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -57,35 +62,35 @@ public class PlayerService extends Service {
 
     private MediaPlayerPool mMediaPlayerPool = new MediaPlayerPool();
 
+    private int mNotificationId = 1234512;
+
+    private boolean mValidStart = false;
+
     @Override
     public void onCreate() {
         super.onCreate();
-
-        mPlayerInfo = new PlayerInfo();
-
-        mDataPersister = new DataPersister(this);
-        mWebservice = new Webservice(this);
-
-        eventBus.register(this);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        PlayerLibraryInfo playerLibraryInfo = new PlayerLibraryInfo();
-        playerLibraryInfo.versionName = getString(R.string.sdk_version);
+        mValidStart = false;
 
-        eventBus.post(playerLibraryInfo);
+        if (intent != null) {
+            long now = new Date().getTime();
+            long intentTimestamp = intent.getLongExtra("timestamp", 0);
 
-        initAudioManager();
+            // if it's been more than a second since the Service was called to start, cancel.
+            // It's the android back stack relaunching the Intent.
+            if (now - intentTimestamp < 1000) {
+                mValidStart = true;
+            }
+        }
 
-        // TODO: modify notification
-        // Common notification ID (Should be sent along in the startIntent, or returned in the PlayerLibraryInfo or alternate object).
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(this);
-        mBuilder.setContentTitle("Feed.FM");
-        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
-        // Make Service live even if Application is shut down by system
-        startForeground(1234532, mBuilder.build());
+        if (mValidStart) {
+            startup();
+        } else {
+            stopSelf();
+        }
 
         return super.onStartCommand(intent, flags, startId);
     }
@@ -95,17 +100,70 @@ public class PlayerService extends Service {
         return null;
     }
 
+    public void startup() {
+        mPlayerInfo = new PlayerInfo();
+
+        mDataPersister = new DataPersister(this);
+        mWebservice = new Webservice(this);
+
+        eventBus.register(this);
+
+        PlayerLibraryInfo playerLibraryInfo = new PlayerLibraryInfo();
+        playerLibraryInfo.versionName = getString(R.string.sdk_version);
+        playerLibraryInfo.notificationId = mNotificationId;
+
+        eventBus.post(playerLibraryInfo);
+
+        initAudioManager();
+
+        mMainQueue = new MainQueue();
+        mTuningQueue = new TuningQueue();
+        mSecondaryQueue = new TaskQueueManager("Secondary Queue");
+
+        mMediaPlayerPool = new MediaPlayerPool();
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
 
-        releaseAudioManager();
+        // Was it a legit Service Startup?
+        if (mValidStart) {
+            releaseAudioManager();
 
-        mMainQueue.clear();
-        mTuningQueue.clear();
-        mSecondaryQueue.clear();
+            mMainQueue.clear();
+            mTuningQueue.clear();
+            mSecondaryQueue.clear();
 
-        mMediaPlayerPool.release();
+            mMediaPlayerPool.release();
+
+            eventBus.unregister(this);
+        }
+
+    }
+
+
+    public void enableForeground() {
+        int stringId = getApplicationInfo().labelRes;
+        String applicationName = getString(stringId);
+
+        // TODO: modify notification
+        // Common notification ID (Should be sent along in the startIntent, or returned in the PlayerLibraryInfo or alternate object).
+        NotificationCompat.Builder mBuilder =
+                new NotificationCompat.Builder(this);
+        mBuilder.setContentTitle(applicationName + "-SDK");
+        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
+
+        // Make Service live even if Application is shut down by system
+        startForeground(mNotificationId, mBuilder.build());
+        eventBus.post(new EventMessage(EventMessage.Status.NOTIFICATION_WILL_SHOW));
+    }
+
+    public void disableForeground() {
+        NotificationManager mNotificationManager =
+                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.cancel(mNotificationId);
+        stopForeground(true);
     }
 
     /**
@@ -203,7 +261,7 @@ public class PlayerService extends Service {
      * Bus receivers
      ****************************************/
     public void getClientId() {
-        String clientId = mDataPersister.getString(DataPersister.Blob.clientId, null);
+        String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
 
         if (clientId != null) {
             mPlayerInfo.setClientId(clientId);
@@ -212,7 +270,7 @@ public class PlayerService extends Service {
             ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
                 @Override
                 public void onSuccess(String clientId) {
-                    mDataPersister.putString(DataPersister.Blob.clientId, clientId);
+                    mDataPersister.putString(DataPersister.Key.clientId, clientId);
                     // TODO: perhaps encrypt clientId first.
                     mPlayerInfo.setClientId(clientId);
                     Toast.makeText(PlayerService.this, "New Client ID!", Toast.LENGTH_LONG).show();
@@ -238,12 +296,12 @@ public class PlayerService extends Service {
         } else {
             // Only tune on the Primary Queue if it is empty of a Tuning or Playing Task.
             TaskQueueManager queueManager;
-            if (!mMainQueue.isPlayingTask()) {
+            if (!mMainQueue.hasActivePlayTask()) {
                 queueManager = mMainQueue;
             } else {
                 PlayTask playTask = (PlayTask) mMainQueue.peek();
                 if (playTask.isBuffering()) {
-                    Log.i(TAG, "Can't Tune while still Buffering.");
+                    Log.i(TAG, "Can't Tune while still Buffering a PlayTask.");
                     return;
                 }
                 queueManager = mTuningQueue;
@@ -254,7 +312,7 @@ public class PlayerService extends Service {
                 @Override
                 public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
                     // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
-                    if (!mMainQueue.isPlayingTask()) {
+                    if (!mMainQueue.hasActivePlayTask()) {
                         eventBus.post(play);
                     }
                 }
@@ -279,8 +337,10 @@ public class PlayerService extends Service {
     public void handleApiError(FeedFMError error) {
         if (error.getCode() == FeedFMError.CODE_NOT_IN_US) {
             eventBus.post(new EventMessage(EventMessage.Status.NOT_IN_US));
+            disableForeground();
         } else if (error.getCode() == FeedFMError.CODE_END_OF_PLAYLIST) {
             eventBus.post(new EventMessage(EventMessage.Status.END_OF_PLAYLIST));
+            disableForeground();
         } else if (error.getCode() == FeedFMError.CODE_PLAYBACK_ALREADY_STARTED) {
             Log.w(TAG, error);
         }
@@ -309,14 +369,18 @@ public class PlayerService extends Service {
             return;
         }
 
-        if (mMainQueue.isPlayingTask()) {
+        if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             // If the Play is Paused, Resume.
             if (playTask.isPaused()) {
                 playTask.play();
+
+                enableForeground();
                 return;
             }
+        } else {
+            enableForeground();
         }
 
 
@@ -338,7 +402,7 @@ public class PlayerService extends Service {
                     }
 
                     private void updateSkipStatus(boolean canSkip) {
-                        if (mMainQueue.isPlayingTask()) {
+                        if (mMainQueue.hasActivePlayTask()) {
                             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
                             if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
@@ -413,7 +477,7 @@ public class PlayerService extends Service {
     }
 
     private void skip() {
-        if (mMainQueue.isPlayingTask()) {
+        if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             if (playTask.isSkippable()) {
@@ -430,12 +494,14 @@ public class PlayerService extends Service {
     }
 
     private void pause() {
-        if (mMainQueue.isPlayingTask()) {
+        if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             // If the Play is Paused, Resume.
             if (playTask.isPlaying()) {
                 playTask.pause();
+
+                disableForeground();
             }
             return;
         }
@@ -443,7 +509,7 @@ public class PlayerService extends Service {
     }
 
     private void like() {
-        if (mMainQueue.isPlayingTask()) {
+        if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
             final String playId = playTask.getPlay().getId();
 
@@ -472,7 +538,7 @@ public class PlayerService extends Service {
 
     private void unlike() {
 
-        if (mMainQueue.isPlayingTask()) {
+        if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
             final String playId = playTask.getPlay().getId();
 
@@ -500,7 +566,7 @@ public class PlayerService extends Service {
     }
 
     private void dislike() {
-        if (mMainQueue.isPlayingTask()) {
+        if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
             final String playId = playTask.getPlay().getId();
 
@@ -539,7 +605,7 @@ public class PlayerService extends Service {
             @Override
             public boolean pause() {
                 boolean retval = false;
-                if (mMainQueue.isPlayingTask()) {
+                if (mMainQueue.hasActivePlayTask()) {
                     PlayTask task = (PlayTask) mMainQueue.peek();
                     task.pause();
 

@@ -8,12 +8,13 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.util.Log;
 
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
-import fm.feed.android.playersdk.service.MediaPlayerPool;
-import fm.feed.android.playersdk.service.TaskQueueManager;
+import fm.feed.android.playersdk.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 
 /**
@@ -87,8 +88,12 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
         this.mMediaPlayer.setOnCompletionListener(this);
 
-        // TODO: might not need this since we have the service running as Foreground
-        // this.mMediaPlayer.setWakeMode(this.mService, PowerManager.PARTIAL_WAKE_LOCK);
+
+
+        // Register Noisy Audio Receiver.
+        // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
+        // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
+        mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
     }
 
     @Override
@@ -100,11 +105,6 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         if (this.mListener != null) {
             this.mListener.onPlayBegin(this, mPlay);
         }
-
-        // Register Noisy Audio Receiver.
-        // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
-        // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
-        mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
 
         while (!mCompleted && !isCancelled()) {
             if (mPublishProgress) {
@@ -193,10 +193,13 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
     public void play() {
         mMediaPlayer.start();
+
+        mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
     }
 
     public void pause() {
         mMediaPlayer.pause();
+        mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
     }
 
     public void setVolume(float leftVolume, float rightVolume) {

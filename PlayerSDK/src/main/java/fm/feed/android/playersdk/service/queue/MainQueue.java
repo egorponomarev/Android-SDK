@@ -1,4 +1,4 @@
-package fm.feed.android.playersdk.service;
+package fm.feed.android.playersdk.service.queue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +20,7 @@ public class MainQueue extends TuningQueue {
      *
      * @return {@code true} if the {@link PlayTask} is not cancelled.
      */
-    public boolean isPlayingTask() {
+    public boolean hasActivePlayTask() {
         PlayerAbstractTask task = peek();
         return (task != null && task instanceof PlayTask && !task.isCancelled());
     }

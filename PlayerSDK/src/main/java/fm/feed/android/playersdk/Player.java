@@ -4,8 +4,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Pair;
-import android.widget.Toast;
+
+import com.squareup.otto.Bus;
+import com.squareup.otto.Subscribe;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
@@ -20,11 +25,6 @@ import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
-import com.squareup.otto.Bus;
-import com.squareup.otto.Subscribe;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -47,10 +47,12 @@ public class Player {
 
     private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 
+    private int mNotificationId;
+
     protected Player(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
-        registerPlayerListener(playerListener);
-        registerNavListener(navListener);
-        registerSocialListener(socialListener);
+//        registerPlayerListener(playerListener);
+//        registerNavListener(navListener);
+//        registerSocialListener(socialListener);
 
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
@@ -61,6 +63,8 @@ public class Player {
     protected void startPlayerService(Context context) {
         // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
+        //TODO: remove literal
+        intent.putExtra("timestamp", new Date().getTime());
         context.startService(intent);
     }
 
@@ -69,6 +73,10 @@ public class Player {
             mInstance = new Player(context, playerListener, navListener, socialListener);
         }
         return mInstance;
+    }
+
+    public int getForegroundNotificationId() {
+        return mNotificationId;
     }
 
     public void registerPlayerListener(PlayerListener playerListener) {
@@ -147,7 +155,9 @@ public class Player {
         @SuppressWarnings("unused")
         @Subscribe
         public void onServiceReady(PlayerLibraryInfo playerLibraryInfo) {
-            for (PlayerListener listener: mPlayerListeners) {
+            mNotificationId = playerLibraryInfo.notificationId;
+
+            for (PlayerListener listener : mPlayerListeners) {
                 listener.onPlayerInitialized(playerLibraryInfo);
             }
         }
@@ -161,32 +171,37 @@ public class Player {
 
                     switch (message.getStatus()) {
                         case SKIP_FAILED:
-                            for (NavListener listener: mNavListeners) {
+                            for (NavListener listener : mNavListeners) {
                                 listener.onSkipFailed();
                             }
                         case LIKE:
-                            for (SocialListener listener: mSocialListeners ) {
+                            for (SocialListener listener : mSocialListeners) {
                                 listener.onLiked();
                             }
                             break;
                         case UNLIKE:
-                            for (SocialListener listener: mSocialListeners ) {
+                            for (SocialListener listener : mSocialListeners) {
                                 listener.onUnliked();
                             }
                             break;
                         case DISLIKE:
-                            for (SocialListener listener: mSocialListeners ) {
+                            for (SocialListener listener : mSocialListeners) {
                                 listener.onDisliked();
                             }
                             break;
                         case END_OF_PLAYLIST:
-                            for (NavListener listener: mNavListeners) {
+                            for (NavListener listener : mNavListeners) {
                                 listener.onEndOfPlaylist();
                             }
                             break;
                         case NOT_IN_US:
-                            for (PlayerListener listener: mPlayerListeners) {
+                            for (PlayerListener listener : mPlayerListeners) {
                                 listener.onNotInUS();
+                            }
+                            break;
+                        case NOTIFICATION_WILL_SHOW:
+                            for (PlayerListener listener : mPlayerListeners) {
+                                listener.onNotificationWillShow(mNotificationId);
                             }
                             break;
                         default:
@@ -203,7 +218,7 @@ public class Player {
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    for (NavListener listener: mNavListeners) {
+                    for (NavListener listener : mNavListeners) {
                         listener.onPlacementChanged(placement, placement.getStationList());
                     }
                 }
@@ -216,7 +231,7 @@ public class Player {
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    for (NavListener listener: mNavListeners) {
+                    for (NavListener listener : mNavListeners) {
                         listener.onStationChanged(station);
                     }
                 }
@@ -229,7 +244,7 @@ public class Player {
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    for (NavListener listener: mNavListeners) {
+                    for (NavListener listener : mNavListeners) {
                         listener.onTrackChanged(play);
                     }
                 }
@@ -242,7 +257,7 @@ public class Player {
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    for (NavListener listener: mNavListeners) {
+                    for (NavListener listener : mNavListeners) {
                         listener.onBufferUpdate(update.getPlay(), update.getPercentage());
                     }
                 }
@@ -255,7 +270,7 @@ public class Player {
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    for (NavListener listener: mNavListeners) {
+                    for (NavListener listener : mNavListeners) {
                         listener.onProgressUpdate(update.getPlay(), update.getElapsedTime(), update.getTotalTime());
                     }
                 }
@@ -268,6 +283,8 @@ public class Player {
      */
     public interface PlayerListener {
         public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo);
+
+        public void onNotificationWillShow(int notificationId);
 
         /**
          * Called when the user is not located in the US. No music will be available to play.

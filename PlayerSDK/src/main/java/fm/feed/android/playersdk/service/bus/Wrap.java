@@ -1,4 +1,4 @@
-package fm.feed.android.playersdk.service;
+package fm.feed.android.playersdk.service.bus;
 
 /**
  * Created by mharkins on 8/22/14.

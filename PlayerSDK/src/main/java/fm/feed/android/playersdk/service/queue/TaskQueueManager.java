@@ -1,4 +1,4 @@
-package fm.feed.android.playersdk.service;
+package fm.feed.android.playersdk.service.queue;
 
 import android.os.Build;
 import android.util.Log;

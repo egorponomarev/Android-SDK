@@ -1,10 +1,12 @@
-package fm.feed.android.playersdk.service;
+package fm.feed.android.playersdk.util;
 
 import android.media.AudioManager;
 import android.util.Log;
 
 import java.util.LinkedList;
 import java.util.Queue;
+
+import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 
 /**
  * Created by mharkins on 9/4/14.
