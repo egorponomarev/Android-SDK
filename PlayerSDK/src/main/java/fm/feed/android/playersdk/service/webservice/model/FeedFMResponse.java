@@ -5,7 +5,7 @@ import com.google.gson.annotations.SerializedName;
 /**
  * Created by mharkins on 8/21/14.
  */
-public abstract class FeedFMResponse {
+public class FeedFMResponse {
     @SerializedName("success")
     private boolean success;
     @SerializedName("error")
@@ -27,5 +27,7 @@ public abstract class FeedFMResponse {
         return error;
     }
 
-    public abstract Object getModel();
+    public Object getModel() {
+        return Boolean.valueOf(isSuccess());
+    }
 }

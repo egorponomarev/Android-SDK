@@ -23,23 +23,25 @@ import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import fm.feed.android.testapp.MainActivity;
-import fm.feed.android.testapp.R;
-import fm.feed.android.testapp.util.TimeUtils;
-import fm.feed.android.playersdk.Player;
-import fm.feed.android.playersdk.model.Placement;
-import fm.feed.android.playersdk.model.Play;
-import fm.feed.android.playersdk.model.PlayerLibraryInfo;
-import fm.feed.android.playersdk.model.Station;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+
+import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.model.Placement;
+import fm.feed.android.playersdk.model.Play;
+import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.service.PlayInfo;
+import fm.feed.android.testapp.MainActivity;
+import fm.feed.android.testapp.R;
+import fm.feed.android.testapp.util.TimeUtils;
 
 /**
  * Created by mharkins on 8/22/14.
  */
 public class PlayFragment extends Fragment implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
+
+    private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
     private Player mPlayer;
 
@@ -83,7 +85,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mPlayer = Player.getInstance(getActivity(), this, this, this);
+        mPlayer = Player.getInstance(getActivity(), CUSTOM_NOTIFICATION_ID);
     }
 
     @Override
@@ -160,6 +162,13 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         });
 
         resetProgressInfo();
+
+        if (mPlayer.hasPlay()) {
+            updateTrackInfo(mPlayer.getPlay());
+        }
+        if (mPlayer.hasStationList()) {
+            updateStations(mPlayer.getStationList());
+        }
     }
 
     @Override
@@ -212,7 +221,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         NotificationManager mNotificationManager =
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
         // NOTIFICATION_ID allows you to update the notification later on.
-        mNotificationManager.notify(mPlayer.getForegroundNotificationId(), mBuilder.build());
+        mNotificationManager.notify(mPlayer.getNotificationId(), mBuilder.build());
     }
 
     private void resetProgressInfo() {
@@ -230,7 +239,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void clearNotification() {
         NotificationManager mNotificationManager =
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-        mNotificationManager.cancel(mPlayer.getForegroundNotificationId());
+        mNotificationManager.cancel(mPlayer.getNotificationId());
     }
 
 
@@ -285,7 +294,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     };
 
     @Override
-    public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo) {
+    public void onPlayerInitialized(PlayInfo playInfo) {
         mPlayer.setCredentials("d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42", "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517");
 
         final PackageManager pm = getActivity().getApplicationContext().getPackageManager();
@@ -297,13 +306,14 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
             ai = null;
         }
         final String applicationName = (String) (ai != null ? pm.getApplicationLabel(ai) : "(unknown)");
-        getActivity().setTitle(applicationName + " (sdk: " + playerLibraryInfo.versionName + ")");
+        getActivity().setTitle(applicationName + " (sdk: " + playInfo.getSdkVersion() + ")");
+
+        if (playInfo.getPlay() != null) {
+            onTrackChanged(playInfo.getPlay());
+        }
     }
 
-    @Override
-    public void onPlacementChanged(Placement placement, List<Station> stationList) {
-        mPlacementsView.setSelection(mSelectedPlacementsIndex);
-
+    private void updateStations(List<Station> stationList) {
         List<HashMap<String, String>> fillMaps = new ArrayList<HashMap<String, String>>();
         for (Station s : stationList) {
             HashMap<String, String> map = new HashMap<String, String>();
@@ -332,6 +342,13 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     }
 
     @Override
+    public void onPlacementChanged(Placement placement, List<Station> stationList) {
+        mPlacementsView.setSelection(mSelectedPlacementsIndex);
+
+        updateStations(stationList);
+    }
+
+    @Override
     public void onStationChanged(Station station) {
         mStationsView.setSelection(mSelectedStationIndex);
         Toast.makeText(getActivity(), String.format("Station set to: %s (%s)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
@@ -341,6 +358,10 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onTrackChanged(Play play) {
         resetProgressInfo();
 
+        updateTrackInfo(play);
+    }
+
+    private void updateTrackInfo(Play play) {
         mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
         mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
 
@@ -357,8 +378,27 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     }
 
     @Override
-    public void onPlaybackStateChanged(Placement placement, List<Station> stationList) {
-
+    public void onPlaybackStateChanged(PlayInfo.State state) {
+        switch (state) {
+            case WAITING:
+                break;
+            case READY:
+                break;
+            case TUNING:
+                break;
+            case TUNED:
+                break;
+            case PAUSED:
+                break;
+            case PLAYING:
+                break;
+            case STALLED:
+                break;
+            case COMPLETE:
+                break;
+            case REQUESTING_SKIP:
+                break;
+        }
     }
 
     @Override

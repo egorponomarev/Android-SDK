@@ -14,8 +14,8 @@ import java.util.List;
 
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
-import fm.feed.android.playersdk.model.PlayerLibraryInfo;
 import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.PlayerService;
 import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
@@ -47,36 +47,42 @@ public class Player {
 
     private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 
-    private int mNotificationId;
+    private PlayInfo mPlayInfo;
 
-    protected Player(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
-//        registerPlayerListener(playerListener);
-//        registerNavListener(navListener);
-//        registerSocialListener(socialListener);
-
+    protected Player(Context context, int notificationId) {
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
 
-        startPlayerService(context);
+        startPlayerService(context, notificationId);
     }
 
-    protected void startPlayerService(Context context) {
+    protected void startPlayerService(Context context, Integer notificationId) {
         // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
-        //TODO: remove literal
-        intent.putExtra("timestamp", new Date().getTime());
+        intent.putExtra(PlayerService.ExtraKeys.timestamp.toString(), new Date().getTime());
+
+        if (notificationId >= -1) {
+            intent.putExtra(PlayerService.ExtraKeys.notificationId.toString(), notificationId);
+        }
         context.startService(intent);
     }
 
-    public static Player getInstance(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
-        if (mInstance == null) {
-            mInstance = new Player(context, playerListener, navListener, socialListener);
-        }
-        return mInstance;
+    public static Player getInstance(Context context) {
+        return getInstance(context, null);
     }
 
-    public int getForegroundNotificationId() {
-        return mNotificationId;
+    /**
+     * Get a Singleton instance of the {@link fm.feed.android.playersdk.Player}.
+     *
+     * @param context
+     * @param notificationId a custom ID for the notification that will be created when the Service runs in the foreground.
+     * @return
+     */
+    public static Player getInstance(Context context, Integer notificationId) {
+        if (mInstance == null) {
+            mInstance = new Player(context, notificationId);
+        }
+        return mInstance;
     }
 
     public void registerPlayerListener(PlayerListener playerListener) {
@@ -146,6 +152,34 @@ public class Player {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
     }
 
+    public Placement getPlacement() {
+        return mPlayInfo != null ? mPlayInfo.getPlacement() : null;
+    }
+
+    public List<Station> getStationList() {
+        return mPlayInfo != null ? mPlayInfo.getStationList() : null;
+    }
+
+    public boolean hasStationList() {
+        return mPlayInfo != null && mPlayInfo.getStationList() != null;
+    }
+
+    public boolean hasPlay() {
+        return mPlayInfo != null && mPlayInfo.getPlay() != null;
+    }
+
+    public Play getPlay() {
+        return mPlayInfo != null ? mPlayInfo.getPlay() : null;
+    }
+
+    public int getNotificationId() {
+        return mPlayInfo != null ? mPlayInfo.getNotificationId() : -1;
+    }
+
+    public boolean isSkippable() {
+        return mPlayInfo != null ? mPlayInfo.isSkippable() : false;
+    }
+
 
     // TODO: find a way to make this private and not break the Unit Tests
     public class PlayerServiceListener {
@@ -154,11 +188,11 @@ public class Player {
 
         @SuppressWarnings("unused")
         @Subscribe
-        public void onServiceReady(PlayerLibraryInfo playerLibraryInfo) {
-            mNotificationId = playerLibraryInfo.notificationId;
+        public void onServiceReady(PlayInfo playInfo) {
+            mPlayInfo = playInfo;
 
             for (PlayerListener listener : mPlayerListeners) {
-                listener.onPlayerInitialized(playerLibraryInfo);
+                listener.onPlayerInitialized(playInfo);
             }
         }
 
@@ -170,6 +204,11 @@ public class Player {
                 public void run() {
 
                     switch (message.getStatus()) {
+                        case STATUS_UPDATED:
+                            for (PlayerListener listener : mPlayerListeners) {
+                                listener.onPlaybackStateChanged(mPlayInfo.getState());
+                            }
+                            break;
                         case SKIP_FAILED:
                             for (NavListener listener : mNavListeners) {
                                 listener.onSkipFailed();
@@ -201,7 +240,7 @@ public class Player {
                             break;
                         case NOTIFICATION_WILL_SHOW:
                             for (PlayerListener listener : mPlayerListeners) {
-                                listener.onNotificationWillShow(mNotificationId);
+                                listener.onNotificationWillShow(getNotificationId());
                             }
                             break;
                         default:
@@ -282,9 +321,11 @@ public class Player {
      * Implement this interface to get callbacks from the Player
      */
     public interface PlayerListener {
-        public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo);
+        public void onPlayerInitialized(PlayInfo playInfo);
 
         public void onNotificationWillShow(int notificationId);
+
+        public void onPlaybackStateChanged(PlayInfo.State state);
 
         /**
          * Called when the user is not located in the US. No music will be available to play.
@@ -303,8 +344,6 @@ public class Player {
         public void onTrackChanged(Play play);
 
         public void onEndOfPlaylist();
-
-        public void onPlaybackStateChanged(Placement placement, List<Station> stationList);
 
         public void onSkipFailed();
 

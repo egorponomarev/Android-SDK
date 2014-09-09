@@ -9,6 +9,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  */
 public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, Void, Response> {
     public interface SimpleNetworkTaskListener <Response> {
+        public void onStart();
         public Response performRequestSynchronous() throws FeedFMError;
         public void onSuccess(Response response);
         public void onFail();
@@ -19,20 +20,29 @@ public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, V
     public SimpleNetworkTask(TaskQueueManager queueManager, Webservice mWebservice, SimpleNetworkTaskListener<Response> listener) {
         super(queueManager, mWebservice);
 
-        this.mListener = listener;
+        mListener = listener;
+    }
+
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+
+        if (mListener != null) {
+            mListener.onStart();
+        }
     }
 
     @Override
     protected Response doInBackground(Object... params) {
         Response response = null;
         try {
-            if (this.mListener != null) {
-                response = this.mListener.performRequestSynchronous();
+            if (mListener != null) {
+                response = mListener.performRequestSynchronous();
             }
         } catch (FeedFMError e) {
             e.printStackTrace();
-            if (this.mListener != null) {
-                this.mListener.onFail();
+            if (mListener != null) {
+                mListener.onFail();
             }
         }
 
@@ -41,8 +51,8 @@ public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, V
 
     @Override
     protected void onTaskFinished(Response response) {
-        if (this.mListener != null) {
-            this.mListener.onSuccess(response);
+        if (mListener != null) {
+            mListener.onSuccess(response);
         }
     }
 

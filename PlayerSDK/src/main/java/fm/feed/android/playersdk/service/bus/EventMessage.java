@@ -11,7 +11,8 @@ public class EventMessage {
         DISLIKE,
         END_OF_PLAYLIST,
         NOT_IN_US,
-        NOTIFICATION_WILL_SHOW
+        NOTIFICATION_WILL_SHOW,
+        STATUS_UPDATED
     }
 
     private Status mStatus;

@@ -7,22 +7,25 @@ import java.io.IOException;
 
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
+import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
-import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
 
 /**
  * Created by mharkins on 9/2/14.
  */
-public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMediaPlayer> implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener {
+public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMediaPlayer> implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnInfoListener {
     private static final String TAG = TuneTask.class.getSimpleName();
 
     public static final int MAX_RETRY_ATTEMPTS = 2;
 
     public interface TuneTaskListener {
         public void onMetaDataLoaded(TuneTask tuneTask, Play play);
+
+        public void onBufferingStarted();
+        public void onBufferingEnded();
 
         public void onSuccess(TuneTask tuneTask, FeedFMMediaPlayer mediaPlayer, Play play);
 
@@ -32,7 +35,9 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
     private TuneTaskListener mListener;
 
     private MediaPlayerPool mMediaPlayerPool;
-    private PlayerInfo mPlayerInfo;
+    private PlayInfo mPlayInfo;
+
+    private String mClientId;
 
     private FeedFMMediaPlayer mMediaPlayer;
 
@@ -43,11 +48,12 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
     private FeedFMError mApiError = null;
 
 
-    public TuneTask(TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayerInfo playerInfo) {
+    public TuneTask(TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayInfo playInfo, String clientId) {
         super(queueManager, mWebservice);
 
         this.mMediaPlayerPool = mediaPlayerPool;
-        this.mPlayerInfo = playerInfo;
+        this.mPlayInfo = playInfo;
+        this.mClientId = clientId;
         this.mListener = listener;
     }
 
@@ -62,7 +68,7 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
 
         // This exception is called if the MediaPlayer dataSource is set while the media player is in an invalid state.
         try {
-            Play play = mWebservice.getPlay(mPlayerInfo.getClientId(), mPlayerInfo.getPlacement(), mPlayerInfo.getStation(),
+            Play play = mWebservice.getPlay(mClientId, mPlayInfo.getPlacement(), mPlayInfo.getStation(),
                     null, // For now don't put in the AudioFormat
                     null);
 
@@ -94,6 +100,7 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
 
         mMediaPlayer = mMediaPlayerPool.getTuningMediaPlayer();
         mMediaPlayer.setOnErrorListener(this);
+        mMediaPlayer.setOnInfoListener(this);
 
         mMediaPlayer.setState(FeedFMMediaPlayer.State.FETCHING_METADATA);
 
@@ -145,7 +152,7 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
     protected void onTaskCancelled() {
         if (mMediaPlayer != null) {
             mMediaPlayer.setOnErrorListener(null);
-            mMediaPlayerPool.free(mMediaPlayer);
+            mMediaPlayerPool.release(mMediaPlayer);
             mMediaPlayer = null;
         }
     }
@@ -161,7 +168,7 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
         Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", mediaPlayer.getPlay().getAudioFile().getTrack().getTitle(), what, extra));
 
         if (what == MediaPlayer.MEDIA_ERROR_UNKNOWN) {
-            mMediaPlayerPool.free(mediaPlayer);
+            mMediaPlayerPool.release(mediaPlayer);
             mMediaPlayer = null;
             mShouldRetry = true;
         }
@@ -169,7 +176,23 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
     }
 
     @Override
+    public boolean onInfo(MediaPlayer mp, int what, int extra) {
+        switch (what) {
+            case MediaPlayer.MEDIA_INFO_BUFFERING_START:
+                if (mListener != null) {
+                    mListener.onBufferingStarted();
+                }
+                break;
+            case MediaPlayer.MEDIA_INFO_BUFFERING_END:
+                if (mListener != null) {
+                    mListener.onBufferingEnded();
+                }
+        }
+        return true;
+    }
+
+    @Override
     public String toString() {
-        return String.format("%s", TuneTask.class.getSimpleName());
+        return String.format("{%s - isCancelled: %s}", TuneTask.class.getSimpleName(), isCancelled());
     }
 }

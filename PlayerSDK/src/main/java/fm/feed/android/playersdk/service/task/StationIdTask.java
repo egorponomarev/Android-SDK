@@ -1,8 +1,10 @@
 package fm.feed.android.playersdk.service.task;
 
+import java.util.List;
+
 import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
-import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -14,31 +16,31 @@ public class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
 
     private OnStationIdChanged mListener;
 
-    public Integer mStationId;
-    public PlayerInfo mPlayerInfo;
+    public Integer mCurrentStationId;
+    public Integer mSelectedStationId;
+    public List<Station> mStationList;
 
-    public StationIdTask(TaskQueueManager queueManager, OnStationIdChanged mListener, PlayerInfo mPlayerInfo, Integer mStationId) {
+    public StationIdTask(TaskQueueManager queueManager, OnStationIdChanged mListener, List<Station> stationList, Integer currentStationId, Integer selectedStationId) {
         super(queueManager);
         this.mListener = mListener;
-        this.mStationId = mStationId;
-        this.mPlayerInfo = mPlayerInfo;
+        this.mSelectedStationId = selectedStationId;
+        this.mCurrentStationId = currentStationId;
+        this.mStationList = stationList;
     }
 
     @Override
     protected Station doInBackground(Object... params) {
         // If the user selects the same station, do nothing.
         boolean didChangeStation =
-                mPlayerInfo.getStation() == null ||
-                        !mPlayerInfo.getStation().getId().equals(mStationId);
+                mCurrentStationId == null ||
+                        !mCurrentStationId.equals(mSelectedStationId);
         if (!didChangeStation) {
             return null;
         }
 
-        if (mPlayerInfo.hasStationList()) {
-            for (Station s : mPlayerInfo.getStationList()) {
-                if (s.getId().equals(mStationId)) {
-                    mPlayerInfo.setStation(s);
-
+        if (mStationList != null) {
+            for (Station s : mStationList) {
+                if (s.getId().equals(mSelectedStationId)) {
                     return s;
                 }
             }

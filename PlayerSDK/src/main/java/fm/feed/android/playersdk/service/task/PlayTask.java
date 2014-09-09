@@ -20,7 +20,7 @@ import fm.feed.android.playersdk.util.MediaPlayerPool;
 /**
  * Created by mharkins on 9/2/14.
  */
-public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
+public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnInfoListener {
     public static final String TAG = PlayTask.class.getSimpleName();
 
     public static final int PROGRESS_PUBLISH_INTERVAL = 500; // 0.5 seconds
@@ -64,7 +64,7 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         super(queueManager, mWebservice);
 
         this.mContext = context;
-        this.mListener = listener;
+        mListener = listener;
         this.mMediaPlayerPool = mediaPlayerPool;
 
         // Register Noisy Audio Receiver.
@@ -86,12 +86,13 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
             return;
         }
 
-        this.mMediaPlayer = mediaPlayer;
-        this.mPlay = mediaPlayer.getPlay();
+        mMediaPlayer = mediaPlayer;
+        mPlay = mediaPlayer.getPlay();
 
-        this.mDuration = this.mMediaPlayer.getDuration();
+        mDuration = mMediaPlayer.getDuration();
 
-        this.mMediaPlayer.setOnCompletionListener(this);
+        mMediaPlayer.setOnInfoListener(this);
+        mMediaPlayer.setOnCompletionListener(this);
     }
 
     @Override
@@ -100,8 +101,8 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
         play();
 
-        if (this.mListener != null) {
-            this.mListener.onPlayBegin(this, mPlay);
+        if (mListener != null) {
+            mListener.onPlayBegin(this, mPlay);
         }
 
         while (!mCompleted && !isCancelled()) {
@@ -110,9 +111,9 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
                 mTimingHandler.postDelayed(mResetPublishProgressFlag, PROGRESS_PUBLISH_INTERVAL);
 
                 // Publish progress every 5
-                int bufferUpdatePercentage = this.mMediaPlayer.getLastBufferUpdate();
+                int bufferUpdatePercentage = mMediaPlayer.getLastBufferUpdate();
                 boolean doneBuffering = (bufferUpdatePercentage == 100);
-                publishProgress(this.mMediaPlayer.getCurrentPosition(), isBuffering() ? bufferUpdatePercentage : -1);
+                publishProgress(mMediaPlayer.getCurrentPosition(), isBuffering() ? bufferUpdatePercentage : -1);
                 mBuffering = !doneBuffering;
             }
 
@@ -139,12 +140,12 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     protected void onProgressUpdate(Integer... progress) {
         super.onProgressUpdate(progress);
 
-        if (this.mListener != null) {
-            this.mListener.onProgressUpdate(mPlay, progress[0], mDuration);
+        if (mListener != null) {
+            mListener.onProgressUpdate(mPlay, progress[0], mDuration);
 
             // Once buffering is complete. progress[1] will return null.
             if (progress[1] >= 0) {
-                this.mListener.onBufferingUpdate(mPlay, progress[1]);
+                mListener.onBufferingUpdate(mPlay, progress[1]);
             }
         }
     }
@@ -153,8 +154,8 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     protected void onTaskCancelled() {
         Log.i(TAG, String.format("%s, onCancelled", getQueueManager().getIdentifier()));
 
-        if (this.mListener != null) {
-            this.mListener.onPlayFinished(mPlay, true);
+        if (mListener != null) {
+            mListener.onPlayFinished(mPlay, true);
         }
 
         cleanup();
@@ -164,8 +165,8 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     protected void onTaskFinished(Void aVoid) {
         Log.i(TAG, String.format("%s, onPostExecute", getQueueManager().getIdentifier()));
 
-        if (this.mListener != null) {
-            this.mListener.onPlayFinished(mPlay, false);
+        if (mListener != null) {
+            mListener.onPlayFinished(mPlay, false);
         }
 
         cleanup();
@@ -192,11 +193,20 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         mMediaPlayer.start();
 
         mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
+
+        if (mListener != null) {
+            mListener.onPlay(this);
+        }
     }
 
     public void pause() {
         mMediaPlayer.pause();
         mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
+
+
+        if (mListener != null) {
+            mListener.onPause(this);
+        }
     }
 
     public void setVolume(float leftVolume, float rightVolume) {
@@ -223,8 +233,32 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         return false;
     }
 
+    @Override
+    public boolean onInfo(MediaPlayer mp, int what, int extra) {
+        switch (what) {
+            case MediaPlayer.MEDIA_INFO_BUFFERING_START:
+                if (mListener != null) {
+                    mListener.onBufferingStarted(this);
+                }
+                break;
+            case MediaPlayer.MEDIA_INFO_BUFFERING_END:
+                if (mListener != null) {
+                    mListener.onBufferingEnded(this);
+                }
+        }
+        return true;
+    }
+
     public interface PlayTaskListener {
         public void onPlayBegin(PlayTask playTask, Play play);
+
+        public void onPlay(PlayTask playTask);
+
+        public void onPause(PlayTask playTask);
+
+        public void onBufferingStarted(PlayTask playTask);
+
+        public void onBufferingEnded(PlayTask playTask);
 
         public void onProgressUpdate(Play play, Integer progressInMillis, Integer durationInMillis);
 

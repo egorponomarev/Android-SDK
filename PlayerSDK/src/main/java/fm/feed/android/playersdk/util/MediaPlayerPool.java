@@ -63,16 +63,44 @@ public class MediaPlayerPool {
         }
     }
 
-    public void free(FeedFMMediaPlayer mediaPlayer) {
+    public void free(final FeedFMMediaPlayer mediaPlayer) {
         synchronized (this) {
             mTuning.remove(mediaPlayer);
             mTuned.remove(mediaPlayer);
             mPlaying.remove(mediaPlayer);
+            mFree.remove(mediaPlayer);
 
-            if (!mFree.contains(mediaPlayer)) {
-                mFree.offer(mediaPlayer);
-                mediaPlayer.reset();
-            }
+            // Reset the media player on a separate Thread.
+            Thread thread = new Thread()
+            {
+                @Override
+                public void run() {
+                    mediaPlayer.reset();
+                    mFree.offer(mediaPlayer);
+                }
+            };
+
+            thread.start();
+        }
+    }
+
+    public void release(final FeedFMMediaPlayer mediaPlayer) {
+        synchronized (this) {
+            mTuning.remove(mediaPlayer);
+            mTuned.remove(mediaPlayer);
+            mPlaying.remove(mediaPlayer);
+            mFree.remove(mediaPlayer);
+
+            // Release the media player on a separate Thread.
+            Thread thread = new Thread()
+            {
+                @Override
+                public void run() {
+                    mediaPlayer.release();
+                }
+            };
+
+            thread.start();
         }
     }
 

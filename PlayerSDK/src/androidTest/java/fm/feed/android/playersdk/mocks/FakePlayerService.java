@@ -14,7 +14,7 @@ public class FakePlayerService extends PlayerService{
     }
 
     public String getClientIdString() {
-        return mPlayerInfo.getClientId();
+        return mPlayInfo.getClientId();
     }
 
     public void setEventBus(Bus bus) {

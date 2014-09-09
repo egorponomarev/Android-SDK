@@ -9,8 +9,8 @@ import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.webservice.model.AudioFormat;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
-import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
@@ -67,6 +67,17 @@ public class Webservice {
             @Override
             public ClientResponse execute() throws RetrofitError {
                 return mRestService.getClientId(
+                        WebserviceUtils.getAuth(mCredentials));
+            }
+        };
+        return r.get();
+    }
+
+    public Placement getPlacementInfo() throws FeedFMError {
+        RequestWrapper<PlacementResponse, Placement> r = new RequestWrapper<PlacementResponse, Placement>() {
+            @Override
+            public PlacementResponse execute() throws RetrofitError {
+                return mRestService.getPlacementInfo(
                         WebserviceUtils.getAuth(mCredentials));
             }
         };
@@ -178,6 +189,9 @@ public class Webservice {
         @POST("/client")
         public ClientResponse getClientId(@Header("Authorization") String authorization);
 
+        @GET("/placement")
+        public PlacementResponse getPlacementInfo(@Header("Authorization") String authorization);
+
         @GET("/placement/{id}")
         public PlacementResponse setPlacementId(@Header("Authorization") String authorization,
                                                 @Path("id") int id);
@@ -248,7 +262,7 @@ public class Webservice {
 
 //            try {
             Object body = retrofitError.getBody();
-            if (body != null && body instanceof  FeedFMResponse) {
+            if (body != null && body instanceof FeedFMResponse) {
                 feedFMError = ((FeedFMResponse) body).getError();
             } else {
                 retrofitError.printStackTrace();

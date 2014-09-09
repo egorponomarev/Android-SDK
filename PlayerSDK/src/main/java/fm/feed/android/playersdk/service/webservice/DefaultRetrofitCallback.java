@@ -1,7 +1,7 @@
 package fm.feed.android.playersdk.service.webservice;
 
-import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;

@@ -2,13 +2,12 @@ package fm.feed.android.playersdk.mocks;
 
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
-import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
 
-import retrofit.Callback;
 import retrofit.RetrofitError;
 import retrofit.http.Field;
 import retrofit.http.Header;

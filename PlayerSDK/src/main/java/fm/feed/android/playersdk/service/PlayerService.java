@@ -14,10 +14,10 @@ import com.squareup.otto.Subscribe;
 
 import java.util.Date;
 
+import fm.feed.android.playersdk.BuildConfig;
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
-import fm.feed.android.playersdk.model.PlayerLibraryInfo;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
@@ -38,7 +38,6 @@ import fm.feed.android.playersdk.service.task.StationIdTask;
 import fm.feed.android.playersdk.service.task.TuneTask;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
-import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
 import fm.feed.android.playersdk.util.AudioFocusManager;
 import fm.feed.android.playersdk.util.DataPersister;
 import fm.feed.android.playersdk.util.MediaPlayerPool;
@@ -52,23 +51,50 @@ public class PlayerService extends Service {
     protected static Bus eventBus = BusProvider.getInstance();
 
     protected Webservice mWebservice;
-    protected PlayerInfo mPlayerInfo;
-
+    protected PlayInfo mPlayInfo;
     private DataPersister mDataPersister;
 
-    protected MainQueue mMainQueue = new MainQueue();
-    protected TuningQueue mTuningQueue = new TuningQueue();
-    protected TaskQueueManager mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
-    private MediaPlayerPool mMediaPlayerPool = new MediaPlayerPool();
+    protected MainQueue mMainQueue;
+    protected TuningQueue mTuningQueue;
+    protected TaskQueueManager mSecondaryQueue;
 
-    private int mNotificationId = 1234512;
+    private MediaPlayerPool mMediaPlayerPool;
 
-    private boolean mValidStart = false;
+    private boolean mInitialized;
+    private boolean mValidStart;
+
+    public static enum ExtraKeys {
+        timestamp,
+        notificationId;
+
+        ExtraKeys() {
+        }
+
+        @Override
+        public String toString() {
+            return PlayerService.class.getPackage().toString() + "." + name();
+        }
+    }
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+        mInitialized = false;
+        mValidStart = false;
+
+        mPlayInfo = new PlayInfo(getString(R.string.sdk_version));
+
+        mDataPersister = new DataPersister(this);
+        mWebservice = new Webservice(this);
+
+        mMediaPlayerPool = new MediaPlayerPool();
+
+        mMainQueue = new MainQueue();
+        mTuningQueue = new TuningQueue();
+        mSecondaryQueue = new TaskQueueManager("Secondary Queue");
+
     }
 
     @Override
@@ -77,7 +103,7 @@ public class PlayerService extends Service {
 
         if (intent != null) {
             long now = new Date().getTime();
-            long intentTimestamp = intent.getLongExtra("timestamp", 0);
+            long intentTimestamp = intent.getLongExtra(ExtraKeys.timestamp.toString(), 0);
 
             // if it's been more than a second since the Service was called to start, cancel.
             // It's the android back stack relaunching the Intent.
@@ -87,7 +113,11 @@ public class PlayerService extends Service {
         }
 
         if (mValidStart) {
-            startup();
+            if (!mInitialized) {
+                init();
+                mInitialized = true;
+            }
+            resume(intent);
         } else {
             stopSelf();
         }
@@ -100,20 +130,7 @@ public class PlayerService extends Service {
         return null;
     }
 
-    public void startup() {
-        mPlayerInfo = new PlayerInfo();
-
-        mDataPersister = new DataPersister(this);
-        mWebservice = new Webservice(this);
-
-        eventBus.register(this);
-
-        PlayerLibraryInfo playerLibraryInfo = new PlayerLibraryInfo();
-        playerLibraryInfo.versionName = getString(R.string.sdk_version);
-        playerLibraryInfo.notificationId = mNotificationId;
-
-        eventBus.post(playerLibraryInfo);
-
+    private void init() {
         initAudioManager();
 
         mMainQueue = new MainQueue();
@@ -121,7 +138,24 @@ public class PlayerService extends Service {
         mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
         mMediaPlayerPool = new MediaPlayerPool();
+
+        eventBus.register(this);
     }
+
+    /**
+     * Resend the Player information onto the Event bus. This is to allow the Client application to capture the current state of the application.
+     *
+     * @param intent
+     */
+    private void resume(Intent intent) {
+        int notificationId = intent.getIntExtra(ExtraKeys.notificationId.toString(), -1);
+        if (notificationId >= 0) {
+            mPlayInfo.setNotificationId(notificationId);
+        }
+
+        eventBus.post(mPlayInfo);
+    }
+
 
     @Override
     public void onDestroy() {
@@ -140,6 +174,7 @@ public class PlayerService extends Service {
             eventBus.unregister(this);
         }
 
+        mInitialized = false;
     }
 
 
@@ -147,23 +182,30 @@ public class PlayerService extends Service {
         int stringId = getApplicationInfo().labelRes;
         String applicationName = getString(stringId);
 
-        // TODO: modify notification
-        // Common notification ID (Should be sent along in the startIntent, or returned in the PlayerLibraryInfo or alternate object).
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(this);
-        mBuilder.setContentTitle(applicationName + "-SDK");
+        if (BuildConfig.IS_DEBUG) {
+            mBuilder.setContentTitle(applicationName + "-SDK");
+        } else {
+            mBuilder.setContentTitle(applicationName);
+        }
         mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
 
         // Make Service live even if Application is shut down by system
-        startForeground(mNotificationId, mBuilder.build());
+        startForeground(mPlayInfo.getNotificationId(), mBuilder.build());
         eventBus.post(new EventMessage(EventMessage.Status.NOTIFICATION_WILL_SHOW));
     }
 
-    public void disableForeground() {
+    private void disableForeground() {
         NotificationManager mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        mNotificationManager.cancel(mNotificationId);
+        mNotificationManager.cancel(mPlayInfo.getNotificationId());
         stopForeground(true);
+    }
+
+    private void updateState(PlayInfo.State state) {
+        mPlayInfo.setState(state);
+        eventBus.post(new EventMessage(EventMessage.Status.STATUS_UPDATED));
     }
 
     /**
@@ -177,20 +219,44 @@ public class PlayerService extends Service {
         mWebservice.setCredentials(credentials);
 
         getClientId();
+        setPlacement(null, false); // Get the default placement information
     }
 
     @Subscribe
     @SuppressWarnings("unused")
     public void setPlacementId(OutPlacementWrap wrapper) {
         Placement p = wrapper.getObject();
+
+        setPlacement(p, true);
+    }
+
+    private void setPlacement(Placement p, final boolean isUserInteraction) {
+        final Integer placementId = p != null ? p.getId() : null;
+
         PlacementIdTask task = new PlacementIdTask(mMainQueue, mWebservice, new PlacementIdTask.OnPlacementIdChanged() {
             @Override
             public void onSuccess(Placement placement) {
+                mPlayInfo.setStationList(placement.getStationList());
+
+                boolean didChangePlacement =
+                        mPlayInfo.getPlacement() == null ||
+                                !mPlayInfo.getPlacement().getId().equals(placement.getId());
+                if (didChangePlacement) {
+                    // Save user Placement
+                    mPlayInfo.setPlacement(placement);
+                    mPlayInfo.setStation(null);
+                }
+
+                updateState(PlayInfo.State.READY);
+
                 eventBus.post(placement);
 
-                play();
+                if (isUserInteraction) {
+                    play();
+                }
             }
-        }, mPlayerInfo, p.getId());
+        }, placementId);
+
 
         // PlacementIdTask cancels everything but:
         // - ClientIdTask
@@ -209,10 +275,23 @@ public class PlayerService extends Service {
         Station s = wrapper.getObject();
         final Integer stationId = s.getId();
 
+        Integer currentStationId = mPlayInfo.getStation() != null ? mPlayInfo.getStation().getId() : null;
+
+        // If the user selects the same station, do nothing.
+        boolean didChangeStation =
+                currentStationId == null ||
+                        !currentStationId.equals(stationId);
+        if (!didChangeStation) {
+            Log.w(TAG, String.format("Station %s is already selected in current placement", stationId));
+            return;
+        }
+
         StationIdTask task = new StationIdTask(mMainQueue, new StationIdTask.OnStationIdChanged() {
             @Override
             public void onSuccess(Station station) {
                 if (station != null) {
+                    mPlayInfo.setStation(station);
+
                     eventBus.post(station);
 
                     play();
@@ -220,11 +299,14 @@ public class PlayerService extends Service {
                     Log.w(TAG, String.format("Station %s could not be found or was already selected in current placement", stationId));
                 }
             }
-        }, mPlayerInfo, stationId);
+        }, mPlayInfo.getStationList(), currentStationId, stationId);
 
         // StationIdTask cancels everything but:
         // - ClientIdTask
         mMainQueue.clearLowerPriorities(task);
+
+        mTuningQueue.clear();
+
         mMainQueue.offerUnique(task);
         mMainQueue.next();
     }
@@ -263,8 +345,8 @@ public class PlayerService extends Service {
     public void getClientId() {
         String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
 
-        if (clientId != null) {
-            mPlayerInfo.setClientId(clientId);
+        if (clientId != null && !BuildConfig.IS_DEBUG) {
+            mPlayInfo.setClientId(clientId);
             Toast.makeText(PlayerService.this, "Retrieved existing Client ID!", Toast.LENGTH_LONG).show();
         } else {
             ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
@@ -272,7 +354,7 @@ public class PlayerService extends Service {
                 public void onSuccess(String clientId) {
                     mDataPersister.putString(DataPersister.Key.clientId, clientId);
                     // TODO: perhaps encrypt clientId first.
-                    mPlayerInfo.setClientId(clientId);
+                    mPlayInfo.setClientId(clientId);
                     Toast.makeText(PlayerService.this, "New Client ID!", Toast.LENGTH_LONG).show();
                 }
             });
@@ -313,20 +395,35 @@ public class PlayerService extends Service {
                 public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
                     // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
                     if (!mMainQueue.hasActivePlayTask()) {
+                        updateState(PlayInfo.State.TUNING);
+
                         eventBus.post(play);
                     }
                 }
 
                 @Override
-                public void onSuccess(TuneTask tuneTask, FeedFMMediaPlayer mediaPlayer, Play play) {
+                public void onBufferingStarted() {
+                    // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
+                    if (!mMainQueue.hasActivePlayTask()) {
+                        updateState(PlayInfo.State.STALLED);
+                    }
+                }
 
+                @Override
+                public void onBufferingEnded() {
+                    updateState(PlayInfo.State.TUNED);
+                }
+
+                @Override
+                public void onSuccess(TuneTask tuneTask, FeedFMMediaPlayer mediaPlayer, Play play) {
+                    updateState(PlayInfo.State.TUNED);
                 }
 
                 @Override
                 public void onApiError(FeedFMError mApiError) {
                     handleApiError(mApiError);
                 }
-            }, mPlayerInfo);
+            }, mPlayInfo, mPlayInfo.getClientId());
 
             // TuneTask is low priority and cancels nothing. It will only be queued.
             queueManager.offerIfNotExist(task);
@@ -391,11 +488,18 @@ public class PlayerService extends Service {
         PlayTask task = new PlayTask(mMainQueue, mWebservice, PlayerService.this, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
+                mPlayInfo.setCurrentPlay(play);
+
                 eventBus.post(play);
 
                 final String playId = play.getId();
 
                 SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+                    @Override
+                    public void onStart() {
+                        updateState(PlayInfo.State.REQUESTING_SKIP);
+                    }
+
                     @Override
                     public Boolean performRequestSynchronous() throws FeedFMError {
                         return mWebservice.playStarted(playId);
@@ -407,6 +511,14 @@ public class PlayerService extends Service {
 
                             if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
                                 playTask.setSkippable(canSkip);
+                            }
+
+                            if (playTask.isPlaying()) {
+                                updateState(PlayInfo.State.PLAYING);
+                            } else if (playTask.isPaused()) {
+                                updateState(PlayInfo.State.PAUSED);
+                            } else {
+                                updateState(PlayInfo.State.TUNED);
                             }
                         }
                     }
@@ -428,6 +540,32 @@ public class PlayerService extends Service {
             }
 
             @Override
+            public void onPlay(PlayTask playTask) {
+                updateState(PlayInfo.State.PLAYING);
+            }
+
+            @Override
+            public void onPause(PlayTask playTask) {
+                updateState(PlayInfo.State.PAUSED);
+            }
+
+            @Override
+            public void onBufferingStarted(PlayTask playTask) {
+                updateState(PlayInfo.State.STALLED);
+            }
+
+            @Override
+            public void onBufferingEnded(PlayTask playTask) {
+                if (playTask.isPlaying()) {
+                    updateState(PlayInfo.State.PLAYING);
+                } else if (playTask.isPaused()) {
+                    updateState(PlayInfo.State.PAUSED);
+                } else {
+                    updateState(PlayInfo.State.TUNED);
+                }
+            }
+
+            @Override
             public void onProgressUpdate(Play play, Integer progressInMillis, Integer durationInMillis) {
                 eventBus.post(new ProgressUpdate(play, progressInMillis / 1000, durationInMillis / 1000));
             }
@@ -444,8 +582,15 @@ public class PlayerService extends Service {
 
             @Override
             public void onPlayFinished(final Play play, boolean isSkipped) {
+                updateState(PlayInfo.State.COMPLETE);
+
                 if (!isSkipped) {
                     SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+                        @Override
+                        public void onStart() {
+
+                        }
+
                         @Override
                         public Boolean performRequestSynchronous() throws FeedFMError {
                             return mWebservice.playCompleted(play.getId());
@@ -515,6 +660,11 @@ public class PlayerService extends Service {
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
+                public void onStart() {
+
+                }
+
+                @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
                     return mWebservice.like(playId);
                 }
@@ -544,6 +694,11 @@ public class PlayerService extends Service {
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
+                public void onStart() {
+
+                }
+
+                @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
                     return mWebservice.unlike(playId);
                 }
@@ -571,6 +726,11 @@ public class PlayerService extends Service {
             final String playId = playTask.getPlay().getId();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+                @Override
+                public void onStart() {
+
+                }
+
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
                     return mWebservice.dislike(playId);

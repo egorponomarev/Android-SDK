@@ -1,10 +1,10 @@
 package fm.feed.android.playersdk.service.task;
 
 import fm.feed.android.playersdk.model.Placement;
+import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
-import fm.feed.android.playersdk.service.webservice.model.PlayerInfo;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -15,14 +15,12 @@ public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement
     }
 
     public Integer mPlacementId;
-    public PlayerInfo mPlayerInfo;
 
     private OnPlacementIdChanged mListener;
 
-    public PlacementIdTask(TaskQueueManager queueManager, Webservice mWebservice, OnPlacementIdChanged listener, PlayerInfo playerInfo, Integer placementId) {
+    public PlacementIdTask(TaskQueueManager queueManager, Webservice mWebservice, OnPlacementIdChanged listener, Integer placementId) {
         super(queueManager, mWebservice);
         this.mPlacementId = placementId;
-        this.mPlayerInfo = playerInfo;
         this.mListener = listener;
     }
 
@@ -30,20 +28,12 @@ public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement
     protected Placement doInBackground(Object... params) {
         Placement placement = null;
         try {
-            // Perform Synchronous Webservice Request.
-            placement = mWebservice.setPlacementId(mPlacementId);
-
-            mPlayerInfo.setStationList(placement.getStationList());
-
-            boolean didChangePlacement =
-                    mPlayerInfo.getPlacement() == null ||
-                            !mPlayerInfo.getPlacement().getId().equals(placement.getId());
-            if (didChangePlacement) {
-                // Save user Placement
-                mPlayerInfo.setPlacement(placement);
-                mPlayerInfo.setStation(null);
+            // Get the Default Placement information
+            if (mPlacementId == null) {
+                placement = mWebservice.getPlacementInfo();
+            } else {
+                placement = mWebservice.setPlacementId(mPlacementId);
             }
-
         } catch (FeedFMError feedFMError) {
             feedFMError.printStackTrace();
         }
