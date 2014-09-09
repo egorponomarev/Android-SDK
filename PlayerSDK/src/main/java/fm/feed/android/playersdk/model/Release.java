@@ -3,6 +3,8 @@ package fm.feed.android.playersdk.model;
 import com.google.gson.annotations.SerializedName;
 
 /**
+ * Album Information
+ * <p/>
  * Created by mharkins on 8/21/14.
  */
 public class Release {
@@ -11,10 +13,11 @@ public class Release {
     @SerializedName("title")
     private String title;
 
-    public Integer getId() {
-        return id;
-    }
-
+    /**
+     * Album Title
+     *
+     * @return The Album Title
+     */
     public String getTitle() {
         return title;
     }

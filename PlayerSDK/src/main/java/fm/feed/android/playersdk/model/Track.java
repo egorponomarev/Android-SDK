@@ -3,6 +3,8 @@ package fm.feed.android.playersdk.model;
 import com.google.gson.annotations.SerializedName;
 
 /**
+ * Track information
+ * <p/>
  * Created by mharkins on 8/21/14.
  */
 public class Track {
@@ -11,10 +13,11 @@ public class Track {
     @SerializedName("title")
     private String title;
 
-    public Integer getId() {
-        return id;
-    }
-
+    /**
+     * Title of the Track/Song
+     *
+     * @return The title of the Track.
+     */
     public String getTitle() {
         return title;
     }

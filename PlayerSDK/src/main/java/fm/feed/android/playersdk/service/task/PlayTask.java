@@ -15,7 +15,7 @@ import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
-import fm.feed.android.playersdk.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 
 /**
  * Created by mharkins on 9/2/14.

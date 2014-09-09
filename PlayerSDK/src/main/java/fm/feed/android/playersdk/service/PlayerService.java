@@ -38,9 +38,9 @@ import fm.feed.android.playersdk.service.task.StationIdTask;
 import fm.feed.android.playersdk.service.task.TuneTask;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
-import fm.feed.android.playersdk.util.AudioFocusManager;
-import fm.feed.android.playersdk.util.DataPersister;
-import fm.feed.android.playersdk.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.util.AudioFocusManager;
+import fm.feed.android.playersdk.service.util.DataPersister;
+import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -748,6 +748,8 @@ public class PlayerService extends Service {
             });
             mSecondaryQueue.offer(task);
             mSecondaryQueue.next();
+
+            skip();
         } else {
             Log.w(TAG, "Could not Dislike track. No active Play");
         }

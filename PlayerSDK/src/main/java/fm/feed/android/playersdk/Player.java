@@ -35,7 +35,7 @@ public class Player {
     /**
      * Singleton
      */
-    static Player mInstance;
+    private static Player mInstance;
 
     protected Bus mEventBus = BusProvider.getInstance();
     protected PlayerServiceListener mPrivateServiceListener;
@@ -75,7 +75,9 @@ public class Player {
      * Get a Singleton instance of the {@link fm.feed.android.playersdk.Player}.
      *
      * @param context
-     * @param notificationId a custom ID for the notification that will be created when the Service runs in the foreground.
+     * @param notificationId
+     *         a custom ID for the notification that will be created when the Service runs in the foreground.
+     *
      * @return
      */
     public static Player getInstance(Context context, Integer notificationId) {
@@ -109,6 +111,29 @@ public class Player {
         mNavListeners.remove(navListener);
     }
 
+    /**
+     * Assigns to the player the token and secret credentials needed for communicating with the service
+     * <p>
+     * This call is required for any use of the service.<br/>
+     * It should be called after {@link fm.feed.android.playersdk.Player.PlayerListener#onPlayerInitialized(fm.feed.android.playersdk.service.PlayInfo)} has been called.<br/>
+     * </p>
+     * <p>
+     * Setting the credentials will download your default {@link fm.feed.android.playersdk.model.Placement} from the server; containing the list of your {@link Station}s.
+     * </p>
+     * <p>
+     * The {@code token} and {@code secret} are available through your Feed.FM account:
+     * <ol>
+     * <li>Select an App in <b><a href="http://developer.feed.fm/dashboard">Your Apps and Websites</a></b></li>
+     * <li>Go to tab <b>Developer Codes and IDs</b></li>
+     * <li>Save the {@code token} and {@code secret} statically in your app.</li>
+     * </ol>
+     * </p>
+     *
+     * @param token
+     *         Generated when your Feed.FM app is created on your Feed.FM dashboard.
+     * @param secret
+     *         Generated when your Feed.FM app is created on your Feed.FM dashboard.
+     */
     public void setCredentials(String token, String secret) {
         Credentials credentials = new Credentials(token, secret);
         if (credentials.isValid()) {
@@ -116,46 +141,121 @@ public class Player {
         }
     }
 
+    /**
+     * Tells the server which placement to pull playable stations from
+     * <p>Will start playback automatically once the {@link fm.feed.android.playersdk.model.Placement} information has been retrieved.</p>
+     * <p>
+     * This is an optional call, as a default placement is associated with the authentication credentials.
+     * </p>
+     * <p>
+     * The {@code placementId} is available through your Feed.FM account:
+     * <ol>
+     * <li>Select an App in <b><a href="http://developer.feed.fm/dashboard">Your Apps and Websites</a></b></li>
+     * <li>Go to tab <b>Developer Codes and IDs</b></li>
+     * <li>Use the <b>placement ID</b> as a parameter</li>
+     * </ol>
+     * </p>
+     *
+     * @param placementId
+     *         The placement ID for this App
+     */
     public void setPlacementId(Integer placementId) {
         mEventBus.post(new OutPlacementWrap(new Placement(placementId)));
     }
 
+    /**
+     * Tells the server which station within the current placement to pull playable stations from
+     * <p>Will start playback automatically.</p>
+     * <p>
+     * This is an optional call, as a default station is associated with the current placement.
+     * </p>
+     * <p>
+     * The {@code stationId} can be found in a {@link fm.feed.android.playersdk.model.Station} object ({@link fm.feed.android.playersdk.model.Station#getId()}).
+     * </p>
+     *
+     * @param stationId
+     *         The station identifier to play music from.
+     */
     public void setStationId(Integer stationId) {
         mEventBus.post(new OutStationWrap(new Station(stationId)));
     }
 
+    /**
+     * Causes the first audio file to start loading
+     * <p>
+     * No audio playback commences.
+     * </p>
+     */
     public void tune() {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.TUNE));
     }
 
+    /**
+     * Loads and starts or resumes a playback
+     * <p>
+     * <ul>
+     * <li>If the {@link fm.feed.android.playersdk.Player} state is {@link fm.feed.android.playersdk.service.PlayInfo.State#READY}, will tune and then play the recording.</li>
+     * <li>If the {@link fm.feed.android.playersdk.Player} state is {@link fm.feed.android.playersdk.service.PlayInfo.State#TUNED}, will start playback</li>
+     * <li>If the {@link fm.feed.android.playersdk.Player} state is {@link fm.feed.android.playersdk.service.PlayInfo.State#PAUSED}, will resume playback</li>
+     * </ul>
+     * </p>
+     */
     public void play() {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.PLAY));
     }
 
+    /**
+     * Pauses playback
+     */
     public void pause() {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.PAUSE));
     }
 
+    /**
+     * Indicates that the user would like to skip the current track
+     * <p>If allowed, playback of the current song will stop and move on to the next song.</p>
+     * <p> Check on {@link fm.feed.android.playersdk.Player#isSkippable()} to know if the user can skip the track.</p>
+     */
     public void skip() {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.SKIP));
     }
 
+    /**
+     * Indicates to the server that the user likes the current song
+     */
     public void like() {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.LIKE));
     }
 
-    public void dislike() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
-    }
-
+    /**
+     * Indicates to the server that the user no longer likes the current song
+     */
     public void unlike() {
         mEventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
     }
 
+    /**
+     * Indicates to the server that the user doesn't like the current song
+     * <p>Initiates a {@link fm.feed.android.playersdk.Player#skip()}</p>
+     */
+    public void dislike() {
+        mEventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
+    }
+
+    /**
+     * Current {@link fm.feed.android.playersdk.model.Placement} information
+     *
+     * @return The current {@link fm.feed.android.playersdk.model.Placement} information.
+     */
     public Placement getPlacement() {
         return mPlayInfo != null ? mPlayInfo.getPlacement() : null;
     }
 
+    /**
+     * List of {@link fm.feed.android.playersdk.model.Station}s for the current {@link fm.feed.android.playersdk.model.Placement}
+     *
+     * @return The list of {@link fm.feed.android.playersdk.model.Station}s for the current {@link fm.feed.android.playersdk.model.Placement}.
+     */
     public List<Station> getStationList() {
         return mPlayInfo != null ? mPlayInfo.getStationList() : null;
     }
@@ -164,25 +264,60 @@ public class Player {
         return mPlayInfo != null && mPlayInfo.getStationList() != null;
     }
 
+    /**
+     * Checks if there is currently a {@link fm.feed.android.playersdk.model.Play}
+     *
+     * @return {@code true} if there is a current {@link fm.feed.android.playersdk.model.Play}, {@code false} otherwise.
+     */
     public boolean hasPlay() {
         return mPlayInfo != null && mPlayInfo.getPlay() != null;
     }
 
+    /**
+     * Current track ({@link fm.feed.android.playersdk.model.Play}) being played
+     *
+     * @return The current {@link fm.feed.android.playersdk.model.Play}.
+     */
     public Play getPlay() {
         return mPlayInfo != null ? mPlayInfo.getPlay() : null;
     }
 
+    /**
+     * The Notification Id used for persisting the Service in the background.
+     * <p>
+     * For more details see: <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a>.
+     * </p>
+     *
+     * @return
+     */
     public int getNotificationId() {
         return mPlayInfo != null ? mPlayInfo.getNotificationId() : -1;
     }
 
+
+    /**
+     * Can this {@link Play} be skipped
+     * <p>
+     * A user can only skip tracks a certain number of times. Depending on server/station rules.
+     * </p>
+     *
+     * @return {@code true} if track can be skipped, {@code false} otherwise.
+     */
     public boolean isSkippable() {
         return mPlayInfo != null ? mPlayInfo.isSkippable() : false;
     }
 
+    /**
+     * {@link fm.feed.android.playersdk.service.PlayInfo.State} of the Player.
+     *
+     * @return The current {@link fm.feed.android.playersdk.service.PlayInfo.State}.
+     */
+    public PlayInfo.State getState() {
+        return mPlayInfo != null ? mPlayInfo.getState() : null;
+    }
 
     // TODO: find a way to make this private and not break the Unit Tests
-    public class PlayerServiceListener {
+    protected class PlayerServiceListener {
         public PlayerServiceListener() {
         }
 
@@ -321,14 +456,53 @@ public class Player {
      * Implement this interface to get callbacks from the Player
      */
     public interface PlayerListener {
+        /**
+         * Called when the {@link Player} is initialized and ready to auth this application using {@link Player#setCredentials(String, String)}
+         *
+         * @param playInfo
+         *         The {@link fm.feed.android.playersdk.service.PlayInfo} object containing the play state as well as other information pertaining to the library.
+         */
         public void onPlayerInitialized(PlayInfo playInfo);
 
+        /**
+         * Called when the Service will start showing the Persistent notification
+         * <p>
+         * You can override the notification to display your custom layout.
+         * </p>
+         * <p>
+         * See <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a> for more details.
+         * </p>
+         *
+         * @param notificationId
+         *         The notification Id used to override the default Service notification.
+         */
         public void onNotificationWillShow(int notificationId);
 
+        /**
+         * Called when the playback state changes
+         * <p>
+         * Can be one of:
+         * <ul>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#WAITING} - Player is Waiting for Metadata from the Server</li>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#READY} - Player is ready to play music</li>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#PAUSED} - Audio playback is currently paused</li>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#PLAYING} - Audio playback is currently processing</li>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#STALLED} - Audio Playback has paused due to lack of audio data from the server</li>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#COMPLETE} - The player has run out of available music to play</li>
+         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#REQUESTING_SKIP} - The player is waiting for the server to say if the current song can be skipped</li>
+         * </ul>
+         * </p>
+         *
+         * @param state
+         *         {@link fm.feed.android.playersdk.service.PlayInfo.State} of the Player.
+         */
         public void onPlaybackStateChanged(PlayInfo.State state);
 
         /**
-         * Called when the user is not located in the US. No music will be available to play.
+         * Called when the user is not located in the US
+         * <p>
+         * No music will be available to play.
+         * </p>
          */
         public void onNotInUS();
     }
@@ -337,26 +511,82 @@ public class Player {
      * Implement this interface to get callbacks from the Player
      */
     public interface NavListener {
+        /**
+         * Called when the placement has changed
+         *
+         * @param placement
+         *         The currently selected {@link fm.feed.android.playersdk.model.Placement}
+         * @param stationList
+         *         The new list of {@link fm.feed.android.playersdk.model.Station}s for this {@link fm.feed.android.playersdk.model.Placement}
+         */
         public void onPlacementChanged(Placement placement, List<Station> stationList);
 
+        /**
+         * Called when the new {@link fm.feed.android.playersdk.model.Station} has been set
+         *
+         * @param station
+         *         The currently selected {@link fm.feed.android.playersdk.model.Station}.
+         */
         public void onStationChanged(Station station);
 
+        /**
+         * Called when a new {@link fm.feed.android.playersdk.model.Play} has started buffering
+         *
+         * @param play
+         *         The new {@link fm.feed.android.playersdk.model.Play}
+         */
         public void onTrackChanged(Play play);
 
+        /**
+         * Called when the user has reached the end of the selected {@link Station}
+         */
         public void onEndOfPlaylist();
 
+        /**
+         * Called when a {@link Player#skip()} has failed
+         */
         public void onSkipFailed();
 
+        /**
+         * Called repeatedly while the Audio is being buffered
+         *
+         * @param play
+         *         The current {@link fm.feed.android.playersdk.model.Play}
+         * @param percentage
+         *         The percentage buffered
+         */
         public void onBufferUpdate(Play play, int percentage);
 
+        /**
+         * Called repeatedly while the Audio is playing
+         *
+         * @param play
+         *         The current {@link fm.feed.android.playersdk.model.Play}
+         * @param elapsedTime
+         *         How far along in the track the current {@link fm.feed.android.playersdk.model.Play} is.
+         * @param totalTime
+         *         The duration of the track.
+         */
         public void onProgressUpdate(Play play, int elapsedTime, int totalTime);
     }
 
+    /**
+     * Social related events
+     */
     public interface SocialListener {
+        /**
+         * Called when the song has been liked
+         */
         public void onLiked();
 
+        /**
+         * Called when the song has been unliked
+         */
         public void onUnliked();
 
+        /**
+         * Called when the song has been disliked
+         */
         public void onDisliked();
     }
 }

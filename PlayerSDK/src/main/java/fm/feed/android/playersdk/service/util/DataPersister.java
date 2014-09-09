@@ -1,4 +1,4 @@
-package fm.feed.android.playersdk.util;
+package fm.feed.android.playersdk.service.util;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -31,9 +31,9 @@ public class DataPersister {
     }
 
     /**
-     * Retrieve a Data value based on the {@link fm.feed.android.playersdk.util.DataPersister.Key}
+     * Retrieve a Data value based on the {@link DataPersister.Key}
      *
-     * @param keyName an identifier for the Data blob {@link fm.feed.android.playersdk.util.DataPersister.Key}
+     * @param keyName an identifier for the Data blob {@link DataPersister.Key}
      * @param defaultValue
      * @return
      */
@@ -49,7 +49,7 @@ public class DataPersister {
     /**
      * Saves a Data value to the shared preferences.
      *
-     * @param keyName an identifier for the Data blob {@link fm.feed.android.playersdk.util.DataPersister.Key}
+     * @param keyName an identifier for the Data blob {@link DataPersister.Key}
      * @param value
      */
     public void putString(Key keyName, String value) {

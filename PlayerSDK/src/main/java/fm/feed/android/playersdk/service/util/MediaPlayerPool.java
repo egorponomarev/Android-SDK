@@ -1,4 +1,4 @@
-package fm.feed.android.playersdk.util;
+package fm.feed.android.playersdk.service.util;
 
 import android.media.AudioManager;
 import android.util.Log;
