@@ -3,8 +3,8 @@ package fm.feed.android.playersdk.service.task;
 import java.util.List;
 
 import fm.feed.android.playersdk.model.Station;
-import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -56,8 +56,17 @@ public class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
     }
 
     @Override
-    protected void onTaskCancelled() {
+    protected void onTaskCancelled(FeedFMError error, int attempt) {
+        if (error != null && attempt < MAX_TASK_RETRY_ATTEMPTS) {
+            getQueueManager().offerFirst(copy(attempt + 1));
+        }
+    }
 
+    @Override
+    public PlayerAbstractTask copy(int attempts) {
+        PlayerAbstractTask task = new StationIdTask(getQueueManager(), mListener, mStationList, mCurrentStationId, mSelectedStationId);
+        task.setAttemptCount(attempts);
+        return task;
     }
 
     @Override

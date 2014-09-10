@@ -41,9 +41,7 @@ public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, V
             }
         } catch (FeedFMError e) {
             e.printStackTrace();
-            if (mListener != null) {
-                mListener.onFail();
-            }
+            cancel(e);
         }
 
         return response;
@@ -57,8 +55,21 @@ public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, V
     }
 
     @Override
-    protected void onTaskCancelled() {
+    protected void onTaskCancelled(FeedFMError error, int attempt) {
+        if (error != null && attempt < MAX_TASK_RETRY_ATTEMPTS) {
+            getQueueManager().offerFirst(copy(attempt + 1));
+        }
 
+        if (error != null && mListener != null) {
+            mListener.onFail();
+        }
+    }
+
+    @Override
+    public PlayerAbstractTask copy(int attempts) {
+        PlayerAbstractTask task = new SimpleNetworkTask<Response>(getQueueManager(), mWebservice, mListener);
+        task.setAttemptCount(attempts);
+        return task;
     }
 
 

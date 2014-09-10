@@ -33,12 +33,9 @@ android {
     }
     buildTypes {
         debug {
-            buildConfigField "boolean", "IS_DEBUG", "true"
         }
 
         release {
-            buildConfigField "boolean", "IS_DEBUG", "false"
-
             runProguard false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

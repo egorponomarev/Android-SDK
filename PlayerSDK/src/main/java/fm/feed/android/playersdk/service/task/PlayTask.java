@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -16,6 +18,7 @@ import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -151,11 +154,15 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
     }
 
     @Override
-    protected void onTaskCancelled() {
-        Log.i(TAG, String.format("%s, onCancelled", getQueueManager().getIdentifier()));
+    protected void onTaskCancelled(FeedFMError error, int attempt) {
+        if (error == null || (attempt >= MAX_TASK_RETRY_ATTEMPTS)) {
 
-        if (mListener != null) {
-            mListener.onPlayFinished(mPlay, true);
+            if (mListener != null) {
+                mListener.onPlayFinished(mPlay, true);
+            }
+
+        } else {
+            getQueueManager().offerFirst(copy(attempt));
         }
 
         cleanup();
@@ -170,6 +177,13 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         }
 
         cleanup();
+    }
+
+    @Override
+    public PlayerAbstractTask copy(int attempts) {
+        PlayerAbstractTask task = new PlayTask(getQueueManager(), mWebservice, mContext, mMediaPlayerPool, mListener);
+        task.setAttemptCount(attempts);
+        return task;
     }
 
     private void cleanup() {
@@ -191,7 +205,6 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
     public void play() {
         mMediaPlayer.start();
-
         mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
 
         if (mListener != null) {
@@ -201,8 +214,6 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
     public void pause() {
         mMediaPlayer.pause();
-        mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
-
 
         if (mListener != null) {
             mListener.onPause(this);
@@ -225,6 +236,7 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
     @Override
     public void onCompletion(MediaPlayer mp) {
+        Log.d(TAG, String.format("onCompletion was called: (pos: %d, dur: %d", mp.getCurrentPosition(), mp.getDuration()));
         mCompleted = true;
     }
 

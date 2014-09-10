@@ -2,8 +2,12 @@ package fm.feed.android.playersdk.service;
 
 import android.app.NotificationManager;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -14,7 +18,6 @@ import com.squareup.otto.Subscribe;
 
 import java.util.Date;
 
-import fm.feed.android.playersdk.BuildConfig;
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
@@ -36,11 +39,11 @@ import fm.feed.android.playersdk.service.task.PlayTask;
 import fm.feed.android.playersdk.service.task.SimpleNetworkTask;
 import fm.feed.android.playersdk.service.task.StationIdTask;
 import fm.feed.android.playersdk.service.task.TuneTask;
-import fm.feed.android.playersdk.service.webservice.Webservice;
-import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.util.AudioFocusManager;
 import fm.feed.android.playersdk.service.util.DataPersister;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.webservice.Webservice;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -64,9 +67,17 @@ public class PlayerService extends Service {
     private boolean mInitialized;
     private boolean mValidStart;
 
+    public static BuildType mDebug;
+
+    public static enum BuildType {
+        DEBUG,
+        RELEASE
+    }
+
     public static enum ExtraKeys {
         timestamp,
-        notificationId;
+        notificationId,
+        buildType;
 
         ExtraKeys() {
         }
@@ -76,6 +87,43 @@ public class PlayerService extends Service {
             return PlayerService.class.getPackage().toString() + "." + name();
         }
     }
+
+    private BroadcastReceiver mConnectivityBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null &&
+                    activeNetwork.isConnectedOrConnecting();
+
+            Log.d(TAG, "Received Connectivity Broadcast: Connected ? " + isConnected);
+
+            if (!isConnected) {
+                if (mMainQueue.hasActivePlayTask()) {
+                    ((PlayTask) mMainQueue.peek()).pause();
+                }
+
+                // Pause the Queues
+                mMainQueue.pause();
+                mTuningQueue.pause();
+                mSecondaryQueue.pause();
+            } else {
+                //Resume the Queues
+                mMainQueue.unpause();
+                if (!mMainQueue.hasActivePlayTask()) {
+                    mMainQueue.next();
+                } else {
+                    ((PlayTask) mMainQueue.peek()).play();
+                }
+                mTuningQueue.unpause();
+                mTuningQueue.next();
+                mSecondaryQueue.unpause();
+                mSecondaryQueue.next();
+            }
+        }
+    };
 
     @Override
     public void onCreate() {
@@ -113,6 +161,8 @@ public class PlayerService extends Service {
         }
 
         if (mValidStart) {
+            mDebug = BuildType.valueOf(intent.getStringExtra(ExtraKeys.buildType.toString()));
+
             if (!mInitialized) {
                 init();
                 mInitialized = true;
@@ -138,6 +188,9 @@ public class PlayerService extends Service {
         mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
         mMediaPlayerPool = new MediaPlayerPool();
+
+        IntentFilter connectivityIntentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(mConnectivityBroadcastReceiver, connectivityIntentFilter);
 
         eventBus.register(this);
     }
@@ -172,6 +225,8 @@ public class PlayerService extends Service {
             mMediaPlayerPool.release();
 
             eventBus.unregister(this);
+
+            unregisterReceiver(mConnectivityBroadcastReceiver);
         }
 
         mInitialized = false;
@@ -184,7 +239,7 @@ public class PlayerService extends Service {
 
         NotificationCompat.Builder mBuilder =
                 new NotificationCompat.Builder(this);
-        if (BuildConfig.IS_DEBUG) {
+        if (mDebug == BuildType.DEBUG) {
             mBuilder.setContentTitle(applicationName + "-SDK");
         } else {
             mBuilder.setContentTitle(applicationName);
@@ -345,7 +400,7 @@ public class PlayerService extends Service {
     public void getClientId() {
         String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
 
-        if (clientId != null && !BuildConfig.IS_DEBUG) {
+        if (clientId != null && mDebug != BuildType.DEBUG) {
             mPlayInfo.setClientId(clientId);
             Toast.makeText(PlayerService.this, "Retrieved existing Client ID!", Toast.LENGTH_LONG).show();
         } else {

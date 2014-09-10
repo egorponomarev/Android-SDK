@@ -1,7 +1,6 @@
 package fm.feed.android.playersdk.service.task;
 
 import fm.feed.android.playersdk.model.Placement;
-import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
@@ -36,6 +35,7 @@ public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement
             }
         } catch (FeedFMError feedFMError) {
             feedFMError.printStackTrace();
+            cancel(feedFMError);
         }
         return placement;
     }
@@ -48,8 +48,17 @@ public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement
     }
 
     @Override
-    protected void onTaskCancelled() {
+    protected void onTaskCancelled(FeedFMError error, int attempt) {
+        if (error != null && attempt < MAX_TASK_RETRY_ATTEMPTS) {
+            getQueueManager().offerFirst(copy(attempt + 1));
+        }
+    }
 
+    @Override
+    public PlayerAbstractTask copy(int attempts) {
+        PlayerAbstractTask task = new PlacementIdTask(getQueueManager(), mWebservice, mListener, mPlacementId);
+        task.setAttemptCount(attempts);
+        return task;
     }
 
     @Override

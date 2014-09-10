@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -13,15 +14,20 @@ import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 public abstract class PlayerAbstractTask<Params, Progress, Result> extends AsyncTask <Params, Progress, Result> {
     private TaskQueueManager mQueueManager;
 
+    public static final int MAX_TASK_RETRY_ATTEMPTS = 1;
+
     private Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable mTaskCancelled = new Runnable() {
         @Override
         public void run() {
             mQueueManager.remove(PlayerAbstractTask.this);
-            onTaskCancelled();
+            onTaskCancelled(mError, mAttemptCount);
             mQueueManager.next();
         }
     };
+
+    private FeedFMError mError = null;
+    private int mAttemptCount = 0;
 
     protected PlayerAbstractTask(TaskQueueManager queueManager) {
         this.mQueueManager = queueManager;
@@ -63,10 +69,24 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
         });
     }
 
+    protected void cancel(FeedFMError error) {
+        mError = error;
+        cancel(true);
+    }
 
-    protected abstract void onTaskCancelled();
+    protected void setAttemptCount(int attemptCount) {
+        mAttemptCount = attemptCount;
+    }
+
+    public int getAttemptCount() {
+        return mAttemptCount;
+    }
+
+    protected abstract void onTaskCancelled(FeedFMError error, int attempt);
 
     protected abstract void onTaskFinished(Result result);
+
+    public abstract PlayerAbstractTask copy(int attempts);
 
     @Override
     public String toString() {

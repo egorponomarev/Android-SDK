@@ -31,6 +31,8 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
 
     private String mIdentifier;
 
+    private boolean mPaused;
+
     /**
      * <ul>
      * <li> {@link fm.feed.android.playersdk.service.task.ClientIdTask} will cancel every other task. </li>
@@ -54,13 +56,27 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
         mPriorityMap.put(ClientIdTask.class, new ArrayList<Class>());
         mPriorityMap.put(PlacementIdTask.class, allExceptClientId);
         mPriorityMap.put(StationIdTask.class, allExceptClientId);
+
+        mPaused = false;
     }
 
     public String getIdentifier() {
         return mIdentifier;
     }
 
+    public void pause() {
+        mPaused = true;
+    }
+
+    public void unpause() {
+        mPaused = false;
+    }
+
     public void next() {
+        if (mPaused) {
+            return;
+        }
+
         PlayerAbstractTask task = peek();
         if (task != null) {
             switch (task.getStatus()) {

@@ -26,13 +26,16 @@ public class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
             clientId = mWebservice.getClientId();
         } catch (FeedFMError feedFMError) {
             feedFMError.printStackTrace();
+            cancel(feedFMError);
         }
         return clientId;
     }
 
     @Override
-    protected void onTaskCancelled() {
-
+    protected void onTaskCancelled(FeedFMError error, int attempt) {
+        if (error != null && attempt < MAX_TASK_RETRY_ATTEMPTS) {
+            getQueueManager().offerFirst(copy(attempt + 1));
+        }
     }
 
     @Override
@@ -40,6 +43,13 @@ public class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
         if (mListener != null) {
             mListener.onSuccess(clientId);
         }
+    }
+
+    @Override
+    public PlayerAbstractTask copy(int attempts) {
+        PlayerAbstractTask task = new ClientIdTask(getQueueManager(), mWebservice, mListener);
+        task.setAttemptCount(attempts);
+        return task;
     }
 
     @Override

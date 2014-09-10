@@ -37,6 +37,8 @@ public class Player {
      */
     private static Player mInstance;
 
+    private PlayerService.BuildType mDebug = PlayerService.BuildType.DEBUG;
+
     protected Bus mEventBus = BusProvider.getInstance();
     protected PlayerServiceListener mPrivateServiceListener;
 
@@ -60,6 +62,7 @@ public class Player {
         // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
         intent.putExtra(PlayerService.ExtraKeys.timestamp.toString(), new Date().getTime());
+        intent.putExtra(PlayerService.ExtraKeys.buildType.toString(), mDebug.name());
 
         if (notificationId >= -1) {
             intent.putExtra(PlayerService.ExtraKeys.notificationId.toString(), notificationId);
