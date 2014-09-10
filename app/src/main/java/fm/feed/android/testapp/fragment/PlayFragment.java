@@ -6,6 +6,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -69,6 +72,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     private ListView mStationsView;
     private ListView mPlacementsView;
 
+    public Button mBtnToggleWifi;
+
     private int mSelectedStationIndex = -1;
     private int mSelectedPlacementsIndex = -1;
 
@@ -116,6 +121,8 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
             mPlacements = savedInstanceState.getIntArray(PLACEMENTS);
         }
 
+        mBtnToggleWifi = (Button) rootView.findViewById(R.id.wifi);
+
         return rootView;
     }
 
@@ -133,6 +140,23 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
         mPlacementsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         mStationsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
+
+        mBtnToggleWifi.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ConnectivityManager cm =
+                        (ConnectivityManager) getActivity().getSystemService(Context.CONNECTIVITY_SERVICE);
+
+                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+                boolean isConnected = activeNetwork != null &&
+                        activeNetwork.isConnectedOrConnecting();
+
+                WifiManager wifi = (WifiManager) getActivity().getSystemService(Context.WIFI_SERVICE);
+                wifi.setWifiEnabled(!isConnected); // true or false to activate/deactivate wifi
+
+                mBtnToggleWifi.setText(!isConnected ? "Wifi ON" : "Wifi OFF");
+            }
+        });
 
         List<HashMap<String, Integer>> fillMaps = new ArrayList<HashMap<String, Integer>>();
         for (Integer p : mPlacements) {

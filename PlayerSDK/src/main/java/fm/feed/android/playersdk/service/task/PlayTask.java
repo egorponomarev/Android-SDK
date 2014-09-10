@@ -15,8 +15,8 @@ import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 import fm.feed.android.playersdk.service.constant.Configuration;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
-import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
+import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
@@ -32,8 +32,13 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     private Play mPlay;
 
     private boolean mCompleted = false;
-    private boolean mBuffering = true;
+    private boolean mBuffering = false;
     private boolean mSkippable = true;
+
+    private int mLastProgress;
+    private int mLastBuffering;
+
+    private boolean mPausedForBuffering = false;
 
     private Integer mDuration = 0;
 
@@ -49,6 +54,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     private Handler mTimingHandler = new Handler(Looper.myLooper());
 
     private Context mContext;
+
     private BroadcastReceiver mNoisyAudioBroadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -61,17 +67,43 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
     };
 
+    private boolean mPlayingBeforePause = false;
+    private BroadcastReceiver mConnectivityBroadcastReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ConnectivityManager cm =
+                    (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null &&
+                    activeNetwork.isConnectedOrConnecting();
+
+            Log.d(TAG, "Received Connectivity Broadcast: Connected ? " + isConnected);
+
+            if (!isConnected && isBuffering()) {
+                mPlayingBeforePause = isPlaying();
+                pause();
+            } else if (mPlayingBeforePause) {
+                play();
+            }
+        }
+    };
+
+
+
     public PlayTask(TaskQueueManager queueManager, Webservice mWebservice, Context context, MediaPlayerPool mediaPlayerPool, PlayTaskListener listener) {
         super(queueManager, mWebservice);
 
         this.mContext = context;
-        mListener = listener;
+        this.mListener = listener;
         this.mMediaPlayerPool = mediaPlayerPool;
 
         // Register Noisy Audio Receiver.
         // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
         // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
-        mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+        this.mContext.registerReceiver(mNoisyAudioBroadcastReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+
+        this.mContext.registerReceiver(mConnectivityBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
     }
 
     @Override
@@ -100,11 +132,17 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     protected Void doInBackground(Object... params) {
         Log.i(TAG, String.format("%s, doInBackground", getQueueManager().getIdentifier()));
 
+        mLastProgress = Integer.MIN_VALUE;
+        mLastBuffering = Integer.MIN_VALUE;
+        mBuffering = true;
+//        mMediaPlayer.setLooping(true);
+
         play();
 
         if (mListener != null) {
             mListener.onPlayBegin(this, mPlay);
         }
+
 
         while (!mCompleted && !isCancelled()) {
             if (mPublishProgress) {
@@ -113,9 +151,53 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
                 // Publish progress every 5
                 int bufferUpdatePercentage = mMediaPlayer.getLastBufferUpdate();
+                int currentProgress = mMediaPlayer.getCurrentPosition();
+                int duration = mMediaPlayer.getDuration();
+
                 boolean doneBuffering = (bufferUpdatePercentage == 100);
-                publishProgress(mMediaPlayer.getCurrentPosition(), isBuffering() ? bufferUpdatePercentage : -1);
+
+                boolean skippedBack = mLastProgress > currentProgress;
+                boolean mediaPlayerIsBuffering = mLastBuffering < bufferUpdatePercentage;
+
+                /**
+                 * If the last recorded progress is greater than the current one, it means that the play has looped.
+                 * In that case, we should seek back to the mLastProgress and pause playback
+                 */
+//                if (skippedBack) {
+//                    if (doneBuffering) {
+//                        // If we are already done buffering, then the play is done, and we should just end this task.
+//                        mMediaPlayer.setLooping(false);
+//                        mMediaPlayer.stop();
+//                        break;
+//                    } else if (!mPausedForBuffering) {
+//                        mMediaPlayer.pause();
+//                        mPausedForBuffering = true;
+//                    }
+//                } else {
+                    // Publish the progress only if we are playing.
+                    publishProgress(currentProgress, isBuffering() ? bufferUpdatePercentage : -1);
+
+                    mLastProgress = currentProgress;
+//                }
+
+//                if (mediaPlayerIsBuffering && mPausedForBuffering) {
+//                    //TODO: might need to wait before resuming play.
+//                    mPausedForBuffering = false;
+//                    play();
+//
+//                    // If we are not done buffering, that means that perhaps the connectivity was cut and we should set the progress back to the previous known progress.
+//                    // We pause the Play, and we'll resume when the buffering starts up again
+//                    mMediaPlayer.seekTo(mLastProgress);
+//                }
+
                 mBuffering = !doneBuffering;
+                mLastBuffering = bufferUpdatePercentage;
+
+//                if (currentProgress == duration) {
+//                    mMediaPlayer.setLooping(false);
+//                    mMediaPlayer.stop();
+//                    break;
+//                }
             }
 
             try {
@@ -186,6 +268,8 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     private void cleanup() {
         mTimingHandler.removeCallbacks(mResetPublishProgressFlag);
+        mContext.unregisterReceiver(mNoisyAudioBroadcastReceiver);
+        mContext.unregisterReceiver(mConnectivityBroadcastReceiver);
 
         if (mMediaPlayer != null) {
             mMediaPlayerPool.free(mMediaPlayer);

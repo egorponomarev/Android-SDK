@@ -2,6 +2,11 @@ package fm.feed.android.playersdk.service.webservice;
 
 import android.content.Context;
 
+import com.squareup.okhttp.OkHttpClient;
+
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
@@ -9,17 +14,12 @@ import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.webservice.model.AudioFormat;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
-import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
 import fm.feed.android.playersdk.service.webservice.util.WebserviceUtils;
-import com.squareup.okhttp.OkHttpClient;
-
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.OkClient;
@@ -277,6 +277,7 @@ public class Webservice {
          * Wrapper around a FeedFMError object. If {@code error} is {@code null} a generic FeedFMError will be generated.
          *
          * @param error
+         *
          * @throws FeedFMError
          */
         private void handleError(FeedFMError error) throws FeedFMError {

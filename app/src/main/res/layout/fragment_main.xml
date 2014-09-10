@@ -46,6 +46,13 @@
             android:src="@android:drawable/ic_media_ff"/>
 
         <Button
+            android:id="@+id/wifi"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:text="Wifi ON"/>
+
+        <Button
             android:id="@+id/like"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

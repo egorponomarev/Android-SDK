@@ -106,10 +106,6 @@ public class PlayerService extends Service {
             Log.d(TAG, "Received Connectivity Broadcast: Connected ? " + isConnected);
 
             if (!isConnected) {
-                if (mMainQueue.hasActivePlayTask()) {
-                    ((PlayTask) mMainQueue.peek()).pause();
-                }
-
                 // Pause the Queues
                 mMainQueue.pause();
                 mTuningQueue.pause();
@@ -119,8 +115,6 @@ public class PlayerService extends Service {
                 mMainQueue.unpause();
                 if (!mMainQueue.hasActivePlayTask()) {
                     mMainQueue.next();
-                } else {
-                    ((PlayTask) mMainQueue.peek()).play();
                 }
                 mTuningQueue.unpause();
                 mTuningQueue.next();
