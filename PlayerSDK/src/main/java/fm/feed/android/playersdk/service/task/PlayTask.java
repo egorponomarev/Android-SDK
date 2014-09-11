@@ -6,8 +6,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -15,6 +13,7 @@ import android.util.Log;
 
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
+import fm.feed.android.playersdk.service.constant.Configuration;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
@@ -23,10 +22,9 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 /**
  * Created by mharkins on 9/2/14.
  */
-public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnInfoListener {
-    public static final String TAG = PlayTask.class.getSimpleName();
+public class PlayTask extends SkippableTask<Object, Integer, Void> implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnInfoListener {
 
-    public static final int PROGRESS_PUBLISH_INTERVAL = 500; // 0.5 seconds
+    public static final String TAG = PlayTask.class.getSimpleName();
 
     private MediaPlayerPool mMediaPlayerPool;
 
@@ -111,7 +109,7 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         while (!mCompleted && !isCancelled()) {
             if (mPublishProgress) {
                 mPublishProgress = false;
-                mTimingHandler.postDelayed(mResetPublishProgressFlag, PROGRESS_PUBLISH_INTERVAL);
+                mTimingHandler.postDelayed(mResetPublishProgressFlag, Configuration.PROGRESS_PUBLISH_INTERVAL);
 
                 // Publish progress every 5
                 int bufferUpdatePercentage = mMediaPlayer.getLastBufferUpdate();
@@ -131,7 +129,7 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
         return null;
     }
 
-    public boolean isSkippable() {
+    public boolean isSkippableCandidate() {
         return mSkippable;
     }
 
@@ -155,7 +153,7 @@ public class PlayTask extends NetworkAbstractTask<Object, Integer, Void> impleme
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
-        if (error == null || (attempt >= MAX_TASK_RETRY_ATTEMPTS)) {
+        if (error == null || (attempt >= Configuration.MAX_TASK_RETRY_ATTEMPTS)) {
 
             if (mListener != null) {
                 mListener.onPlayFinished(mPlay, true);

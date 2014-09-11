@@ -138,15 +138,15 @@ public class Webservice {
             }
         };
         return r.get();
-
     }
 
-    public Boolean skip(final String playId) throws FeedFMError {
+    public Boolean skip(final String playId, boolean forcing) throws FeedFMError {
+        final int force = forcing ? 1 : 0;
         RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.skip(
-                        WebserviceUtils.getAuth(mCredentials), playId);
+                        WebserviceUtils.getAuth(mCredentials), playId, force);
             }
         };
         return r.get();
@@ -209,9 +209,11 @@ public class Webservice {
         public PlayStartResponse playStarted(@Header("Authorization") String authorization,
                                              @Path("id") String playId);
 
+        @FormUrlEncoded
         @POST("/play/{id}/skip")
         public FeedFMResponse skip(@Header("Authorization") String authorization,
-                                   @Path("id") String playId);
+                                   @Path("id") String playId,
+                                   @Field("force") Integer force);
 
         @POST("/play/{id}/complete")
         public FeedFMResponse playCompleted(@Header("Authorization") String authorization,

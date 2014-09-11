@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
@@ -13,8 +14,6 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  */
 public abstract class PlayerAbstractTask<Params, Progress, Result> extends AsyncTask <Params, Progress, Result> {
     private TaskQueueManager mQueueManager;
-
-    public static final int MAX_TASK_RETRY_ATTEMPTS = 1;
 
     private Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable mTaskCancelled = new Runnable() {
@@ -80,6 +79,10 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
 
     public int getAttemptCount() {
         return mAttemptCount;
+    }
+
+    public FeedFMError getError() {
+        return mError;
     }
 
     protected abstract void onTaskCancelled(FeedFMError error, int attempt);

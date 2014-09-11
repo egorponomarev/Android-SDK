@@ -1,6 +1,9 @@
 package fm.feed.android.playersdk.service.task;
 
+import android.content.Context;
 import android.media.MediaPlayer;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.Log;
 
 import java.io.IOException;
@@ -8,18 +11,19 @@ import java.io.IOException;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 import fm.feed.android.playersdk.service.PlayInfo;
+import fm.feed.android.playersdk.service.constant.Configuration;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMNetworkError;
 
 /**
  * Created by mharkins on 9/2/14.
  */
-public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMediaPlayer> implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnInfoListener {
-    private static final String TAG = TuneTask.class.getSimpleName();
+public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> implements MediaPlayer.OnErrorListener, MediaPlayer.OnPreparedListener, MediaPlayer.OnInfoListener {
 
-    public static final int MAX_MEDIA_ERROR_RETRY_ATTEMPTS = 2;
+    private static final String TAG = TuneTask.class.getSimpleName();
 
     public interface TuneTaskListener {
         public void onMetaDataLoaded(TuneTask tuneTask, Play play);
@@ -30,8 +34,12 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
 
         public void onSuccess(TuneTask tuneTask, FeedFMMediaPlayer mediaPlayer, Play play);
 
-        public void onApiError(FeedFMError mApiError);
+        public void onApiError(TuneTask tuneTask, FeedFMError apiError);
+
+        public void onUnkownError(TuneTask tuneTask, FeedFMError feedFMError);
     }
+
+    private Context mContext;
 
     private TuneTaskListener mListener;
 
@@ -47,13 +55,14 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
     private Play mPlay;
 
 
-    public TuneTask(TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayInfo playInfo, String clientId) {
-        this(queueManager, mWebservice, mediaPlayerPool, listener, playInfo, null, clientId);
+    public TuneTask(Context context, TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayInfo playInfo, String clientId) {
+        this(context, queueManager, mWebservice, mediaPlayerPool, listener, playInfo, null, clientId);
     }
 
-    public TuneTask(TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayInfo playInfo, Play play, String clientId) {
+    public TuneTask(Context context, TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayInfo playInfo, Play play, String clientId) {
         super(queueManager, mWebservice);
 
+        this.mContext = context;
         this.mPlay = null;
         this.mMediaPlayerPool = mediaPlayerPool;
         this.mPlayInfo = playInfo;
@@ -111,22 +120,14 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
             cancel(feedFMError);
         } catch (IOException e) {
             e.printStackTrace();
-            cancel(new FeedFMError(-1, "Error Tuning MediaPlayer (IOException)", -1));
+            cancel(new FeedFMError(-1, "Error Tuning MediaPlayer (IOException)", -1)); //TODO: constant
         } catch (IllegalStateException e) {
             // This exception is called if the MediaPlayer dataSource is set while the media player is in an invalid state.
             e.printStackTrace();
-            cancel(new FeedFMError(-1, "Error Tuning MediaPlayer (IllegalStateException)", -1));
+            cancel(new FeedFMError(-1, "Error Tuning MediaPlayer (IllegalStateException)", -1)); //TODO: constant
         }
 
         return mMediaPlayer;
-    }
-
-    protected void prepare(Play play, int attempts) throws IOException, IllegalStateException {
-        if (attempts > MAX_MEDIA_ERROR_RETRY_ATTEMPTS) {
-            cancel(true);
-            Log.e(TAG, "Could not retry preparing of MediaPlayer");
-            return;
-        }
     }
 
     @Override
@@ -139,19 +140,28 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
             feedFMMediaPlayer.setOnErrorListener(null);
             mMediaPlayerPool.putTunedMediaPlayer(feedFMMediaPlayer);
 
-            if (this.mListener != null) {
-                this.mListener.onSuccess(this, feedFMMediaPlayer, feedFMMediaPlayer.getPlay());
+            if (mListener != null) {
+                mListener.onSuccess(this, feedFMMediaPlayer, feedFMMediaPlayer.getPlay());
             }
         }
+
+        cleanup();
     }
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
         if (error != null) {
-            if (attempt < MAX_TASK_RETRY_ATTEMPTS) {
-                getQueueManager().offerFirst(copy(attempt + 1));
-            } else if (this.mListener != null) {
-                this.mListener.onApiError(error);
+            if (error.getCode() == Configuration.ERROR_CODE_TUNE_UNKNOWN) {
+                if (mListener != null) {
+                    mListener.onUnkownError(this, error);
+                }
+            } else if (error.getCode() == Configuration.ERROR_CODE_TUNE_NETWORK) {
+                if (getAttemptCount() < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
+                    // Retry Tuning once we have a connection
+                    getQueueManager().offerFirst(copy(attempt + 1));
+                } else if (mListener != null) {
+                    mListener.onApiError(this, error);
+                }
             }
         }
 
@@ -160,11 +170,13 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
             mMediaPlayerPool.release(mMediaPlayer);
             mMediaPlayer = null;
         }
+
+        cleanup();
     }
 
     @Override
     public PlayerAbstractTask copy(int attempts) {
-        PlayerAbstractTask task = new TuneTask(getQueueManager(), mWebservice, mMediaPlayerPool, mListener, mPlayInfo, mPlay, mClientId);
+        PlayerAbstractTask task = new TuneTask(mContext, getQueueManager(), mWebservice, mMediaPlayerPool, mListener, mPlayInfo, mPlay, mClientId);
         task.setAttemptCount(attempts);
         return task;
     }
@@ -175,17 +187,39 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
     }
 
     @Override
+    public Play getPlay() {
+        return mPlay;
+    }
+
+    @Override
+    public boolean isSkippableCandidate() {
+        // Only allow skip if there is an important error.
+        return mPlay != null && getError() != null && getError().getCode() == Configuration.ERROR_CODE_TUNE_UNKNOWN;
+    }
+
+    @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) mp;
         Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", mediaPlayer.getPlay().getAudioFile().getTrack().getTitle(), what, extra));
 
         if (what == MediaPlayer.MEDIA_ERROR_UNKNOWN) {
-            FeedFMError error = new FeedFMError(-1, "Unknown Media Error from MediaPlayer.", -1);
+            FeedFMError error = null;
+
+            ConnectivityManager cm =
+                    (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+
+            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+            boolean isConnected = activeNetwork != null &&
+                    activeNetwork.isConnectedOrConnecting();
+
+            if (!isConnected) {
+                error = new FeedFMNetworkError();
+            } else {
+                error = new FeedFMError(Configuration.ERROR_CODE_TUNE_UNKNOWN, "Unknown Media Error from MediaPlayer.", -1);
+            }
             Log.e(TAG, error.toString());
 
-            if (getAttemptCount() < MAX_MEDIA_ERROR_RETRY_ATTEMPTS) {
-                cancel(error);
-            }
+            cancel(error);
         }
         return false;
     }
@@ -204,6 +238,9 @@ public class TuneTask extends MediaPlayerAbstractTask<Object, Integer, FeedFMMed
                 }
         }
         return true;
+    }
+
+    private void cleanup() {
     }
 
     @Override

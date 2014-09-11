@@ -6,9 +6,6 @@ import com.google.gson.annotations.SerializedName;
  * Created by mharkins on 8/21/14.
  */
 public class FeedFMError extends Throwable {
-    public static final int CODE_END_OF_PLAYLIST = 9;
-    public static final int CODE_NOT_IN_US = 19;
-    public static final int CODE_PLAYBACK_ALREADY_STARTED = 20;
 
     @SerializedName("code") private    int    code;
     @SerializedName("message") private String message;
