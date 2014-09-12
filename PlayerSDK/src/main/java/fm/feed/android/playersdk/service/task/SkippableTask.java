@@ -20,4 +20,6 @@ public abstract class SkippableTask <Params, Progress, Result> extends NetworkAb
      * @return {@code true} if a skip candidate, {@code false} otherwise.
      */
     public abstract boolean isSkippableCandidate();
+
+    public abstract Integer getElapsedTime();
 }

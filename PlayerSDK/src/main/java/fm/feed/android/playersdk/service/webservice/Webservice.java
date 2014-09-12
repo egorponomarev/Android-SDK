@@ -141,13 +141,35 @@ public class Webservice {
         return r.get();
     }
 
-    public Boolean skip(final String playId, boolean forcing) throws FeedFMError {
+    public Boolean skip(final String playId, final Integer elapsed, boolean forcing) throws FeedFMError {
         final int force = forcing ? 1 : 0;
         RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.skip(
-                        WebserviceUtils.getAuth(mCredentials), playId, force);
+                        WebserviceUtils.getAuth(mCredentials), playId, elapsed, force);
+            }
+        };
+        return r.get();
+    }
+
+    public Boolean invalidate(final String playId) throws FeedFMError {
+        RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
+            @Override
+            public FeedFMResponse execute() throws RetrofitError {
+                return mRestService.invalidate(
+                        WebserviceUtils.getAuth(mCredentials), playId);
+            }
+        };
+        return r.get();
+    }
+
+    public Boolean elapsed(final String playId, final Integer elapsed) throws FeedFMError {
+        RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
+            @Override
+            public FeedFMResponse execute() throws RetrofitError {
+                return mRestService.elapsed(
+                        WebserviceUtils.getAuth(mCredentials), playId, elapsed);
             }
         };
         return r.get();
@@ -214,7 +236,19 @@ public class Webservice {
         @POST("/play/{id}/skip")
         public FeedFMResponse skip(@Header("Authorization") String authorization,
                                    @Path("id") String playId,
+                                   @Field("seconds") Integer elapsed,
                                    @Field("force") Integer force);
+
+        @FormUrlEncoded
+        @POST("/play/{id}/invalidate")
+        public FeedFMResponse invalidate(@Header("Authorization") String authorization,
+                                   @Path("id") String playId);
+
+        @FormUrlEncoded
+        @POST("/play/{id}/elapse")
+        public PlayStartResponse elapsed(@Header("Authorization") String authorization,
+                                             @Path("id") String playId,
+                                             @Field("seconds") Integer elapsed);
 
         @POST("/play/{id}/complete")
         public FeedFMResponse playCompleted(@Header("Authorization") String authorization,

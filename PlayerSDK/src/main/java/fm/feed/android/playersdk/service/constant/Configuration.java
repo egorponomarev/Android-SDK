@@ -9,6 +9,9 @@ public class Configuration {
     /** Publish progress should only be sent out to the front of the application every X seconds. */
     public static final int PROGRESS_PUBLISH_INTERVAL = 500; // 0.5 seconds
 
+    /** Elapsed time of the song is published every 10 seconds */
+    public static final int ELAPSED_PING_INTERVAL = 10000; // 10 seconds
+
     /**
      * Maximum number of Force Skips in a row.
      * This would happen when an audio file can't be parsed properly by the Media Player.

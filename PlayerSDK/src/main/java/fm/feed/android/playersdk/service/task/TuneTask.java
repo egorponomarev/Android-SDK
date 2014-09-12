@@ -198,6 +198,11 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     }
 
     @Override
+    public Integer getElapsedTime() {
+        return 0;
+    }
+
+    @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) mp;
         Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", mediaPlayer.getPlay().getAudioFile().getTrack().getTitle(), what, extra));

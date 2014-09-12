@@ -38,7 +38,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     private boolean mBuffering = false;
     private boolean mSkippable = true;
 
-    private int mLastProgress;
+    private int mLastProgress = 0;
 
     private Integer mDuration = 0;
 
@@ -113,6 +113,27 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         mContext.registerReceiver(mConnectivityBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
     }
 
+    public Play getPlay() {
+        return mPlay;
+    }
+
+    public void setSkippable(boolean skippable) {
+        this.mSkippable = skippable;
+    }
+
+    public boolean isSkippableCandidate() {
+        return mSkippable;
+    }
+
+    public boolean isBuffering() {
+        return mBuffering;
+    }
+
+    @Override
+    public Integer getElapsedTime() {
+        return mLastProgress;
+    }
+
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
@@ -141,7 +162,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     protected Void doInBackground(Object... params) {
         Log.i(TAG, String.format("%s, doInBackground", getQueueManager().getIdentifier()));
 
-        mLastProgress = Integer.MIN_VALUE;
+        mLastProgress = 0;
         mBuffering = true;
         mMediaPlayer.setLooping(true);
 
@@ -202,14 +223,6 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         return null;
     }
 
-    public boolean isSkippableCandidate() {
-        return mSkippable;
-    }
-
-    public boolean isBuffering() {
-        return mBuffering;
-    }
-
     @Override
     protected void onProgressUpdate(Integer... progress) {
         super.onProgressUpdate(progress);
@@ -267,14 +280,6 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
             mMediaPlayerPool.free(mMediaPlayer);
             mMediaPlayer = null;
         }
-    }
-
-    public Play getPlay() {
-        return mPlay;
-    }
-
-    public void setSkippable(boolean skippable) {
-        this.mSkippable = skippable;
     }
 
     public void play() {

@@ -8,7 +8,9 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
@@ -65,6 +67,8 @@ public class PlayerService extends Service {
     protected MainQueue mMainQueue;
     protected TuningQueue mTuningQueue;
     protected TaskQueueManager mSecondaryQueue;
+
+    protected Handler mHandler = new Handler(Looper.myLooper());
 
     private MediaPlayerPool mMediaPlayerPool;
 
@@ -225,6 +229,8 @@ public class PlayerService extends Service {
 
             eventBus.unregister(this);
 
+            mHandler.removeCallbacks(mSendElapsedTime);
+
             unregisterReceiver(mConnectivityBroadcastReceiver);
         }
 
@@ -264,6 +270,7 @@ public class PlayerService extends Service {
 
     /**
      * Is the Service currently in the process of playing music or at least preparing to play music.
+     *
      * @return {@code true} if playing, {@code false} otherwise.
      */
     private boolean isPlayingPlaylist() {
@@ -376,7 +383,7 @@ public class PlayerService extends Service {
                     eventBus.post(station);
 
                     if (wasPlaying) {
-                       play();
+                        play();
                     }
                 } else {
                     Log.w(TAG, String.format("Station %s could not be found or was already selected in current placement", stationId));
@@ -550,7 +557,7 @@ public class PlayerService extends Service {
         }
     }
 
-    public void handleApiError(FeedFMError error) {
+    private void handleApiError(FeedFMError error) {
         if (error.getCode() == Configuration.API_CODE_NOT_IN_US) {
             eventBus.post(new EventMessage(EventMessage.Status.NOT_IN_US));
             disableForeground();
@@ -560,6 +567,50 @@ public class PlayerService extends Service {
         } else if (error.getCode() == Configuration.API_CODE_PLAYBACK_ALREADY_STARTED) {
             Log.w(TAG, error);
         }
+    }
+
+    /**
+     * While playing, elapsed time should be sent every 10 seconds.
+     */
+    private Runnable mSendElapsedTime = new Runnable() {
+        @Override
+        public void run() {
+            if (!mMainQueue.hasActivePlayTask()) {
+                return;
+            }
+
+            final PlayTask playTask = (PlayTask) mMainQueue.peek();
+            final String playId = playTask.getPlay().getId();
+            final Integer elapsedTime = playTask.getElapsedTime();
+
+            SimpleNetworkTask<Boolean> elapsedTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+                @Override
+                public void onStart() {
+
+                }
+
+                @Override
+                public Boolean performRequestSynchronous() throws FeedFMError {
+                    return mWebservice.elapsed(playId, elapsedTime);
+                }
+
+                @Override
+                public void onSuccess(Boolean aBoolean) {
+                    updateElapsedTimes();
+                }
+
+                @Override
+                public void onFail(FeedFMError error) {
+
+                }
+            });
+            mSecondaryQueue.offer(elapsedTask);
+            mSecondaryQueue.next();
+        }
+    };
+
+    private void updateElapsedTimes() {
+        mHandler.postDelayed(mSendElapsedTime, Configuration.ELAPSED_PING_INTERVAL);
     }
 
     /**
@@ -599,7 +650,6 @@ public class PlayerService extends Service {
             enableForeground();
         }
 
-
         if (!mMediaPlayerPool.hasTunedMediaPlayer()) {
             tune();
         }
@@ -611,6 +661,8 @@ public class PlayerService extends Service {
                 mPlayInfo.setCurrentPlay(play);
 
                 eventBus.post(play);
+
+                updateElapsedTimes();
 
                 final String playId = play.getId();
 
@@ -773,7 +825,7 @@ public class PlayerService extends Service {
 
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
-                    return mWebservice.skip(play.getId(), force);
+                    return mWebservice.skip(play.getId(), task.getElapsedTime(), force);
                 }
 
                 @Override
