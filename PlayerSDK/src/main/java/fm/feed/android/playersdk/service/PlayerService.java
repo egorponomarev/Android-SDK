@@ -17,6 +17,7 @@ import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
 import java.util.Date;
+import java.util.List;
 
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
@@ -297,7 +298,12 @@ public class PlayerService extends Service {
                 if (didChangePlacement) {
                     // Save user Placement
                     mPlayInfo.setPlacement(placement);
-                    mPlayInfo.setStation(null);
+                    List<Station> stationList = placement.getStationList();
+                    if (!stationList.isEmpty()) {
+                        mPlayInfo.setStation(stationList.get(0));
+                    } else {
+                        mPlayInfo.setStation(null);
+                    }
                 }
 
                 updateState(PlayInfo.State.READY);
