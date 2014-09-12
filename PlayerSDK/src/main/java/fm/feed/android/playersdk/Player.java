@@ -51,9 +51,19 @@ public class Player {
 
     private PlayInfo mPlayInfo;
 
-    protected Player(Context context, int notificationId) {
+    private Credentials mCredentials;
+
+    private boolean mRequiresAuthentication;
+
+    protected Player(Context context, PlayerListener playerListener, String token, String secret, int notificationId) {
+        mRequiresAuthentication = false;
+
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
+
+        mCredentials = new Credentials(token, secret);
+
+        registerPlayerListener(playerListener);
 
         startPlayerService(context, notificationId);
     }
@@ -64,14 +74,15 @@ public class Player {
         intent.putExtra(PlayerService.ExtraKeys.timestamp.toString(), new Date().getTime());
         intent.putExtra(PlayerService.ExtraKeys.buildType.toString(), mDebug.name());
 
+
         if (notificationId >= -1) {
             intent.putExtra(PlayerService.ExtraKeys.notificationId.toString(), notificationId);
         }
         context.startService(intent);
     }
 
-    public static Player getInstance(Context context) {
-        return getInstance(context, null);
+    public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret) {
+        return getInstance(context, playerListener, token, secret, null);
     }
 
     /**
@@ -83,9 +94,9 @@ public class Player {
      *
      * @return
      */
-    public static Player getInstance(Context context, Integer notificationId) {
+    public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret, Integer notificationId) {
         if (mInstance == null) {
-            mInstance = new Player(context, notificationId);
+            mInstance = new Player(context, playerListener, token, secret, notificationId);
         }
         return mInstance;
     }
@@ -329,8 +340,13 @@ public class Player {
         public void onServiceReady(PlayInfo playInfo) {
             mPlayInfo = playInfo;
 
-            for (PlayerListener listener : mPlayerListeners) {
-                listener.onPlayerInitialized(playInfo);
+            mRequiresAuthentication = !mPlayInfo.hasCredentials();
+            if (mRequiresAuthentication) {
+               setCredentials(mCredentials.getToken(), mCredentials.getSecret());
+            } else {
+                for (PlayerListener listener : mPlayerListeners) {
+                    listener.onPlayerInitialized(playInfo);
+                }
             }
         }
 
@@ -392,6 +408,18 @@ public class Player {
         @SuppressWarnings("unused")
         @Subscribe
         public void onPlacementChanged(final Placement placement) {
+            if (mRequiresAuthentication) {
+                mainThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (PlayerListener listener : mPlayerListeners) {
+                            listener.onPlayerInitialized(mPlayInfo);
+                        }
+                    }
+                });
+                mRequiresAuthentication = false;
+            }
+
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {

@@ -90,7 +90,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mPlayer = Player.getInstance(getActivity(), CUSTOM_NOTIFICATION_ID);
+        mPlayer = Player.getInstance(getActivity(), this, "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42", "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517", CUSTOM_NOTIFICATION_ID);
     }
 
     @Override
@@ -321,8 +321,17 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     @Override
     public void onPlayerInitialized(PlayInfo playInfo) {
-        mPlayer.setCredentials("d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42", "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517");
+        updateTitle(playInfo);
 
+        // This is going to be called every time the Player registers itself to the service.
+        // For example when the app resumes.
+        // A Track may already be playing when that happens.
+        if (playInfo.getPlay() != null) {
+            onTrackChanged(playInfo.getPlay());
+        }
+    }
+
+    private void updateTitle(PlayInfo playInfo) {
         final PackageManager pm = getActivity().getApplicationContext().getPackageManager();
         ApplicationInfo ai;
         try {
@@ -333,10 +342,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         }
         final String applicationName = (String) (ai != null ? pm.getApplicationLabel(ai) : "(unknown)");
         getActivity().setTitle(applicationName + " (sdk: " + playInfo.getSdkVersion() + ")");
-
-        if (playInfo.getPlay() != null) {
-            onTrackChanged(playInfo.getPlay());
-        }
     }
 
     private void updateStations(List<Station> stationList) {

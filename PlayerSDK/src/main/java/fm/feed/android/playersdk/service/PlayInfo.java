@@ -141,6 +141,15 @@ public class PlayInfo {
     // -----------------
 
     /**
+     * Are the credentials set?
+     *
+     * @return {@code true} if they are set, {@code false} otherwise.
+     */
+    public boolean hasCredentials() {
+        return mClientId != null;
+    }
+
+    /**
      * Version of this library
      *
      * @return The current version of this library. {v#.#}
