@@ -26,6 +26,20 @@ public class MainQueue extends TuningQueue {
     }
 
     /**
+     * Checks if there is a {@link fm.feed.android.playersdk.service.task.PlayTask} queued that is not Cancelled;
+     *
+     * @return {@code true} if the {@link PlayTask} is not cancelled.
+     */
+    public boolean hasPlayTask() {
+        for (PlayerAbstractTask task: this) {
+            if (task instanceof PlayTask && !task.isCancelled()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Removes all the PlayTask instances from this queue.
      */
     public void removeAllPlayTasks() {

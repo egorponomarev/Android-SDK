@@ -72,6 +72,10 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
         mPaused = false;
     }
 
+    public boolean isPaused() {
+        return mPaused;
+    }
+
     public void next() {
         if (mPaused) {
             return;

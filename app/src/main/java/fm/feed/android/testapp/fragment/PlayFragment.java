@@ -185,7 +185,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
             }
         });
 
-        resetProgressInfo();
+        resetTrackInfo();
 
         if (mPlayer.hasPlay()) {
             updateTrackInfo(mPlayer.getPlay());
@@ -222,6 +222,21 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         outState.putIntArray(PLACEMENTS, mPlacements);
     }
 
+    private void resetTrackInfo() {
+        int max = 0;
+        int min = 0;
+        mTxtCurrentProgress.setText(TimeUtils.toProgressFormat(min));
+        mTxtDuration.setText(TimeUtils.toProgressFormat(max));
+
+        mProgressBar.setProgress(min);
+        mProgressBar.setSecondaryProgress(min);
+        mProgressBar.setMax(min);
+
+        mTxtTitle.setText("");
+        mTxtArtist.setText("");
+        mTxtAlbum.setText("");
+    }
+
     public void createNotification(Play play) {
         int stringId = getActivity().getApplicationInfo().labelRes;
         String applicationName = getString(stringId);
@@ -248,24 +263,11 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mNotificationManager.notify(mPlayer.getNotificationId(), mBuilder.build());
     }
 
-    private void resetProgressInfo() {
-        int max = 0;
-        int min = 0;
-        mTxtCurrentProgress.setText(TimeUtils.toProgressFormat(min));
-        mTxtDuration.setText(TimeUtils.toProgressFormat(max));
-
-        mProgressBar.setProgress(min);
-        mProgressBar.setSecondaryProgress(min);
-        mProgressBar.setMax(min);
-
-    }
-
     public void clearNotification() {
         NotificationManager mNotificationManager =
                 (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.cancel(mPlayer.getNotificationId());
     }
-
 
     @SuppressWarnings("unused")
     private View.OnClickListener tune = new View.OnClickListener() {
@@ -369,18 +371,20 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onPlacementChanged(Placement placement, List<Station> stationList) {
         mPlacementsView.setSelection(mSelectedPlacementsIndex);
 
+        resetTrackInfo();
         updateStations(stationList);
     }
 
     @Override
     public void onStationChanged(Station station) {
+        resetTrackInfo();
         mStationsView.setSelection(mSelectedStationIndex);
         Toast.makeText(getActivity(), String.format("Station set to: %s (%s)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
     }
 
     @Override
     public void onTrackChanged(Play play) {
-        resetProgressInfo();
+        resetTrackInfo();
 
         updateTrackInfo(play);
     }
@@ -438,7 +442,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     @Override
     public void onEndOfPlaylist() {
         Toast.makeText(getActivity(), "Reached end of Playlist", Toast.LENGTH_LONG).show();
-        resetProgressInfo();
+        resetTrackInfo();
     }
 
     @Override

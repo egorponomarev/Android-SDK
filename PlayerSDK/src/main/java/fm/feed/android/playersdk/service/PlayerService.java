@@ -263,6 +263,25 @@ public class PlayerService extends Service {
     }
 
     /**
+     * Is the Service currently in the process of playing music or at least preparing to play music.
+     * @return {@code true} if playing, {@code false} otherwise.
+     */
+    private boolean isPlayingPlaylist() {
+        if (mMainQueue.isPaused()) {
+            return false;
+        }
+
+        if (mMainQueue.hasActivePlayTask()) {
+            return ((PlayTask) mMainQueue.peek()).isPlaying();
+        }
+
+        // Check for a Tune task followed by a Play Task.
+        PlayerAbstractTask task = mMainQueue.peek();
+        return (task != null && task instanceof TuneTask && mMainQueue.hasPlayTask());
+
+    }
+
+    /**
      * *************************************
      * Bus receivers
      */
@@ -286,7 +305,7 @@ public class PlayerService extends Service {
 
     private void setPlacement(Placement p, final boolean isUserInteraction) {
         final Integer placementId = p != null ? p.getId() : null;
-
+        final boolean wasPlaying = isPlayingPlaylist();
         PlacementIdTask task = new PlacementIdTask(mMainQueue, mWebservice, new PlacementIdTask.OnPlacementIdChanged() {
             @Override
             public void onSuccess(Placement placement) {
@@ -310,7 +329,8 @@ public class PlayerService extends Service {
 
                 eventBus.post(placement);
 
-                if (isUserInteraction) {
+                // Only start play if music was already playing.
+                if (isUserInteraction && wasPlaying) {
                     play();
                 }
             }
@@ -345,6 +365,8 @@ public class PlayerService extends Service {
             return;
         }
 
+        final boolean wasPlaying = isPlayingPlaylist();
+
         StationIdTask task = new StationIdTask(mMainQueue, new StationIdTask.OnStationIdChanged() {
             @Override
             public void onSuccess(Station station) {
@@ -353,7 +375,9 @@ public class PlayerService extends Service {
 
                     eventBus.post(station);
 
-                    play();
+                    if (wasPlaying) {
+                       play();
+                    }
                 } else {
                     Log.w(TAG, String.format("Station %s could not be found or was already selected in current placement", stationId));
                 }
