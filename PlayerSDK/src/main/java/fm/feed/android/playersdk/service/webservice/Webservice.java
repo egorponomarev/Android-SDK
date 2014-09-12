@@ -16,6 +16,7 @@ import fm.feed.android.playersdk.service.webservice.model.AudioFormat;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMUnkownRetrofitError;
 import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
@@ -259,7 +260,7 @@ public class Webservice {
 
         public abstract T execute() throws RetrofitError;
 
-        private void handleRetrofitError(RetrofitError retrofitError) throws FeedFMError {
+        protected void handleRetrofitError(RetrofitError retrofitError) throws FeedFMError {
             FeedFMError feedFMError = null;
 
 //            try {
@@ -280,9 +281,9 @@ public class Webservice {
          *
          * @throws FeedFMError
          */
-        private void handleError(FeedFMError error) throws FeedFMError {
+        protected void handleError(FeedFMError error) throws FeedFMError {
             if (error == null) {
-                error = new FeedFMError(-1, "Retrofit error response is null or can't be parsed", -1);
+                error = new FeedFMUnkownRetrofitError();
             }
             throw error;
         }

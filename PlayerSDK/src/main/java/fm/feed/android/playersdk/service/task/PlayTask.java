@@ -8,6 +8,7 @@ import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.wifi.WifiManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
@@ -42,6 +43,9 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     private Integer mDuration = 0;
 
     private PlayTaskListener mListener;
+
+    private static final String WIFI_LOCK_TAG = "fm.feed.wifilock";
+    private WifiManager.WifiLock mWifiLock;
 
     private boolean mPublishProgress = true;
     private Runnable mResetPublishProgressFlag = new Runnable() {
@@ -97,6 +101,10 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         this.mListener = listener;
         this.mMediaPlayerPool = mediaPlayerPool;
 
+        WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
+        mWifiLock = wifiManager.createWifiLock(WIFI_LOCK_TAG);
+        mWifiLock.setReferenceCounted(false);
+
         // Register Noisy Audio Receiver.
         // When audio becomes noisy (speaker jack is removed), we want to cut off the noise level.
         // Refer to http://developer.android.com/training/managing-audio/audio-output.html#HandleChanges for details.
@@ -125,6 +133,8 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
         mMediaPlayer.setOnInfoListener(this);
         mMediaPlayer.setOnCompletionListener(this);
+
+        mWifiLock.acquire();
     }
 
     @Override
@@ -248,6 +258,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     }
 
     private void cleanup() {
+        mWifiLock.release();
         mTimingHandler.removeCallbacks(mResetPublishProgressFlag);
         mContext.unregisterReceiver(mNoisyAudioBroadcastReceiver);
         mContext.unregisterReceiver(mConnectivityBroadcastReceiver);
@@ -267,6 +278,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     }
 
     public void play() {
+        mWifiLock.acquire();
         mMediaPlayer.start();
         mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
 
@@ -276,6 +288,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     }
 
     public void pause() {
+        mWifiLock.release();
         mMediaPlayer.pause();
 
         if (mListener != null) {

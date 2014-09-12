@@ -5,8 +5,8 @@ import fm.feed.android.playersdk.service.constant.Configuration;
 /**
  * Created by mharkins on 9/10/14.
  */
-public class FeedFMNetworkError extends FeedFMError {
-    public FeedFMNetworkError() {
+public class FeedFMConnectivityError extends FeedFMError {
+    public FeedFMConnectivityError() {
         super(Configuration.ERROR_CODE_TUNE_NETWORK, "No internet Connection", -1);
     }
 }

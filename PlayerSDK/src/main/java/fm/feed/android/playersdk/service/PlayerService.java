@@ -497,7 +497,7 @@ public class PlayerService extends Service {
                         }
 
                         @Override
-                        public void onFail() {
+                        public void onFail(FeedFMError error) {
 
                         }
                     });
@@ -612,8 +612,13 @@ public class PlayerService extends Service {
                     }
 
                     @Override
-                    public void onFail() {
-                        updateSkipStatus(false);
+                    public void onFail(FeedFMError error) {
+                        if (error.getCode() == Configuration.API_CODE_PLAYBACK_ALREADY_STARTED) {
+                            // Server already got the Start message even if we didn't get a response.
+                            // Set to skippable and let server decide if we can skip the song later on.
+                            updateSkipStatus(true);
+                        }
+
                     }
                 });
                 mSecondaryQueue.offer(playStartTask);
@@ -683,7 +688,7 @@ public class PlayerService extends Service {
                         }
 
                         @Override
-                        public void onFail() {
+                        public void onFail(FeedFMError error) {
 
                         }
                     });
@@ -752,12 +757,12 @@ public class PlayerService extends Service {
 
                         play();
                     } else {
-                        onFail();
+                        onFail(null);
                     }
                 }
 
                 @Override
-                public void onFail() {
+                public void onFail(FeedFMError error) {
                     eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
                 }
             });
@@ -806,7 +811,7 @@ public class PlayerService extends Service {
                 }
 
                 @Override
-                public void onFail() {
+                public void onFail(FeedFMError error) {
 
                 }
             });
@@ -840,7 +845,7 @@ public class PlayerService extends Service {
                 }
 
                 @Override
-                public void onFail() {
+                public void onFail(FeedFMError error) {
 
                 }
             });
@@ -873,7 +878,7 @@ public class PlayerService extends Service {
                 }
 
                 @Override
-                public void onFail() {
+                public void onFail(FeedFMError error) {
 
                 }
             });

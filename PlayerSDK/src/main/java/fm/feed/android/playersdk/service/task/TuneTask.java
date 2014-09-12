@@ -15,8 +15,8 @@ import fm.feed.android.playersdk.service.constant.Configuration;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.webservice.Webservice;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMConnectivityError;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
-import fm.feed.android.playersdk.service.webservice.model.FeedFMNetworkError;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -213,7 +213,7 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
                     activeNetwork.isConnectedOrConnecting();
 
             if (!isConnected) {
-                error = new FeedFMNetworkError();
+                error = new FeedFMConnectivityError();
             } else {
                 error = new FeedFMError(Configuration.ERROR_CODE_TUNE_UNKNOWN, "Unknown Media Error from MediaPlayer.", -1);
             }

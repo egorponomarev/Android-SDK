@@ -13,7 +13,7 @@ public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, V
         public void onStart();
         public Response performRequestSynchronous() throws FeedFMError;
         public void onSuccess(Response response);
-        public void onFail();
+        public void onFail(FeedFMError error);
     }
 
     private SimpleNetworkTaskListener<Response> mListener;
@@ -62,7 +62,7 @@ public class SimpleNetworkTask <Response> extends NetworkAbstractTask <Object, V
         }
 
         if (error != null && mListener != null) {
-            mListener.onFail();
+            mListener.onFail(error);
         }
     }
 

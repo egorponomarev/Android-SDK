@@ -22,5 +22,6 @@ public class Configuration {
 
     public static final int ERROR_CODE_TUNE_NETWORK = 1000; // No Internet Connection
     public static final int ERROR_CODE_TUNE_UNKNOWN = 1001; // Error preparing audio stream
+    public static final int ERROR_CODE_UNKNOWN = 1002; // Unkown Error
 
 }
