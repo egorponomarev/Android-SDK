@@ -144,12 +144,23 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
      * @return {@code true} if the {@code playerTask} was properly offered to the queue.
      */
     public boolean offerIfNotExist(PlayerAbstractTask playerTask) {
-        for (PlayerAbstractTask task : this) {
-            if (playerTask.getClass().equals(task.getClass())) {
-                return false;
-            }
+        if (hasTaskType(playerTask.getClass())) {
+            return false;
         }
         return offer(playerTask);
+    }
+
+    /**
+     * Loops through the queue, only adds the task if no other of the same type is queued up.
+     *
+     * @param playerTask {@link fm.feed.android.playersdk.service.task.PlayerAbstractTask}
+     * @return {@code true} if the {@code playerTask} was properly offered to the queue.
+     */
+    public boolean offerFirstIfNotExist(PlayerAbstractTask playerTask) {
+        if (hasTaskType(playerTask.getClass())) {
+            return false;
+        }
+        return offerFirst(playerTask);
     }
 
     @Override

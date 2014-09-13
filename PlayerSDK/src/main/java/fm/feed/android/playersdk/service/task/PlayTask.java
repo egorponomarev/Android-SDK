@@ -21,6 +21,7 @@ import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
+import fm.feed.android.playersdk.service.webservice.util.ElapsedTimeManager;
 
 /**
  * Created by mharkins on 9/2/14.
@@ -29,7 +30,14 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     public static final String TAG = PlayTask.class.getSimpleName();
 
+    private Context mContext;
+    private PlayTaskListener mListener;
+
+    private TaskQueueManager mSecondaryQueue;
     private MediaPlayerPool mMediaPlayerPool;
+
+    private WifiManager.WifiLock mWifiLock;
+    private ElapsedTimeManager mElapsedTimeManager;
 
     private FeedFMMediaPlayer mMediaPlayer;
     private Play mPlay;
@@ -42,10 +50,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     private Integer mDuration = 0;
 
-    private PlayTaskListener mListener;
 
-    private static final String WIFI_LOCK_TAG = "fm.feed.wifilock";
-    private WifiManager.WifiLock mWifiLock;
 
     private boolean mPublishProgress = true;
     private Runnable mResetPublishProgressFlag = new Runnable() {
@@ -56,7 +61,6 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     };
     private Handler mTimingHandler = new Handler(Looper.myLooper());
 
-    private Context mContext;
 
     private BroadcastReceiver mNoisyAudioBroadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -92,17 +96,16 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
     };
 
-
-
-    public PlayTask(TaskQueueManager queueManager, Webservice mWebservice, Context context, MediaPlayerPool mediaPlayerPool, PlayTaskListener listener) {
+    public PlayTask(TaskQueueManager queueManager, Webservice mWebservice, Context context, MediaPlayerPool mediaPlayerPool, ElapsedTimeManager elapsedTimeManager, PlayTaskListener listener) {
         super(queueManager, mWebservice);
 
         this.mContext = context;
         this.mListener = listener;
         this.mMediaPlayerPool = mediaPlayerPool;
+        this.mElapsedTimeManager = elapsedTimeManager;
 
         WifiManager wifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
-        mWifiLock = wifiManager.createWifiLock(WIFI_LOCK_TAG);
+        mWifiLock = wifiManager.createWifiLock(Configuration.WIFI_LOCK_TAG);
         mWifiLock.setReferenceCounted(false);
 
         // Register Noisy Audio Receiver.
@@ -148,12 +151,14 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
 
         mMediaPlayer = mediaPlayer;
+
         mPlay = mediaPlayer.getPlay();
 
         mDuration = mMediaPlayer.getDuration();
 
         mMediaPlayer.setOnInfoListener(this);
         mMediaPlayer.setOnCompletionListener(this);
+        mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
 
         mWifiLock.acquire();
     }
@@ -265,13 +270,14 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     @Override
     public PlayerAbstractTask copy(int attempts) {
-        PlayerAbstractTask task = new PlayTask(getQueueManager(), mWebservice, mContext, mMediaPlayerPool, mListener);
+        PlayerAbstractTask task = new PlayTask(getQueueManager(), mWebservice, mContext, mMediaPlayerPool, mElapsedTimeManager, mListener);
         task.setAttemptCount(attempts);
         return task;
     }
 
     private void cleanup() {
         mWifiLock.release();
+        mElapsedTimeManager.stop();
         mTimingHandler.removeCallbacks(mResetPublishProgressFlag);
         mContext.unregisterReceiver(mNoisyAudioBroadcastReceiver);
         mContext.unregisterReceiver(mConnectivityBroadcastReceiver);
@@ -285,7 +291,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     public void play() {
         mWifiLock.acquire();
         mMediaPlayer.start();
-        mMediaPlayer.setWakeMode(mContext, PowerManager.PARTIAL_WAKE_LOCK);
+        mElapsedTimeManager.start(this);
 
         if (mListener != null) {
             mListener.onPlay(this);
@@ -295,6 +301,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     public void pause() {
         mWifiLock.release();
         mMediaPlayer.pause();
+        mElapsedTimeManager.stop();
 
         if (mListener != null) {
             mListener.onPause(this);

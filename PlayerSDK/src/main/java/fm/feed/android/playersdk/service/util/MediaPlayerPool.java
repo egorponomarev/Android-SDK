@@ -104,6 +104,22 @@ public class MediaPlayerPool {
         }
     }
 
+    /**
+     * Resets all the media players
+     */
+    public void releaseTunedPlayers() {
+        synchronized (this) {
+            Queue[] queues = new Queue[] { mTuned };
+            for (Queue q: queues) {
+                for (Object o: q) {
+                    FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) o;
+                    mediaPlayer.release();
+                }
+                q.clear();
+            }
+        }
+    }
+
     private FeedFMMediaPlayer spawn() {
         Log.i(TAG, "Spawning new Media Player instance");
 

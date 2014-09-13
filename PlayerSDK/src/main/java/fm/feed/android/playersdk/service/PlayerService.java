@@ -8,9 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.Handler;
 import android.os.IBinder;
-import android.os.Looper;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.widget.Toast;
@@ -50,6 +48,7 @@ import fm.feed.android.playersdk.service.util.DataPersister;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
+import fm.feed.android.playersdk.service.webservice.util.ElapsedTimeManager;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -68,9 +67,9 @@ public class PlayerService extends Service {
     protected TuningQueue mTuningQueue;
     protected TaskQueueManager mSecondaryQueue;
 
-    protected Handler mHandler = new Handler(Looper.myLooper());
-
     private MediaPlayerPool mMediaPlayerPool;
+
+    private ElapsedTimeManager mElapsedTimeManager;
 
     private boolean mInitialized;
     private boolean mValidStart;
@@ -136,17 +135,6 @@ public class PlayerService extends Service {
         mInitialized = false;
         mValidStart = false;
 
-        mPlayInfo = new PlayInfo(getString(R.string.sdk_version));
-
-        mDataPersister = new DataPersister(this);
-        mWebservice = new Webservice(this);
-
-        mMediaPlayerPool = new MediaPlayerPool();
-
-        mMainQueue = new MainQueue();
-        mTuningQueue = new TuningQueue();
-        mSecondaryQueue = new TaskQueueManager("Secondary Queue");
-
     }
 
     @Override
@@ -185,13 +173,22 @@ public class PlayerService extends Service {
     }
 
     private void init() {
-        initAudioManager();
+        mPlayInfo = new PlayInfo(getString(R.string.sdk_version));
+
+        mDataPersister = new DataPersister(this);
+        mWebservice = new Webservice(this);
+
+        mMediaPlayerPool = new MediaPlayerPool();
 
         mMainQueue = new MainQueue();
         mTuningQueue = new TuningQueue();
         mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
         mMediaPlayerPool = new MediaPlayerPool();
+
+        mElapsedTimeManager = ElapsedTimeManager.getInstance(mWebservice, mSecondaryQueue);
+
+        initAudioManager();
 
         registerReceiver(mConnectivityBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 
@@ -228,8 +225,6 @@ public class PlayerService extends Service {
             mMediaPlayerPool.release();
 
             eventBus.unregister(this);
-
-            mHandler.removeCallbacks(mSendElapsedTime);
 
             unregisterReceiver(mConnectivityBroadcastReceiver);
         }
@@ -350,6 +345,7 @@ public class PlayerService extends Service {
 
         // Cancel any Tunings that might be taking place
         mTuningQueue.clear();
+        mMediaPlayerPool.releaseTunedPlayers();
 
         mMainQueue.offerUnique(task);
         mMainQueue.next();
@@ -396,6 +392,7 @@ public class PlayerService extends Service {
         mMainQueue.clearLowerPriorities(task);
 
         mTuningQueue.clear();
+        mMediaPlayerPool.releaseTunedPlayers();
 
         mMainQueue.offerUnique(task);
         mMainQueue.next();
@@ -570,50 +567,6 @@ public class PlayerService extends Service {
     }
 
     /**
-     * While playing, elapsed time should be sent every 10 seconds.
-     */
-    private Runnable mSendElapsedTime = new Runnable() {
-        @Override
-        public void run() {
-            if (!mMainQueue.hasActivePlayTask()) {
-                return;
-            }
-
-            final PlayTask playTask = (PlayTask) mMainQueue.peek();
-            final String playId = playTask.getPlay().getId();
-            final Integer elapsedTime = playTask.getElapsedTime();
-
-            SimpleNetworkTask<Boolean> elapsedTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
-                @Override
-                public void onStart() {
-
-                }
-
-                @Override
-                public Boolean performRequestSynchronous() throws FeedFMError {
-                    return mWebservice.elapsed(playId, elapsedTime);
-                }
-
-                @Override
-                public void onSuccess(Boolean aBoolean) {
-                    updateElapsedTimes();
-                }
-
-                @Override
-                public void onFail(FeedFMError error) {
-
-                }
-            });
-            mSecondaryQueue.offer(elapsedTask);
-            mSecondaryQueue.next();
-        }
-    };
-
-    private void updateElapsedTimes() {
-        mHandler.postDelayed(mSendElapsedTime, Configuration.ELAPSED_PING_INTERVAL);
-    }
-
-    /**
      * If there is currently a Playing task:
      * <ul>
      * <li>
@@ -654,15 +607,13 @@ public class PlayerService extends Service {
             tune();
         }
 
-        PlayTask task = new PlayTask(mMainQueue, mWebservice, PlayerService.this, mMediaPlayerPool, new PlayTask.PlayTaskListener() {
+        PlayTask task = new PlayTask(mMainQueue, mWebservice, PlayerService.this, mMediaPlayerPool, mElapsedTimeManager, new PlayTask.PlayTaskListener() {
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
                 mForceSkipCount = 0;
                 mPlayInfo.setCurrentPlay(play);
 
                 eventBus.post(play);
-
-                updateElapsedTimes();
 
                 final String playId = play.getId();
 
@@ -783,8 +734,8 @@ public class PlayerService extends Service {
             }
         });
 
-
         mMainQueue.clearLowerPriorities(task);
+
         mMainQueue.offerIfNotExist(task);
         mMainQueue.next();
     }
@@ -849,6 +800,7 @@ public class PlayerService extends Service {
                 }
             });
 
+            mSecondaryQueue.clearLowerPriorities(skipTask);
             mSecondaryQueue.offerIfNotExist(skipTask);
             mSecondaryQueue.next();
         } else {
