@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.PlayerError;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
@@ -329,6 +330,12 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         if (playInfo.getPlay() != null) {
             onTrackChanged(playInfo.getPlay());
         }
+    }
+
+    @Override
+    public void onError(PlayerError playerError) {
+        // Display error
+        Toast.makeText(getActivity(), playerError.toString(), Toast.LENGTH_LONG).show();
     }
 
     private void updateTitle(PlayInfo playInfo) {

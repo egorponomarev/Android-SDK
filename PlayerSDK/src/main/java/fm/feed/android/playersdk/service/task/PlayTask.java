@@ -33,7 +33,6 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     private Context mContext;
     private PlayTaskListener mListener;
 
-    private TaskQueueManager mSecondaryQueue;
     private MediaPlayerPool mMediaPlayerPool;
 
     private WifiManager.WifiLock mWifiLock;
@@ -45,11 +44,12 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     private boolean mCompleted = false;
     private boolean mBuffering = false;
     private boolean mSkippable = true;
+    private int mSystemPauses = 0;
+    private boolean mPausedByUser = false;
 
     private int mLastProgress = 0;
 
     private Integer mDuration = 0;
-
 
 
     private boolean mPublishProgress = true;
@@ -68,14 +68,16 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
             if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
                 if (isPlaying()) {
                     // Pause the playback
-                    pause();
+                    pause(true);
                 }
             }
         }
     };
 
-    private boolean mPlayingBeforePause = false;
     private BroadcastReceiver mConnectivityBroadcastReceiver = new BroadcastReceiver() {
+        private boolean mDidPause = false;
+        private boolean mConnected = false;
+
         @Override
         public void onReceive(Context context, Intent intent) {
             ConnectivityManager cm =
@@ -85,13 +87,19 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
             boolean isConnected = activeNetwork != null &&
                     activeNetwork.isConnectedOrConnecting();
 
+            if (!mDidPause && mConnected == isConnected) {
+                return;
+            }
+            mConnected = isConnected;
+
             Log.d(TAG, "Received Connectivity Broadcast: Connected ? " + isConnected);
 
             if (!isConnected && isBuffering()) {
-                mPlayingBeforePause = isPlaying();
-                pause();
-            } else if (mPlayingBeforePause) {
-                play();
+                mDidPause = true;
+
+                pause(false);
+            } else if (mDidPause) {
+                play(false);
             }
         }
     };
@@ -171,7 +179,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         mBuffering = true;
         mMediaPlayer.setLooping(true);
 
-        play();
+        play(true);
 
         if (mListener != null) {
             mListener.onPlayBegin(this, mPlay);
@@ -288,7 +296,18 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
     }
 
-    public void play() {
+    public void play(boolean isUserInteraction) {
+        if (isUserInteraction) {
+            mPausedByUser = false;
+        } else {
+            mSystemPauses--;
+        }
+
+        // Only resume when User has requested it and when the System is done with the Pauses.
+        if (mPausedByUser || mSystemPauses > 0) {
+            return;
+        }
+
         mWifiLock.acquire();
         mMediaPlayer.start();
         mElapsedTimeManager.start(this);
@@ -298,7 +317,17 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
     }
 
-    public void pause() {
+    public void pause(boolean isUserInteraction) {
+        if (isUserInteraction) {
+            mPausedByUser = true;
+        }
+
+        // Pauses my be requested by multiple systems
+        // ie. Audio Focus + Network
+        if (!isUserInteraction) {
+            mSystemPauses++;
+        }
+
         mWifiLock.release();
         mMediaPlayer.pause();
         mElapsedTimeManager.stop();

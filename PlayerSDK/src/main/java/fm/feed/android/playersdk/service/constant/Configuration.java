@@ -1,5 +1,7 @@
 package fm.feed.android.playersdk.service.constant;
 
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
+
 /**
  * Created by mharkins on 9/11/14.
  */
@@ -18,14 +20,6 @@ public class Configuration {
      */
     public static final int MAX_FORCE_SKIP_COUNT = 2;
 
-
-    public static final int API_CODE_END_OF_PLAYLIST = 9;
-    public static final int API_CODE_NOT_IN_US = 19;
-    public static final int API_CODE_PLAYBACK_ALREADY_STARTED = 20;
-
-    public static final int ERROR_CODE_TUNE_NETWORK = 1000; // No Internet Connection
-    public static final int ERROR_CODE_TUNE_UNKNOWN = 1001; // Error preparing audio stream
-    public static final int ERROR_CODE_UNKNOWN = 1002; // Unkown Error
 
     public static final String WIFI_LOCK_TAG = "fm.feed.wifilock";
 }

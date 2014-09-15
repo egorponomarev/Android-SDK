@@ -31,6 +31,7 @@ import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
+import fm.feed.android.playersdk.service.constant.ApiErrorEnum;
 import fm.feed.android.playersdk.service.constant.Configuration;
 import fm.feed.android.playersdk.service.queue.MainQueue;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
@@ -134,7 +135,6 @@ public class PlayerService extends Service {
 
         mInitialized = false;
         mValidStart = false;
-
     }
 
     @Override
@@ -280,7 +280,6 @@ public class PlayerService extends Service {
         // Check for a Tune task followed by a Play Task.
         PlayerAbstractTask task = mMainQueue.peek();
         return (task != null && task instanceof TuneTask && mMainQueue.hasPlayTask());
-
     }
 
     /**
@@ -305,6 +304,18 @@ public class PlayerService extends Service {
         setPlacement(p, true);
     }
 
+    /**
+     * Sets the Placement of the web-radio
+     * <p>
+     * If {@link fm.feed.android.playersdk.model.Placement} is {@code null}, the default placement will be selected.<br/>
+     * Will start playing automatically if a track was in play.
+     * </p>
+     *
+     * @param p
+     *         If {@code null}, the default placement will be selected.
+     * @param isUserInteraction
+     *         if true {@code}, will resume (if currently playing) play on the new placement.
+     */
     private void setPlacement(Placement p, final boolean isUserInteraction) {
         final Integer placementId = p != null ? p.getId() : null;
         final boolean wasPlaying = isPlayingPlaylist();
@@ -329,12 +340,19 @@ public class PlayerService extends Service {
 
                 updateState(PlayInfo.State.READY);
 
-                eventBus.post(placement);
+                eventBus.post(mPlayInfo.getPlacement());
+                eventBus.post(mPlayInfo.getStation());
 
                 // Only start play if music was already playing.
                 if (isUserInteraction && wasPlaying) {
                     play();
                 }
+            }
+
+            @Override
+            public void onFail(FeedFMError error) {
+                // TODO: log error
+                handleError(error);
             }
         }, placementId);
 
@@ -385,6 +403,12 @@ public class PlayerService extends Service {
                     Log.w(TAG, String.format("Station %s could not be found or was already selected in current placement", stationId));
                 }
             }
+
+            @Override
+            public void onFail(FeedFMError error) {
+                // TODO: log error
+                handleError(error);
+            }
         }, mPlayInfo.getStationList(), currentStationId, stationId);
 
         // StationIdTask cancels everything but:
@@ -432,7 +456,7 @@ public class PlayerService extends Service {
     public void getClientId() {
         String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
 
-        if (clientId != null && mDebug != BuildType.DEBUG) {
+        if (clientId != null && mDebug != BuildType.DEBUG) { // TODO: remove that!
             mPlayInfo.setClientId(clientId);
             Toast.makeText(PlayerService.this, "Retrieved existing Client ID!", Toast.LENGTH_LONG).show();
         } else {
@@ -443,6 +467,11 @@ public class PlayerService extends Service {
                     // TODO: perhaps encrypt clientId first.
                     mPlayInfo.setClientId(clientId);
                     Toast.makeText(PlayerService.this, "New Client ID!", Toast.LENGTH_LONG).show();
+                }
+
+                @Override
+                public void onFail(FeedFMError error) {
+                    handleError(error);
                 }
             });
 
@@ -544,25 +573,13 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onApiError(TuneTask tuneTask, FeedFMError mApiError) {
-                    handleApiError(mApiError);
+                    handleError(mApiError);
                 }
             }, mPlayInfo, mPlayInfo.getClientId());
 
             // TuneTask is low priority and cancels nothing. It will only be queued.
             queueManager.offerIfNotExist(task);
             queueManager.next();
-        }
-    }
-
-    private void handleApiError(FeedFMError error) {
-        if (error.getCode() == Configuration.API_CODE_NOT_IN_US) {
-            eventBus.post(new EventMessage(EventMessage.Status.NOT_IN_US));
-            disableForeground();
-        } else if (error.getCode() == Configuration.API_CODE_END_OF_PLAYLIST) {
-            eventBus.post(new EventMessage(EventMessage.Status.END_OF_PLAYLIST));
-            disableForeground();
-        } else if (error.getCode() == Configuration.API_CODE_PLAYBACK_ALREADY_STARTED) {
-            Log.w(TAG, error);
         }
     }
 
@@ -594,7 +611,7 @@ public class PlayerService extends Service {
 
             // If the Play is Paused, Resume.
             if (playTask.isPaused()) {
-                playTask.play();
+                playTask.play(true);
 
                 enableForeground();
                 return;
@@ -646,10 +663,12 @@ public class PlayerService extends Service {
 
                     @Override
                     public void onFail(FeedFMError error) {
-                        if (error.getCode() == Configuration.API_CODE_PLAYBACK_ALREADY_STARTED) {
+                        if (ApiErrorEnum.fromError(error) == ApiErrorEnum.PLAYBACK_ALREADY_STARTED) {
                             // Server already got the Start message even if we didn't get a response.
                             // Set to skippable and let server decide if we can skip the song later on.
                             updateSkipStatus(true);
+                        } else {
+                            handleError(error);
                         }
 
                     }
@@ -722,7 +741,9 @@ public class PlayerService extends Service {
 
                         @Override
                         public void onFail(FeedFMError error) {
-
+                            // Don't report the error
+                            // TODO: log error
+                            handleError(error);
                         }
                     });
                     mSecondaryQueue.offer(task);
@@ -797,6 +818,9 @@ public class PlayerService extends Service {
                 @Override
                 public void onFail(FeedFMError error) {
                     eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
+                    handleError(error);
+
+                    // TODO: log error
                 }
             });
 
@@ -809,15 +833,21 @@ public class PlayerService extends Service {
     }
 
     private void pause() {
+        // If currently playing, pause
         if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
             // If the Play is Paused, Resume.
             if (playTask.isPlaying()) {
-                playTask.pause();
+                playTask.pause(true);
 
                 disableForeground();
             }
+            return;
+        } else if (mMainQueue.hasPlayTask()) {
+            // If a PlayTask is queued, remove it from the queue.
+            // When Play is hit, the PlayTask will be recreated.
+            mMainQueue.removeAllPlayTasks();
             return;
         }
         Log.i(TAG, "Could not Pause track. Not playing.");
@@ -846,7 +876,8 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onFail(FeedFMError error) {
-
+                    // TODO: log error
+                    handleError(error);
                 }
             });
             mSecondaryQueue.offer(task);
@@ -880,7 +911,8 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onFail(FeedFMError error) {
-
+                    // TODO: log error
+                    handleError(error);
                 }
             });
             mSecondaryQueue.offer(task);
@@ -913,7 +945,8 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onFail(FeedFMError error) {
-
+                    // TODO: log error
+                    handleError(error);
                 }
             });
             mSecondaryQueue.offer(task);
@@ -922,6 +955,51 @@ public class PlayerService extends Service {
             skip();
         } else {
             Log.w(TAG, "Could not Dislike track. No active Play");
+        }
+    }
+
+    private void handleError(FeedFMError error) {
+        if (error != null) {
+            Log.e(TAG, "Player Error >>> " + error.toString());
+            if (error.isApiError()) {
+                switch (error.getApiError()) {
+                    case END_OF_PLAYLIST:
+                        eventBus.post(new EventMessage(EventMessage.Status.END_OF_PLAYLIST));
+                        disableForeground();
+                        return;
+                    case NOT_IN_US:
+                        eventBus.post(error);
+                        disableForeground();
+                        return;
+                    case PLAYBACK_ALREADY_STARTED:
+                        Log.w(TAG, error);
+                        return;
+                    case INVALID_CREDENTIALS:
+                    case FORBIDDEN:
+                    case SKIP_LIMIT_REACHED:
+                    case CANT_SKIP_NO_PLAY:
+                    case INVALID_PARAMETER:
+                    case MISSING_PARAMETER:
+                    case NO_SUCH_OBJECT:
+                    case UNHANDLED_INTERNAL_ERROR:
+                        break;
+                }
+            } else if (error.isPlayerError()) {
+                switch (error.getPlayerError()) {
+                    case NO_NETWORK:
+                        break;
+                    case TUNE_UNKNOWN:
+                        break;
+                    case INVALID_CREDENTIALS:
+                        break;
+                    case UNKNOWN:
+                        break;
+                    case RETROFIT_UNKNOWN:
+                        break;
+                }
+            }
+            eventBus.post(error);
+
         }
     }
 
@@ -939,7 +1017,7 @@ public class PlayerService extends Service {
                 boolean retval = false;
                 if (mMainQueue.hasActivePlayTask()) {
                     PlayTask task = (PlayTask) mMainQueue.peek();
-                    task.pause();
+                    task.pause(false);
 
                     retval = true;
                 } else if (mMainQueue.isTuning() || mTuningQueue.isTuning()) {

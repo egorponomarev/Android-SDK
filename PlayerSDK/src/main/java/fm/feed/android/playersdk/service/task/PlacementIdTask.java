@@ -12,6 +12,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement> {
     public interface OnPlacementIdChanged {
         public void onSuccess(Placement placement);
+        public void onFail(FeedFMError error);
     }
 
     public Integer mPlacementId;
@@ -50,8 +51,13 @@ public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
-        if (error != null && attempt < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
-            getQueueManager().offerFirst(copy(attempt + 1));
+        // If the task was cancelled because of an error.
+        if (error != null) {
+            if (attempt < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
+                getQueueManager().offerFirst(copy(attempt + 1));
+            } else if (mListener != null) {
+                mListener.onFail(error);
+            }
         }
     }
 

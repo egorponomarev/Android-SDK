@@ -11,6 +11,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 public class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
     public interface OnClientIdChanged {
         public void onSuccess(String clientId);
+        public void onFail(FeedFMError error);
     }
     private OnClientIdChanged mListener;
 
@@ -34,8 +35,12 @@ public class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
-        if (error != null && attempt < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
-            getQueueManager().offerFirst(copy(attempt + 1));
+        if (error != null) {
+            if (attempt < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
+                getQueueManager().offerFirst(copy(attempt + 1));
+            } else if (mListener != null) {
+                mListener.onFail(error);
+            }
         }
     }
 

@@ -13,6 +13,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 public class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
     public interface OnStationIdChanged {
         public void onSuccess(Station station);
+        public void onFail(FeedFMError error);
     }
 
     private OnStationIdChanged mListener;
@@ -58,8 +59,13 @@ public class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
-        if (error != null && attempt < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
-            getQueueManager().offerFirst(copy(attempt + 1));
+        // If the task was cancelled because of an error.
+        if (error != null) {
+            if (attempt < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
+                getQueueManager().offerFirst(copy(attempt + 1));
+            } else if (mListener != null) {
+                mListener.onFail(error);
+            }
         }
     }
 

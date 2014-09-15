@@ -12,6 +12,7 @@ import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.constant.Configuration;
+import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.util.MediaPlayerPool;
 import fm.feed.android.playersdk.service.webservice.Webservice;
@@ -120,11 +121,11 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
             cancel(feedFMError);
         } catch (IOException e) {
             e.printStackTrace();
-            cancel(new FeedFMError(-1, "Error Tuning MediaPlayer (IOException)", -1)); //TODO: constant
+            cancel(new FeedFMError(PlayerErrorEnum.TUNE_IO_EXCEPTION));
         } catch (IllegalStateException e) {
             // This exception is called if the MediaPlayer dataSource is set while the media player is in an invalid state.
             e.printStackTrace();
-            cancel(new FeedFMError(-1, "Error Tuning MediaPlayer (IllegalStateException)", -1)); //TODO: constant
+            cancel(new FeedFMError(PlayerErrorEnum.TUNE_MEDIA_PLAYER_ILLEGAL_STATE));
         }
 
         return mMediaPlayer;
@@ -151,17 +152,26 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
         if (error != null) {
-            if (error.getCode() == Configuration.ERROR_CODE_TUNE_UNKNOWN) {
-                if (mListener != null) {
-                    mListener.onUnkownError(this, error);
+            if (error.isPlayerError()) {
+                switch (error.getPlayerError()) {
+                    case NO_NETWORK:
+                        if (getAttemptCount() < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
+                            // Retry Tuning once we have a connection
+                            getQueueManager().offerFirst(copy(attempt + 1));
+                        } else if (mListener != null) {
+                            mListener.onApiError(this, error);
+                        }
+                        break;
+                    case TUNE_UNKNOWN:
+                        if (mListener != null) {
+                            mListener.onUnkownError(this, error);
+                        }
+                        break;
+                    default:
+                        break;
                 }
-            } else if (error.getCode() == Configuration.ERROR_CODE_TUNE_NETWORK) {
-                if (getAttemptCount() < Configuration.MAX_TASK_RETRY_ATTEMPTS) {
-                    // Retry Tuning once we have a connection
-                    getQueueManager().offerFirst(copy(attempt + 1));
-                } else if (mListener != null) {
-                    mListener.onApiError(this, error);
-                }
+            } else if (error.isApiError() && mListener != null) {
+                mListener.onApiError(this, error);
             }
         }
 
@@ -193,8 +203,9 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
 
     @Override
     public boolean isSkippableCandidate() {
+        FeedFMError error = getError();
         // Only allow skip if there is an important error.
-        return mPlay != null && getError() != null && getError().getCode() == Configuration.ERROR_CODE_TUNE_UNKNOWN;
+        return mPlay != null && error != null && error.isPlayerError() && error.getPlayerError() == PlayerErrorEnum.TUNE_UNKNOWN;
     }
 
     @Override
@@ -220,7 +231,7 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
             if (!isConnected) {
                 error = new FeedFMConnectivityError();
             } else {
-                error = new FeedFMError(Configuration.ERROR_CODE_TUNE_UNKNOWN, "Unknown Media Error from MediaPlayer.", -1);
+                error = new FeedFMError(PlayerErrorEnum.TUNE_UNKNOWN);
             }
             Log.e(TAG, error.toString());
 

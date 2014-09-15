@@ -1,12 +1,12 @@
 package fm.feed.android.playersdk.service.webservice.model;
 
-import fm.feed.android.playersdk.service.constant.Configuration;
+import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
 
 /**
  * Created by mharkins on 9/10/14.
  */
 public class FeedFMUnkownRetrofitError extends FeedFMError {
     public FeedFMUnkownRetrofitError() {
-        super(Configuration.ERROR_CODE_TUNE_NETWORK, "Retrofit error response is null or can't be parsed", -1);
+        super(PlayerErrorEnum.RETROFIT_UNKNOWN);
     }
 }

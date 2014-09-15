@@ -2,6 +2,8 @@ package fm.feed.android.playersdk.service.webservice;
 
 import android.content.Context;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.squareup.okhttp.OkHttpClient;
 
 import java.util.concurrent.ExecutorService;
@@ -12,6 +14,7 @@ import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.Credentials;
+import fm.feed.android.playersdk.service.webservice.adapter.FeedFMErrorDeserializer;
 import fm.feed.android.playersdk.service.webservice.model.AudioFormat;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
@@ -24,6 +27,7 @@ import fm.feed.android.playersdk.service.webservice.util.WebserviceUtils;
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.OkClient;
+import retrofit.converter.GsonConverter;
 import retrofit.http.DELETE;
 import retrofit.http.Field;
 import retrofit.http.FormUrlEncoded;
@@ -49,12 +53,18 @@ public class Webservice {
 
         mExecutorService = Executors.newSingleThreadExecutor();
 
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(FeedFMError.class, new FeedFMErrorDeserializer()).create();
+
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setLogLevel(RestAdapter.LogLevel.BASIC)
                 .setClient(new OkClient(okHttpClient))
                 .setExecutors(mExecutorService, null)
                 .setEndpoint(apiUrl + apiVersion)
+
+                .setConverter(new GsonConverter(gson))
                 .build();
+
 
         mRestService = restAdapter.create(RestInterface.class);
     }
@@ -319,8 +329,10 @@ public class Webservice {
             if (error == null) {
                 error = new FeedFMUnkownRetrofitError();
             }
+            error.updateErrorType();
             throw error;
         }
 
     }
+
 }

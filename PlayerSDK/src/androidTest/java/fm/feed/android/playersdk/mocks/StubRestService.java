@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk.mocks;
 
+import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
 import fm.feed.android.playersdk.service.webservice.Webservice;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
@@ -28,7 +29,7 @@ public class StubRestService implements Webservice.RestInterface {
     public RetrofitError mRetrofitError;
 
     public static FeedFMError makeFeedFmError() {
-        return new FeedFMError(4, "This is a message", 5);
+        return new FeedFMError(PlayerErrorEnum.UNKNOWN);
     }
 
     @Override

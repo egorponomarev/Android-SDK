@@ -1,12 +1,12 @@
 package fm.feed.android.playersdk.service.webservice.model;
 
-import fm.feed.android.playersdk.service.constant.Configuration;
+import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
 
 /**
  * Created by mharkins on 9/10/14.
  */
 public class FeedFMConnectivityError extends FeedFMError {
     public FeedFMConnectivityError() {
-        super(Configuration.ERROR_CODE_TUNE_NETWORK, "No internet Connection", -1);
+        super(PlayerErrorEnum.NO_NETWORK);
     }
 }

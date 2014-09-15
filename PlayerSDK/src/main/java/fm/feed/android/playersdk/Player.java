@@ -25,6 +25,8 @@ import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
+import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Created by mharkins on 8/21/14.
@@ -152,6 +154,11 @@ public class Player {
         Credentials credentials = new Credentials(token, secret);
         if (credentials.isValid()) {
             mEventBus.post(credentials);
+        } else {
+            PlayerError playerError = new PlayerError(PlayerErrorEnum.INVALID_CREDENTIALS);
+            for (PlayerListener listener: mPlayerListeners) {
+                listener.onError(playerError);
+            }
         }
     }
 
@@ -481,6 +488,20 @@ public class Player {
                 }
             });
         }
+
+        @SuppressWarnings("unused")
+        @Subscribe
+        public void onError(final FeedFMError error) {
+            // TODO: filter errors a bit.
+            mainThreadHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (PlayerListener listener : mPlayerListeners) {
+                        listener.onError(new PlayerError(error));
+                    }
+                }
+            });
+        }
     }
 
     /**
@@ -536,6 +557,13 @@ public class Player {
          * </p>
          */
         public void onNotInUS();
+
+        /**
+         * Called when there is an unhandled error.
+         *
+         * @param playerError
+         */
+        public void onError(PlayerError playerError);
     }
 
     /**

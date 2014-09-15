@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk.service.webservice;
 
+import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
@@ -26,7 +27,7 @@ public abstract class DefaultRetrofitCallback <T extends FeedFMResponse, R> impl
         } else {
             FeedFMError feedFMError = feedFMResponse.getError();
             if (feedFMError == null) {
-                feedFMError = new FeedFMError(-1, "Retrofit error response is null - Request Response was positive", -1);
+                feedFMError = new FeedFMError(PlayerErrorEnum.RETROFIT_NULL_REQ_SUCCESS);
             }
             mServiceCallback.onFailure(feedFMError);
         }
@@ -37,7 +38,7 @@ public abstract class DefaultRetrofitCallback <T extends FeedFMResponse, R> impl
         FeedFMResponse feedFMResponse = (FeedFMResponse) error.getBody();
         FeedFMError feedFMError = feedFMResponse.getError();
         if (feedFMError == null) {
-            feedFMError = new FeedFMError(-1, "Retrofit error response is null - Request Response was negative", -1);
+            feedFMError = new FeedFMError(PlayerErrorEnum.RETROFIT_NULL_REQ_FAIL);
         }
         mServiceCallback.onFailure(feedFMError);
     }
