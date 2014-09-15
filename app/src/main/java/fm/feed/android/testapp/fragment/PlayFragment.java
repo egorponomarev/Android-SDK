@@ -47,6 +47,9 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
     private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
+    private static final String AUTH_TOKEN = "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42";
+    private static final String AUTH_SECRET = "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517";
+
     private Player mPlayer;
 
     private int[] mPlacements;
@@ -91,7 +94,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mPlayer = Player.getInstance(getActivity(), this, "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42", "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517", CUSTOM_NOTIFICATION_ID);
+        mPlayer = Player.getInstance(getActivity(), this, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
     }
 
     @Override
