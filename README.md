@@ -1,22 +1,23 @@
 
-The Android SDK centers around an instance of the 'Player' class.
-You can tell the Player instance to `play()` music, `pause()` music,
-or `skip()` to the next song. The Player class does all of its work
-asynchronously, so you must register 'Listener' classes with it to
+The Android SDK centers around an instance of the `fm.feed.android.playersdk.Player` class.
+You can tell the `Player` instance to `play()` music, `pause()` music,
+or `skip()` to the next song. The `Player` class does all of its work
+asynchronously, so you must register `Listener` classes with it to
 receive notifications when various events occur.
 
 Note that this library requires an Internet connection for playback,
 and the Feed.fm service is only licensed for use in the United States.
 
-The basic flow for using the Player is to:
+The basic flow to begin streaming music is:
 
-1. create an implementation of Player.PlayListener to receive notifications 
+1. create an implementation of `Player.PlayListener` to receive notifications 
   from the player
-2. call Player.getInstance(..) to pass in authentication credentials and
-  begin initialization
-3. use the play(), pause(), skip() methods as requested by the user.
+2. call `p = Player.getInstance(..)` to pass in authentication credentials,
+  begin initialization, and get a reference to the player
+3. use the `p.play()`, `p.pause()`, `p.skip()` instance methods 
+  to control music playback.
 
-A minimal example, run from within a Fragment.onCreateView() method
+A minimal example, run from within a `Fragment.onCreateView()` method
 would look like the following:
 
 ```java
@@ -65,7 +66,7 @@ PlayerListener pl = new PlayerListener() {
 
 };
 
-// Unique id needed for foreground music service
+// You pick a unique id for your app for notifications
 static final int CUSTOM_NOTIFICATION_ID = 313377367;
 
 Player p = Player.getInstance(getActivity(), pl, token, secret, CUSTOM_NOTIFICATION_ID);
@@ -84,16 +85,23 @@ p.pause();
 
 The SDK automatically takes care to register as a foreground service, so that
 when user switches to another app the music can continue playing and the
-user can return to the music app via the status bar.
+user can return to the music app via the status bar. If you wish for music to
+not play when the app suspends or stops, you should call `Player.pause()`.
 
 The SDK will handle loss of audio focus: music will be paused or the volume
 temporarily reduced.
 
 The SDK will retry requests on network failure.
 
-If you are building an interactive player, you can register a Player.NavListener
-implementation with the Player instance. This interface will give you
+If you are building an interactive player, you can register a
+`fm.feed.android.playersdk.Player.NavListener`
+implementation with your `Player` instance. This interface will give you
 notifications of placement/station/track changes, skip failures, buffer and progress
-updates, and end of playlist notifications.
+updates, and end of playlist notifications. The current placement, list of
+available stations, current station, and current song being played (if any) is
+available through various `Player` methods.
+
+
+
 
 
