@@ -10,7 +10,6 @@ public class EventMessage {
         UNLIKE,
         DISLIKE,
         END_OF_PLAYLIST,
-        NOT_IN_US,
         NOTIFICATION_WILL_SHOW,
         STATUS_UPDATED
     }

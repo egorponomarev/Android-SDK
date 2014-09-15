@@ -447,11 +447,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     }
 
     @Override
-    public void onNotInUS() {
-
-    }
-
-    @Override
     public void onEndOfPlaylist() {
         Toast.makeText(getActivity(), "Reached end of Playlist", Toast.LENGTH_LONG).show();
         resetTrackInfo();

@@ -18,9 +18,7 @@ public enum PlayerErrorEnum {
     // Retrofit Errors
     RETROFIT_UNKNOWN(1030, "Unkown Retrofit Error"),
     RETROFIT_NULL_REQ_SUCCESS(1031, "Retrofit error response is null - Request Response was positive"),
-    RETROFIT_NULL_REQ_FAIL(1032, "Retrofit error response is null - Request Response was negative"),
-
-    ;
+    RETROFIT_NULL_REQ_FAIL(1032, "Retrofit error response is null - Request Response was negative");
 
     private int code;
     private String message;

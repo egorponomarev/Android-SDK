@@ -394,11 +394,6 @@ public class Player {
                                 listener.onEndOfPlaylist();
                             }
                             break;
-                        case NOT_IN_US:
-                            for (PlayerListener listener : mPlayerListeners) {
-                                listener.onNotInUS();
-                            }
-                            break;
                         case NOTIFICATION_WILL_SHOW:
                             for (PlayerListener listener : mPlayerListeners) {
                                 listener.onNotificationWillShow(getNotificationId());
@@ -549,14 +544,6 @@ public class Player {
          *         {@link fm.feed.android.playersdk.service.PlayInfo.State} of the Player.
          */
         public void onPlaybackStateChanged(PlayInfo.State state);
-
-        /**
-         * Called when the user is not located in the US
-         * <p>
-         * No music will be available to play.
-         * </p>
-         */
-        public void onNotInUS();
 
         /**
          * Called when there is an unhandled error.
