@@ -4,7 +4,7 @@ buildscript {
     }
 
     dependencies {
-        //classpath 'org.robolectric:robolectric-gradle-plugin:0.11.+'
+        classpath 'com.android.tools.build:gradle:0.12.2'
         classpath 'org.robolectric:robolectric-gradle-plugin:0.12.+'
 
     }
@@ -17,7 +17,26 @@ allprojects {
 }
 
 apply plugin: 'com.android.library'
+
+apply plugin: 'android-library'
+apply plugin: 'maven'
+apply plugin: 'signing'
+
 apply plugin: 'robolectric'
+
+version = "0.0.6"
+group = "fm.feed"
+
+configurations {
+    archives {
+        extendsFrom configurations.default
+    }
+}
+
+signing {
+    required { has("release") && gradle.taskGraph.hasTask("uploadArchives") }
+    sign configurations.archives
+}
 
 android {
     compileSdkVersion 20
@@ -44,6 +63,47 @@ android {
     sourceSets {
         androidTest {
             setRoot('src/androidTest')
+        }
+    }
+}
+
+uploadArchives {
+    configuration = configurations.archives
+    repositories.mavenDeployer {
+        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+        repository(url: sonatypeRepo) {
+            authentication(userName: sonatypeUsername,
+                    password: sonatypePassword)
+        }
+
+        pom.project {
+            name 'Feed.fm client library for Android'
+            packaging 'aar'
+            description 'This is an Android library for making use of the Feed.fm \'music as a service\' REST API. This library retrieves and handles playback of audio files.'
+            url 'http://developer.feed.fm/documentation'
+
+            scm {
+                url 'scm:git@github.com:fuzz-radio/Android-SDK.git'
+                connection 'scm:git@github.com:fuzz-radio/Android-SDK.git'
+                developerConnection 'scm:git@github.com:fuzz-radio/Android-SDK.git'
+            }
+
+            licenses {
+                license {
+                    name 'The MIT License (MIT)'
+                    url 'http://opensource.org/licenses/MIT'
+                    distribution 'repo'
+                }
+            }
+
+            developers {
+                developer {
+                    id 'MartinH'
+                    name 'Martin Harkins'
+                    email 'mharkins@gmail.com'
+                }
+            }
         }
     }
 }

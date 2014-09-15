@@ -6,7 +6,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.squareup.okhttp.OkHttpClient;
 
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import fm.feed.android.playersdk.R;
@@ -37,13 +36,20 @@ import retrofit.http.POST;
 import retrofit.http.Path;
 
 /**
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Feed Media, Inc
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ *
  * Created by mharkins on 8/22/14.
  */
 public class Webservice {
     private Credentials mCredentials;
 
     protected RestInterface mRestService;
-    private ExecutorService mExecutorService;
 
     public Webservice(Context context) {
         String apiVersion = context.getString(R.string.api_version);
@@ -51,15 +57,13 @@ public class Webservice {
 
         OkHttpClient okHttpClient = new OkHttpClient();
 
-        mExecutorService = Executors.newSingleThreadExecutor();
-
         Gson gson = new GsonBuilder()
                 .registerTypeAdapter(FeedFMError.class, new FeedFMErrorDeserializer()).create();
 
         RestAdapter restAdapter = new RestAdapter.Builder()
                 .setLogLevel(RestAdapter.LogLevel.BASIC)
                 .setClient(new OkClient(okHttpClient))
-                .setExecutors(mExecutorService, null)
+                .setExecutors(Executors.newSingleThreadExecutor(), null)
                 .setEndpoint(apiUrl + apiVersion)
 
                 .setConverter(new GsonConverter(gson))
@@ -252,13 +256,13 @@ public class Webservice {
         @FormUrlEncoded
         @POST("/play/{id}/invalidate")
         public FeedFMResponse invalidate(@Header("Authorization") String authorization,
-                                   @Path("id") String playId);
+                                         @Path("id") String playId);
 
         @FormUrlEncoded
         @POST("/play/{id}/elapse")
         public PlayStartResponse elapsed(@Header("Authorization") String authorization,
-                                             @Path("id") String playId,
-                                             @Field("seconds") Integer elapsed);
+                                         @Path("id") String playId,
+                                         @Field("seconds") Integer elapsed);
 
         @POST("/play/{id}/complete")
         public FeedFMResponse playCompleted(@Header("Authorization") String authorization,
