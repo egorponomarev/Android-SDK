@@ -2,22 +2,24 @@ package fm.feed.android.playersdk.mocks;
 
 import android.util.Pair;
 
-import fm.feed.android.playersdk.model.Placement;
-import fm.feed.android.playersdk.model.Station;
-import fm.feed.android.playersdk.service.bus.Credentials;
-import fm.feed.android.playersdk.service.bus.EventMessage;
-import fm.feed.android.playersdk.service.bus.OutStationWrap;
-import fm.feed.android.playersdk.service.bus.PlayerAction;
-import fm.feed.android.playersdk.service.bus.BusProvider;
 import com.squareup.otto.Bus;
 
 import java.util.List;
+
+import fm.feed.android.playersdk.model.Placement;
+import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.service.bus.BusProvider;
+import fm.feed.android.playersdk.service.bus.Credentials;
+import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
+import fm.feed.android.playersdk.service.bus.OutStationWrap;
+import fm.feed.android.playersdk.service.bus.PlayerAction;
 
 /**
  * Created by mharkins on 8/27/14.
  */
 public class DummyBusProvider extends BusProvider {
-    protected static Bus newInstance() {
+    public static Bus getInstance() {
         return new MockBus();
     }
 
@@ -39,7 +41,7 @@ public class DummyBusProvider extends BusProvider {
             if (object instanceof Credentials) {
                 mService.setCredentials((Credentials) object);
             } else if (object instanceof Placement) {
-                mService.setPlacementId((Placement) object);
+                mService.setPlacementId(new OutPlacementWrap((Placement) object));
             } else if (object instanceof OutStationWrap) {
                 mService.setStationId((OutStationWrap) object);
             } else if (object instanceof PlayerAction) {
@@ -47,7 +49,7 @@ public class DummyBusProvider extends BusProvider {
             } else if (object instanceof EventMessage) {
                 mPlayer.getPrivateServiceListener().onServiceStatusChange((EventMessage) object);
             } else if (object instanceof Pair) {
-                mPlayer.getPrivateServiceListener().onPlacementChanged((Pair<Placement, List<Station>>) object);
+                mPlayer.getPrivateServiceListener().onPlacementChanged((Placement) object);
             } else if (object instanceof Station) {
                 mPlayer.getPrivateServiceListener().onStationChanged((Station) object);
             }

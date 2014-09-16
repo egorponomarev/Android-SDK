@@ -1,12 +1,13 @@
 package fm.feed.android.playersdk.mocks;
 
+import java.util.List;
+
 import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.PlayerError;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
-import fm.feed.android.playersdk.model.PlayerLibraryInfo;
 import fm.feed.android.playersdk.model.Station;
-
-import java.util.List;
+import fm.feed.android.playersdk.service.PlayInfo;
 
 /**
  * Created by mharkins on 8/27/14.
@@ -30,11 +31,6 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
 
 
     @Override
-    public void onPlayerInitialized(PlayerLibraryInfo playerLibraryInfo) {
-        didCallPlayerInitialized = true;
-    }
-
-    @Override
     public void onPlacementChanged(Placement placement, List<Station> stationList) {
         didCallPlacementChanged = true;
     }
@@ -50,20 +46,34 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
     }
 
     @Override
-    public void onPlaybackStateChanged(Placement placement, List<Station> stationList) {
-        didCallPlaybackStateChanged = true;
-    }
-
-    @Override
     public void onSkipFailed() {
         didCallSkipFailed = true;
     }
 
     @Override
-    public void onNotInUS() {
-        didCallNotInUS = true;
+    public void onEndOfPlaylist() {
+
     }
 
+    @Override
+    public void onPlayerInitialized(PlayInfo playInfo) {
+        didCallPlayerInitialized = true;
+    }
+
+    @Override
+    public void onNotificationWillShow(int notificationId) {
+
+    }
+
+    @Override
+    public void onPlaybackStateChanged(PlayInfo.State state) {
+        didCallPlaybackStateChanged = true;
+    }
+
+    @Override
+    public void onError(PlayerError playerError) {
+
+    }
 
     @Override
     public void onBufferUpdate(Play play, int percentage) {

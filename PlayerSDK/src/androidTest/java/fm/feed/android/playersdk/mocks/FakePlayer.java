@@ -12,17 +12,12 @@ public class FakePlayer extends Player {
 
     private FakePlayerService mServiceMock;
 
-    private FakePlayer(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
-        super(context, playerListener, navListener, socialListener);
+    private FakePlayer(Context context, PlayerListener playerListener, String token, String secret) {
+        super(context, playerListener, "", "", -1);
     }
 
-    public static FakePlayer getInstance(Context context, PlayerListener playerListener, NavListener navListener, SocialListener socialListener) {
-        return new FakePlayer(context, playerListener, navListener, socialListener);
-    }
-
-    @Override
-    protected void startPlayerService(Context context) {
-        // do nothing
+    public static FakePlayer getInstance(Context context, PlayerListener playerListener, String token, String secret) {
+        return new FakePlayer(context, playerListener, token, secret);
     }
 
     public void setEventBus(Bus bus) {

@@ -53,8 +53,23 @@ public class StubRestService implements Webservice.RestInterface {
     }
 
     @Override
-    public FeedFMResponse skip(@Header("Authorization") String authorization, @Path("id") String playId) {
+    public PlacementResponse getPlacementInfo(@Header("Authorization") String authorization) {
+        return mPlacementResponseMock;
+    }
+
+    @Override
+    public FeedFMResponse skip(@Header("Authorization") String authorization, @Path("id") String playId, @Field("seconds") Integer elapsed, @Field("force") Integer force) {
         return mFeedFMResponseMock;
+    }
+
+    @Override
+    public FeedFMResponse invalidate(@Header("Authorization") String authorization, @Path("id") String playId) {
+        return mFeedFMResponseMock;
+    }
+
+    @Override
+    public PlayStartResponse elapsed(@Header("Authorization") String authorization, @Path("id") String playId, @Field("seconds") Integer elapsed) {
+        return mPlayStartResponseMock;
     }
 
     @Override

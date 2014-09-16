@@ -67,7 +67,7 @@ public class DataPersister {
         SharedPreferences settings = mContext.getSharedPreferences(mContext.getPackageName(), Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = settings.edit();
         editor.putString(keyName.toString(), value);
-        editor.commit();
+        editor.apply();
 
         Log.i(TAG, "Client ID: >>>>>>>>\"" + value + "\"<<<<<<<");
     }

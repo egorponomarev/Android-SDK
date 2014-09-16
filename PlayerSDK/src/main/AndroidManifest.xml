@@ -1,8 +1,13 @@
 <manifest
     package="fm.feed.android.playersdk"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:versionCode="5"
-    android:versionName="@string/sdk_version">
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <uses-sdk tools:node="replace"/>
 
     <application
         android:allowBackup="true"
@@ -13,8 +18,4 @@
             android:name=".service.PlayerService"
             android:label="Feed FM Player Service"/>
     </application>
-
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
 </manifest>

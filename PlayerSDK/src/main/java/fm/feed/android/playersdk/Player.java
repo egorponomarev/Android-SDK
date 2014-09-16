@@ -49,8 +49,8 @@ public class Player {
 
     private PlayerService.BuildType mDebug = PlayerService.BuildType.DEBUG;
 
-    protected Bus mEventBus = BusProvider.getInstance();
     protected PlayerServiceListener mPrivateServiceListener;
+    protected Bus mEventBus = BusProvider.getInstance();
 
     // PLayer Listener
     private List<PlayerListener> mPlayerListeners = new ArrayList<PlayerListener>();
@@ -77,6 +77,8 @@ public class Player {
 
         startPlayerService(context, notificationId);
     }
+
+
 
     protected void startPlayerService(Context context, Integer notificationId) {
         // Start the Service
@@ -346,7 +348,7 @@ public class Player {
     }
 
     // TODO: find a way to make this private and not break the Unit Tests
-    protected class PlayerServiceListener {
+    public class PlayerServiceListener {
         public PlayerServiceListener() {
         }
 
