@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk.service;
 
+import android.annotation.SuppressLint;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -62,6 +63,7 @@ import fm.feed.android.playersdk.service.webservice.util.ElapsedTimeManager;
  * <p/>
  * Created by mharkins on 8/21/14.
  */
+@SuppressLint("Registered")
 public class PlayerService extends Service {
     public static final String TAG = PlayerService.class.getSimpleName();
 
@@ -161,7 +163,11 @@ public class PlayerService extends Service {
         }
 
         if (mValidStart) {
-            mDebug = BuildType.valueOf(intent.getStringExtra(ExtraKeys.buildType.toString()));
+            try {
+                mDebug = BuildType.valueOf(intent.getStringExtra(ExtraKeys.buildType.toString()));
+            } catch (IllegalArgumentException e) {
+                mDebug = BuildType.RELEASE;
+            }
 
             if (!mInitialized) {
                 init();
