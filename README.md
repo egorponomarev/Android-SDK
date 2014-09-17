@@ -41,7 +41,7 @@ PlayerListener pl = new PlayerListener() {
     // p.play();
   }
 
-  public void onError() {
+  public void onError(PlayerError error) {
     /* Unrecoverable error, such as:
      *    - the client isn't in the US
      *    - bad authentication tokens
