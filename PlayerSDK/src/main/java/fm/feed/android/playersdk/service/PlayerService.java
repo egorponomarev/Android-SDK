@@ -638,8 +638,6 @@ public class PlayerService extends Service {
                 enableForeground();
                 return;
             }
-        } else {
-            enableForeground();
         }
 
         if (!mMediaPlayerPool.hasTunedMediaPlayer()) {
@@ -653,6 +651,7 @@ public class PlayerService extends Service {
                 mPlayInfo.setCurrentPlay(play);
 
                 eventBus.post(play);
+                enableForeground();
 
                 final String playId = play.getId();
 

@@ -522,27 +522,14 @@ public class Player {
      * Implement this interface to get callbacks from the Player
      */
     public interface PlayerListener {
+
         /**
-         * Called when the {@link Player} is initialized and ready to auth this application using {@link Player#setCredentials(String, String)}
+         * Called when the {@link Player} is initialized and authenticated with the server
          *
          * @param playInfo
          *         The {@link fm.feed.android.playersdk.service.PlayInfo} object containing the play state as well as other information pertaining to the library.
          */
         public void onPlayerInitialized(PlayInfo playInfo);
-
-        /**
-         * Called when the Service will start showing the Persistent notification
-         * <p>
-         * You can override the notification to display your custom layout.
-         * </p>
-         * <p>
-         * See <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a> for more details.
-         * </p>
-         *
-         * @param notificationId
-         *         The notification Id used to override the default Service notification.
-         */
-        public void onNotificationWillShow(int notificationId);
 
         /**
          * Called when the playback state changes
@@ -570,6 +557,20 @@ public class Player {
          * @param playerError
          */
         public void onError(PlayerError playerError);
+
+        /**
+         * Called when the Service will start showing the Persistent notification
+         * <p>
+         * You can override the notification to display your custom layout.
+         * </p>
+         * <p>
+         * See <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a> for more details.
+         * </p>
+         *
+         * @param notificationId
+         *         The notification Id used to override the default Service notification.
+         */
+        public void onNotificationWillShow(int notificationId);
     }
 
     /**
