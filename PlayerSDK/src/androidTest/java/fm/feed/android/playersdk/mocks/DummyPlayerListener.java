@@ -17,9 +17,12 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
     public boolean didCallPlacementChanged = false;
     public boolean didCallStationChanged = false;
     public boolean didCallTrackChanged = false;
+    public boolean didCallEndOfPlaylist = false;
+    public boolean didCallShowNotification = false;
     public boolean didCallPlaybackStateChanged = false;
     public boolean didCallSkipFailed = false;
     public boolean didCallNotInUS = false;
+    public boolean didCallOnError = false;
     public boolean didCallLiked = false;
     public boolean didCallUnliked = false;
     public boolean didCallDisliked = false;
@@ -28,6 +31,9 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
     public boolean didCallProgressUpdate = false;
     public int bufferUpdate = 0;
     public int progressUpdate = 0;
+
+    public PlayInfo.State state = PlayInfo.State.WAITING;
+
 
 
     @Override
@@ -52,7 +58,7 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
 
     @Override
     public void onEndOfPlaylist() {
-
+        didCallEndOfPlaylist = true;
     }
 
     @Override
@@ -62,17 +68,18 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
 
     @Override
     public void onNotificationWillShow(int notificationId) {
-
+        didCallShowNotification = true;
     }
 
     @Override
     public void onPlaybackStateChanged(PlayInfo.State state) {
         didCallPlaybackStateChanged = true;
+        this.state = state;
     }
 
     @Override
     public void onError(PlayerError playerError) {
-
+        didCallOnError = true;
     }
 
     @Override

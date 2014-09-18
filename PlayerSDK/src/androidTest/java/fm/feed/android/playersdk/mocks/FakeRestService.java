@@ -17,7 +17,7 @@ import retrofit.http.Path;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class StubRestService implements Webservice.RestInterface {
+public class FakeRestService implements Webservice.RestInterface {
     public ClientResponse mClientResponseMock;
     public PlacementResponse mPlacementResponseMock;
     public PlayResponse mPlayResponseMock;

@@ -126,7 +126,13 @@ public class MediaPlayerPool {
         }
     }
 
-    private FeedFMMediaPlayer spawn() {
+    /**
+     * Instantiates a new {@link fm.feed.android.playersdk.service.FeedFMMediaPlayer} instance.
+     * <p>Makes it quiet if the Audio Focus is set as Should Duck</p>
+     *
+     * @return a {@link fm.feed.android.playersdk.service.FeedFMMediaPlayer}
+     */
+    protected FeedFMMediaPlayer spawn() {
         Log.i(TAG, "Spawning new Media Player instance");
 
         FeedFMMediaPlayer mediaPlayer = new FeedFMMediaPlayer();
@@ -135,15 +141,6 @@ public class MediaPlayerPool {
         if (mShouldDuckVolume) {
             mediaPlayer.setVolume(0.1f, 0.1f);
         }
-
-        /*
-        //TODO: WIFI Lock
-        WifiLock wifiLock = ((WifiManager) getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL, "mylock");
-        wifiLock.acquire();
-        ...
-        wifiLock.release();
-         */
-
 
         return mediaPlayer;
     }

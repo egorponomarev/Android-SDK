@@ -37,13 +37,13 @@ import retrofit.http.Path;
 
 /**
  * The MIT License (MIT)
- *
+ * <p/>
  * Copyright (c) 2014 Feed Media, Inc
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
+ * <p/>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * <p/>
  * Created by mharkins on 8/22/14.
  */
 public class Webservice {
@@ -77,12 +77,16 @@ public class Webservice {
         mCredentials = credentials;
     }
 
+    protected String getAuthStr() {
+        return WebserviceUtils.getAuth(mCredentials);
+    }
+
     public String getClientId() throws FeedFMError {
         RequestWrapper<ClientResponse, String> r = new RequestWrapper<ClientResponse, String>() {
             @Override
             public ClientResponse execute() throws RetrofitError {
                 return mRestService.getClientId(
-                        WebserviceUtils.getAuth(mCredentials));
+                        getAuthStr());
             }
         };
         return r.get();
@@ -93,7 +97,7 @@ public class Webservice {
             @Override
             public PlacementResponse execute() throws RetrofitError {
                 return mRestService.getPlacementInfo(
-                        WebserviceUtils.getAuth(mCredentials));
+                        getAuthStr());
             }
         };
         return r.get();
@@ -104,7 +108,7 @@ public class Webservice {
             @Override
             public PlacementResponse execute() throws RetrofitError {
                 return mRestService.setPlacementId(
-                        WebserviceUtils.getAuth(mCredentials),
+                        getAuthStr(),
                         placementId);
             }
         };
@@ -123,7 +127,7 @@ public class Webservice {
                 Integer placementId = placement == null ? null : placement.getId();
                 Integer stationId = station == null ? null : station.getId();
 
-                return mRestService.getPlay(WebserviceUtils.getAuth(mCredentials),
+                return mRestService.getPlay(getAuthStr(),
                         clientId,
                         placementId,
                         stationId,
@@ -138,7 +142,7 @@ public class Webservice {
         RequestWrapper<PlayStartResponse, Boolean> r = new RequestWrapper<PlayStartResponse, Boolean>() {
             @Override
             public PlayStartResponse execute() throws RetrofitError {
-                return mRestService.playStarted(WebserviceUtils.getAuth(mCredentials), playId);
+                return mRestService.playStarted(getAuthStr(), playId);
             }
         };
         return r.get();
@@ -149,7 +153,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.playCompleted(
-                        WebserviceUtils.getAuth(mCredentials), playId);
+                        getAuthStr(), playId);
             }
         };
         return r.get();
@@ -161,7 +165,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.skip(
-                        WebserviceUtils.getAuth(mCredentials), playId, elapsed, force);
+                        getAuthStr(), playId, elapsed, force);
             }
         };
         return r.get();
@@ -172,7 +176,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.invalidate(
-                        WebserviceUtils.getAuth(mCredentials), playId);
+                        getAuthStr(), playId);
             }
         };
         return r.get();
@@ -183,7 +187,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.elapsed(
-                        WebserviceUtils.getAuth(mCredentials), playId, elapsed);
+                        getAuthStr(), playId, elapsed);
             }
         };
         return r.get();
@@ -194,7 +198,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.like(
-                        WebserviceUtils.getAuth(mCredentials), playId);
+                        getAuthStr(), playId);
             }
         };
         return r.get();
@@ -205,7 +209,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.unlike(
-                        WebserviceUtils.getAuth(mCredentials), playId);
+                        getAuthStr(), playId);
             }
         };
         return r.get();
@@ -216,7 +220,7 @@ public class Webservice {
             @Override
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.dislike(
-                        WebserviceUtils.getAuth(mCredentials), playId);
+                        getAuthStr(), playId);
             }
         };
         return r.get();

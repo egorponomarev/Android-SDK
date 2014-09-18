@@ -35,7 +35,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
 
     private Map<Class, List<Class>> mPriorityMap = new HashMap<Class, List<Class>>();
 
-    private Executor mExecutor = Executors.newSingleThreadExecutor();
+    protected Executor mExecutor = Executors.newSingleThreadExecutor();
 
     private String mIdentifier;
 
@@ -85,13 +85,13 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
     }
 
     public void next() {
-        if (mPaused) {
+        if (isPaused()) {
             return;
         }
 
         PlayerAbstractTask task = peek();
         if (task != null) {
-            switch (task.getStatus()) {
+            switch (task.getState()) {
                 case RUNNING:
                     // If the Task Status is RUNNING, check whether it's been finished or canceled.
                     if (task.isCancelled()) {

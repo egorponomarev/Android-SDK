@@ -25,13 +25,13 @@ import fm.feed.android.playersdk.service.webservice.util.ElapsedTimeManager;
 
 /**
  * The MIT License (MIT)
- *
+ * <p/>
  * Copyright (c) 2014 Feed Media, Inc
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
+ * <p/>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * <p/>
  * Created by mharkins on 9/2/14.
  */
 public class PlayTask extends SkippableTask<Object, Integer, Void> implements MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener, MediaPlayer.OnInfoListener {
@@ -39,15 +39,15 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     public static final String TAG = PlayTask.class.getSimpleName();
 
     private Context mContext;
-    private PlayTaskListener mListener;
+    protected PlayTaskListener mListener;
 
     private MediaPlayerPool mMediaPlayerPool;
 
     private WifiManager.WifiLock mWifiLock;
     private ElapsedTimeManager mElapsedTimeManager;
 
-    private FeedFMMediaPlayer mMediaPlayer;
-    private Play mPlay;
+    protected FeedFMMediaPlayer mMediaPlayer;
+    protected Play mPlay;
 
     private boolean mCompleted = false;
     private boolean mBuffering = false;
@@ -167,7 +167,6 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
 
         mMediaPlayer = mediaPlayer;
-
         mPlay = mediaPlayer.getPlay();
 
         mDuration = mMediaPlayer.getDuration();
@@ -187,50 +186,34 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         mBuffering = true;
         mMediaPlayer.setLooping(true);
 
-        play(true);
+        // Start Play.
+        publishPlay();
 
-        if (mListener != null) {
-            mListener.onPlayBegin(this, mPlay);
-        }
-
+        // Publish Start of Play.
+        publishPlayBegin();
 
         while (!mCompleted && !isCancelled()) {
+            int currentProgress = mMediaPlayer.getCurrentPosition();
+            boolean done = mDuration == currentProgress;
+
+            /**
+             * If the last recorded progress is greater than the current one, it means that the play has looped.
+             * In that case, we should seek back to the mLastProgress and pause playback
+             */
+            boolean skippedBack = mLastProgress > currentProgress;
+
+            if (skippedBack || done) {
+                // If we are already done buffering, then the play is done, and we should just end this task.
+                mMediaPlayer.setLooping(false);
+                mMediaPlayer.stop();
+                break;
+            }
+
             if (mPublishProgress) {
                 mPublishProgress = false;
                 mTimingHandler.postDelayed(mResetPublishProgressFlag, Configuration.PROGRESS_PUBLISH_INTERVAL);
 
-                // Publish progress every 5
-                int bufferUpdatePercentage = mMediaPlayer.getLastBufferUpdate();
-                int currentProgress = mMediaPlayer.getCurrentPosition();
-                int duration = mMediaPlayer.getDuration();
-
-                boolean doneBuffering = (bufferUpdatePercentage == 100);
-
-                boolean skippedBack = mLastProgress > currentProgress;
-
-                /**
-                 * If the last recorded progress is greater than the current one, it means that the play has looped.
-                 * In that case, we should seek back to the mLastProgress and pause playback
-                 */
-                if (skippedBack) {
-                    // If we are already done buffering, then the play is done, and we should just end this task.
-                    mMediaPlayer.setLooping(false);
-                    mMediaPlayer.stop();
-                    break;
-                } else {
-                    // Publish the progress only if we are playing.
-                    publishProgress(currentProgress, isBuffering() ? bufferUpdatePercentage : -1);
-
-                    mLastProgress = currentProgress;
-                }
-
-                mBuffering = !doneBuffering;
-
-                if (currentProgress == duration) {
-                    mMediaPlayer.setLooping(false);
-                    mMediaPlayer.stop();
-                    break;
-                }
+                publishProgress();
             }
 
             try {
@@ -242,6 +225,41 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
         }
 
         return null;
+    }
+
+    protected void publishPlay() {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                play(true);
+            }
+        });
+    }
+
+    protected void publishPlayBegin() {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (mListener != null) {
+                    mListener.onPlayBegin(PlayTask.this, mPlay);
+                }
+            }
+        });
+    }
+
+    protected void publishProgress() {
+        int currentProgress = mMediaPlayer.getCurrentPosition();
+
+        // Publish progress every 5
+        int bufferUpdatePercentage = mMediaPlayer.getLastBufferUpdate();
+        boolean doneBuffering = (bufferUpdatePercentage == 100);
+
+        // Publish the progress only if we are playing.
+        publishProgress(currentProgress, isBuffering() ? bufferUpdatePercentage : -1);
+
+        mLastProgress = currentProgress;
+
+        mBuffering = !doneBuffering;
     }
 
     @Override

@@ -97,9 +97,14 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
                         null);
             }
 
-            if (mListener != null) {
-                mListener.onMetaDataLoaded(this, mPlay);
-            }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (mListener != null) {
+                        mListener.onMetaDataLoaded(TuneTask.this, mPlay);
+                    }
+                }
+            });
 
             mMediaPlayer = mMediaPlayerPool.getTuningMediaPlayer();
             mMediaPlayer.setOnErrorListener(this);
@@ -155,6 +160,11 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
         }
 
         cleanup();
+    }
+
+    @Override
+    protected void onPostExecute(FeedFMMediaPlayer mediaPlayer) {
+        super.onPostExecute(mediaPlayer);
     }
 
     @Override

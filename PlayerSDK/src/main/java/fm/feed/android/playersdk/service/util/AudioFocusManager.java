@@ -34,7 +34,7 @@ public class AudioFocusManager {
         init();
     }
 
-    private void init() {
+    protected void init() {
         AudioManager audioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
         int result = audioManager.requestAudioFocus(mAudioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
 

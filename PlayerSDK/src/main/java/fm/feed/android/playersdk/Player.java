@@ -50,7 +50,7 @@ public class Player {
     private PlayerService.BuildType mDebug = PlayerService.BuildType.DEBUG;
 
     protected PlayerServiceListener mPrivateServiceListener;
-    protected Bus mEventBus = BusProvider.getInstance();
+    protected Bus mEventBus;
 
     // PLayer Listener
     private List<PlayerListener> mPlayerListeners = new ArrayList<PlayerListener>();
@@ -65,7 +65,8 @@ public class Player {
 
     private boolean mRequiresAuthentication;
 
-    protected Player(Context context, PlayerListener playerListener, String token, String secret, int notificationId) {
+    protected Player(Context context, Bus bus, PlayerListener playerListener, String token, String secret, int notificationId) {
+        mEventBus = bus;
         mRequiresAuthentication = false;
 
         mPrivateServiceListener = new PlayerServiceListener();
@@ -77,8 +78,6 @@ public class Player {
 
         startPlayerService(context, notificationId);
     }
-
-
 
     protected void startPlayerService(Context context, Integer notificationId) {
         // Start the Service
@@ -108,7 +107,7 @@ public class Player {
      */
     public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret, Integer notificationId) {
         if (mInstance == null) {
-            mInstance = new Player(context, playerListener, token, secret, notificationId);
+            mInstance = new Player(context, BusProvider.getInstance(), playerListener, token, secret, notificationId);
         }
         return mInstance;
     }
@@ -290,6 +289,16 @@ public class Player {
     public List<Station> getStationList() {
         return mPlayInfo != null ? mPlayInfo.getStationList() : null;
     }
+
+    /**
+     * Currently selected {@link fm.feed.android.playersdk.model.Station}
+     *
+     * @return The current {@link fm.feed.android.playersdk.model.Station}
+     */
+    public Station getStation() {
+        return mPlayInfo != null ? mPlayInfo.getStation() : null;
+    }
+
 
     public boolean hasStationList() {
         return mPlayInfo != null && mPlayInfo.getStationList() != null;

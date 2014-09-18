@@ -66,7 +66,7 @@ public class ElapsedTimeManager {
         }
     };
 
-    private ElapsedTimeManager(Webservice webservice, TaskQueueManager secondaryQueue) {
+    protected ElapsedTimeManager(Webservice webservice, TaskQueueManager secondaryQueue) {
         this.mWebservice = webservice;
         this.mSecondaryQueue = secondaryQueue;
     }
@@ -78,7 +78,7 @@ public class ElapsedTimeManager {
         return sInstance;
     }
 
-    private void updateElapsedTimes() {
+    protected void updateElapsedTimes() {
         mTimingHandler.postDelayed(mSendElapsedTime, Configuration.ELAPSED_PING_INTERVAL);
     }
 

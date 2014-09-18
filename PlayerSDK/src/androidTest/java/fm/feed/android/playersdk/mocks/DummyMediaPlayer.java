@@ -53,8 +53,19 @@ public class DummyMediaPlayer extends FeedFMMediaPlayer {
     }
 
     @Override
+    public int getCurrentPosition() {
+        return 0;
+    }
+
+    @Override
+    public int getDuration() {
+        return 1;
+    }
+
+    @Override
     public void start() throws IllegalStateException {
         setState(State.STARTED);
+//        onCompletion(this);
     }
 
     @Override

@@ -3,12 +3,12 @@ package fm.feed.android.playersdk;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class JsonData {
+public class FakeJsonData {
     public static final String clientIdResponse = "{\n" +
             "    \"success\": true,\n" +
             "    \"client_id\": \"0i5k9tpwn42huxr0rrhboai\"\n" +
             "}";
-    public static final String placementResponse = "{\n" +
+    public static final String defaultPlacementResponse = "{\n" +
             "    \"success\": true,\n" +
             "    \"placement\": {\n" +
             "        \"id\": \"10955\",\n" +
@@ -24,6 +24,33 @@ public class JsonData {
             "        {\n" +
             "            \"id\": \"2116\",\n" +
             "            \"name\": \"RockstressFM\",\n" +
+            "            \"has_thumbnail\": 0,\n" +
+            "            \"options\": {}\n" +
+            "        }\n" +
+            "    ]\n" +
+            "}";
+    public static final String otherPlacementResponse = "{\n" +
+            "    \"success\": true,\n" +
+            "    \"placement\": {\n" +
+            "        \"id\": \"10960\",\n" +
+            "        \"name\": \"Grio-SDK-Placement2\"\n" +
+            "    },\n" +
+            "    \"stations\": [\n" +
+            "        {\n" +
+            "            \"id\": \"2290\",\n" +
+            "            \"name\": \"Treasure Island Music Festival\",\n" +
+            "            \"has_thumbnail\": 0,\n" +
+            "            \"options\": {}\n" +
+            "        },\n" +
+            "        {\n" +
+            "            \"id\": \"1345\",\n" +
+            "            \"name\": \"Outside Lands 2012\",\n" +
+            "            \"has_thumbnail\": 0,\n" +
+            "            \"options\": {}\n" +
+            "        },\n" +
+            "        {\n" +
+            "            \"id\": \"1843\",\n" +
+            "            \"name\": \"FML Blues Fuzz Radio\",\n" +
             "            \"has_thumbnail\": 0,\n" +
             "            \"options\": {}\n" +
             "        }\n" +

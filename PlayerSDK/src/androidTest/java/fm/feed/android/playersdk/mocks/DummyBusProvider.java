@@ -8,12 +8,16 @@ import java.util.List;
 
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.service.PlayInfo;
+import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
 import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
+import fm.feed.android.playersdk.service.bus.ProgressUpdate;
+import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Created by mharkins on 8/27/14.
@@ -40,18 +44,28 @@ public class DummyBusProvider extends BusProvider {
         public void post(Object object) {
             if (object instanceof Credentials) {
                 mService.setCredentials((Credentials) object);
-            } else if (object instanceof Placement) {
-                mService.setPlacementId(new OutPlacementWrap((Placement) object));
+            } else if (object instanceof OutPlacementWrap) {
+                mService.setPlacementId((OutPlacementWrap) object);
             } else if (object instanceof OutStationWrap) {
                 mService.setStationId((OutStationWrap) object);
             } else if (object instanceof PlayerAction) {
                 mService.onPlayerAction((PlayerAction) object);
+            } else if (object instanceof PlayInfo) {
+                mPlayer.getPrivateServiceListener().onServiceReady((PlayInfo) object);
             } else if (object instanceof EventMessage) {
                 mPlayer.getPrivateServiceListener().onServiceStatusChange((EventMessage) object);
-            } else if (object instanceof Pair) {
+            } else if (object instanceof Placement) {
                 mPlayer.getPrivateServiceListener().onPlacementChanged((Placement) object);
             } else if (object instanceof Station) {
                 mPlayer.getPrivateServiceListener().onStationChanged((Station) object);
+            } else if (object instanceof PlayInfo) {
+                mPlayer.getPrivateServiceListener().onServiceReady((PlayInfo) object);
+            } else if (object instanceof BufferUpdate) {
+                mPlayer.getPrivateServiceListener().onBufferUpdate((BufferUpdate) object);
+            }else if (object instanceof ProgressUpdate) {
+                mPlayer.getPrivateServiceListener().onProgressUpdate((ProgressUpdate) object);
+            }else if (object instanceof FeedFMError) {
+                mPlayer.getPrivateServiceListener().onError((FeedFMError) object);
             }
         }
     }

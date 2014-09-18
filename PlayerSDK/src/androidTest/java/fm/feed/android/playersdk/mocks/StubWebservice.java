@@ -7,12 +7,17 @@ import fm.feed.android.playersdk.service.webservice.Webservice;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class FakeWebservice extends Webservice{
-    public FakeWebservice(Context context) {
+public class StubWebservice extends Webservice{
+    public StubWebservice(Context context) {
         super(context);
     }
 
     public void setRestService(RestInterface restService) {
         mRestService = restService;
+    }
+
+    @Override
+    protected String getAuthStr() {
+        return "Basic FakeAuth";
     }
 }

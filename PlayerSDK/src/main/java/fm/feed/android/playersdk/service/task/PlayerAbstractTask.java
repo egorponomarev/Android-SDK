@@ -22,15 +22,24 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 public abstract class PlayerAbstractTask<Params, Progress, Result> extends AsyncTask<Params, Progress, Result> {
     private TaskQueueManager mQueueManager;
 
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    protected Handler mHandler = new Handler(Looper.getMainLooper());
     private Runnable mTaskCancelled = new Runnable() {
         @Override
         public void run() {
+            mState = State.FINISHED;
             mQueueManager.remove(PlayerAbstractTask.this);
             onTaskCancelled(mError, mAttemptCount);
             mQueueManager.next();
         }
     };
+
+    public static enum State {
+        PENDING,
+        RUNNING,
+        FINISHED
+    }
+
+    private State mState = State.PENDING;
 
     private FeedFMError mError = null;
     private int mAttemptCount = 0;
@@ -43,8 +52,14 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
         this.mQueueManager = queueManager;
     }
 
+    public State getState() {
+        return mState;
+    }
+
     @Override
     protected void onPreExecute() {
+        mState = State.RUNNING;
+
         Log.i(getClass().getSimpleName(), String.format("%s, onPreExecute...", mQueueManager));
         super.onPreExecute();
     }
@@ -68,6 +83,7 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
         mHandler.post(new Runnable() {
             @Override
             public void run() {
+                mState = State.FINISHED;
                 mQueueManager.remove(PlayerAbstractTask.this);
                 onTaskFinished(result);
                 mQueueManager.next();

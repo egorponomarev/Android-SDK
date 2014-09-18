@@ -44,6 +44,7 @@ import fm.feed.android.playersdk.service.task.PlayerAbstractTask;
 import fm.feed.android.playersdk.service.task.SimpleNetworkTask;
 import fm.feed.android.playersdk.service.task.SkippableTask;
 import fm.feed.android.playersdk.service.task.StationIdTask;
+import fm.feed.android.playersdk.service.task.TaskFactory;
 import fm.feed.android.playersdk.service.task.TuneTask;
 import fm.feed.android.playersdk.service.util.AudioFocusManager;
 import fm.feed.android.playersdk.service.util.DataPersister;
@@ -71,21 +72,23 @@ public class PlayerService extends Service {
 
     protected Webservice mWebservice;
     protected PlayInfo mPlayInfo;
-    private DataPersister mDataPersister;
+    protected DataPersister mDataPersister;
 
+    protected AudioFocusManager mAudioFocusManager;
 
     protected MainQueue mMainQueue;
     protected TuningQueue mTuningQueue;
     protected TaskQueueManager mSecondaryQueue;
 
-    private MediaPlayerPool mMediaPlayerPool;
+    protected TaskFactory mTaskFactory;
+    protected MediaPlayerPool mMediaPlayerPool;
 
-    private ElapsedTimeManager mElapsedTimeManager;
+    protected ElapsedTimeManager mElapsedTimeManager;
 
-    private boolean mInitialized;
-    private boolean mValidStart;
+    protected boolean mInitialized;
+    protected boolean mValidStart;
 
-    private int mForceSkipCount = 0;
+    protected int mForceSkipCount = 0;
 
     public static BuildType mDebug;
 
@@ -186,11 +189,15 @@ public class PlayerService extends Service {
         return null;
     }
 
-    private void init() {
+    protected Context getContext() {
+        return this;
+    }
+
+    protected void init() {
         mPlayInfo = new PlayInfo(getString(R.string.sdk_version));
 
-        mDataPersister = new DataPersister(this);
-        mWebservice = new Webservice(this);
+        mDataPersister = new DataPersister(getContext());
+        mWebservice = new Webservice(getContext());
 
         mMediaPlayerPool = new MediaPlayerPool();
 
@@ -198,6 +205,7 @@ public class PlayerService extends Service {
         mTuningQueue = new TuningQueue();
         mSecondaryQueue = new TaskQueueManager("Secondary Queue");
 
+        mTaskFactory = new TaskFactory();
         mMediaPlayerPool = new MediaPlayerPool();
 
         mElapsedTimeManager = ElapsedTimeManager.getInstance(mWebservice, mSecondaryQueue);
@@ -247,7 +255,7 @@ public class PlayerService extends Service {
     }
 
 
-    public void enableForeground() {
+    protected void enableForeground() {
         int stringId = getApplicationInfo().labelRes;
         String applicationName = getString(stringId);
 
@@ -265,7 +273,7 @@ public class PlayerService extends Service {
         eventBus.post(new EventMessage(EventMessage.Status.NOTIFICATION_WILL_SHOW));
     }
 
-    private void disableForeground() {
+    protected void disableForeground() {
         NotificationManager mNotificationManager =
                 (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mNotificationManager.cancel(mPlayInfo.getNotificationId());
@@ -470,9 +478,9 @@ public class PlayerService extends Service {
     public void getClientId() {
         String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
 
-        if (clientId != null && mDebug != BuildType.DEBUG) { // TODO: remove that!
+        if (clientId != null) { // TODO: remove that!
             mPlayInfo.setClientId(clientId);
-            Toast.makeText(PlayerService.this, "Retrieved existing Client ID!", Toast.LENGTH_LONG).show();
+            Log.i(TAG, "Retrieved existing Client ID from storage");
         } else {
             ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
                 @Override
@@ -480,7 +488,7 @@ public class PlayerService extends Service {
                     mDataPersister.putString(DataPersister.Key.clientId, clientId);
                     // TODO: perhaps encrypt clientId first.
                     mPlayInfo.setClientId(clientId);
-                    Toast.makeText(PlayerService.this, "New Client ID!", Toast.LENGTH_LONG).show();
+                    Log.i(TAG, "Retrieved new Client ID from server");
                 }
 
                 @Override
@@ -520,7 +528,7 @@ public class PlayerService extends Service {
             }
 
             // Tune in a separate Queue if we are already playing something.
-            final TuneTask task = new TuneTask(this, queueManager, mWebservice, mMediaPlayerPool, new TuneTask.TuneTaskListener() {
+            final TuneTask task = new TuneTask(getContext(), queueManager, mWebservice, mMediaPlayerPool, new TuneTask.TuneTaskListener() {
                 @Override
                 public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
                     // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
@@ -638,7 +646,7 @@ public class PlayerService extends Service {
             tune();
         }
 
-        PlayTask task = new PlayTask(mMainQueue, mWebservice, PlayerService.this, mMediaPlayerPool, mElapsedTimeManager, new PlayTask.PlayTaskListener() {
+        PlayTask task = mTaskFactory.newPlayTask(mMainQueue, mWebservice, getContext(), mMediaPlayerPool, mElapsedTimeManager, new PlayTask.PlayTaskListener() {
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
                 mForceSkipCount = 0;
@@ -662,6 +670,7 @@ public class PlayerService extends Service {
                         if (mMainQueue.hasActivePlayTask()) {
                             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
+                            mPlayInfo.setSkippable(canSkip);
                             if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
                                 playTask.setSkippable(canSkip);
                             }
@@ -772,6 +781,7 @@ public class PlayerService extends Service {
         mMainQueue.clearLowerPriorities(task);
 
         mMainQueue.offerIfNotExist(task);
+
         mMainQueue.next();
     }
 
@@ -819,7 +829,7 @@ public class PlayerService extends Service {
                     if (canSkip) {
                         task.getQueueManager().remove(task);
 
-                        if (!task.isCancelled()) {
+                        if (!task.isCancelled() && task.getState() != PlayerAbstractTask.State.FINISHED) {
                             task.cancel(true);
                         }
 
@@ -1017,10 +1027,8 @@ public class PlayerService extends Service {
         }
     }
 
-    private AudioFocusManager mAudioFocusManager;
-
-    private void initAudioManager() {
-        mAudioFocusManager = new AudioFocusManager(this, new AudioFocusManager.Listener() {
+    protected void initAudioManager() {
+        mAudioFocusManager = new AudioFocusManager(getContext(), new AudioFocusManager.Listener() {
             @Override
             public void play() {
                 PlayerService.this.play();
@@ -1062,7 +1070,7 @@ public class PlayerService extends Service {
         });
     }
 
-    private void releaseAudioManager() {
+    protected void releaseAudioManager() {
         mAudioFocusManager.release();
     }
 }
