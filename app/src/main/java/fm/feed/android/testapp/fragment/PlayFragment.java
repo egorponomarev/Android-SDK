@@ -10,7 +10,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.NotificationCompat;
 import android.view.LayoutInflater;
@@ -42,21 +41,24 @@ import fm.feed.android.testapp.util.TimeUtils;
 
 /**
  * The MIT License (MIT)
- *
+ * <p/>
  * Copyright (c) 2014 Feed Media, Inc
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
+ * <p/>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * <p/>
  * Created by mharkins on 8/22/14.
  */
-public class PlayFragment extends Fragment implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
+public class PlayFragment extends Fragment {
 
     private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
     private static final String AUTH_TOKEN = "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42";
     private static final String AUTH_SECRET = "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517";
+
+    // Extra for the Save instance state.
+    public static final String PLACEMENTS = "save_placements";
 
     private Player mPlayer;
 
@@ -102,7 +104,11 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        mPlayer = Player.getInstance(getActivity(), this, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
+        /**
+         * Initializes the Player Object.
+         * Starts the foreground Service (music will keep running when app is killed, unless mPlayer.pause() is called prior to that).
+         */
+        mPlayer = Player.getInstance(getActivity(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
     }
 
     @Override
@@ -139,7 +145,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     }
 
     @Override
-    public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
+    public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
         mBtnTune.setOnClickListener(tune);
@@ -211,21 +217,19 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
     public void onStart() {
         super.onStart();
 
-        mPlayer.registerNavListener(this);
-        mPlayer.registerPlayerListener(this);
-        mPlayer.registerSocialListener(this);
+        mPlayer.registerNavListener(mNavigationListener);
+        mPlayer.registerPlayerListener(mPlayerListener);
+        mPlayer.registerSocialListener(mSocialListener);
     }
 
     @Override
     public void onStop() {
         super.onStop();
 
-        mPlayer.unregisterNavListener(this);
-        mPlayer.unregisterPlayerListener(this);
-        mPlayer.unregisterSocialListener(this);
+        mPlayer.unregisterNavListener(mNavigationListener);
+        mPlayer.unregisterPlayerListener(mPlayerListener);
+        mPlayer.unregisterSocialListener(mSocialListener);
     }
-
-    public static final String PLACEMENTS = "save_placements";
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -233,6 +237,127 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
 
         outState.putIntArray(PLACEMENTS, mPlacements);
     }
+
+    private Player.PlayerListener mPlayerListener = new Player.PlayerListener() {
+        @Override
+        public void onPlayerInitialized(PlayInfo playInfo) {
+            updateTitle(playInfo);
+
+            // This is going to be called every time the Player registers itself to the service.
+            // For example when the app resumes.
+            // A Track may already be playing when that happens.
+            if (playInfo.getPlay() != null) {
+                mNavigationListener.onTrackChanged(playInfo.getPlay());
+            }
+        }
+
+        @Override
+        public void onPlaybackStateChanged(PlayInfo.State state) {
+            /**
+             * Handle each state change by updating the UI
+             */
+            switch (state) {
+                case WAITING:
+                    break;
+                case READY:
+                    break;
+                case TUNING:
+                    break;
+                case TUNED:
+                    break;
+                case PAUSED:
+                    break;
+                case PLAYING:
+                    break;
+                case STALLED:
+                    break;
+                case COMPLETE:
+                    break;
+                case REQUESTING_SKIP:
+                    break;
+            }
+        }
+
+        @Override
+        public void onError(PlayerError playerError) {
+            // Display error
+            Toast.makeText(getActivity(), playerError.toString(), Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onNotificationWillShow(int notificationId) {
+            // Show a notification indicating the play state.
+            showNotification(mPlayer.getPlay());
+        }
+    };
+
+
+    private Player.NavListener mNavigationListener = new Player.NavListener() {
+        @Override
+        public void onPlacementChanged(Placement placement, List<Station> stationList) {
+            mPlacementsView.setSelection(mSelectedPlacementsIndex);
+
+            resetTrackInfo();
+            updateStations(stationList);
+
+        }
+
+        @Override
+        public void onStationChanged(Station station) {
+            resetTrackInfo();
+            mStationsView.setSelection(mSelectedStationIndex);
+            Toast.makeText(getActivity(), String.format("Station set to: %s (%s)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
+
+        }
+
+        @Override
+        public void onTrackChanged(Play play) {
+            resetTrackInfo();
+
+            updateTrackInfo(play);
+
+        }
+
+        @Override
+        public void onSkipFailed() {
+            Toast.makeText(getActivity(), "Cannot Skip Track", Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onEndOfPlaylist() {
+            Toast.makeText(getActivity(), "Reached end of Playlist", Toast.LENGTH_LONG).show();
+            resetTrackInfo();
+        }
+
+        @Override
+        public void onBufferUpdate(Play play, int percentage) {
+            mProgressBar.setSecondaryProgress((percentage * play.getAudioFile().getDurationInSeconds()) / 100);
+        }
+
+        @Override
+        public void onProgressUpdate(Play play, int elapsedTime, int totalTime) {
+            mProgressBar.setProgress(elapsedTime);
+            mTxtCurrentProgress.setText(TimeUtils.toProgressFormat(elapsedTime));
+            mTxtDuration.setText(TimeUtils.toProgressFormat(totalTime));
+        }
+    };
+
+    private Player.SocialListener mSocialListener = new Player.SocialListener() {
+        @Override
+        public void onLiked() {
+            Toast.makeText(getActivity(), "Liked!", Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onUnliked() {
+            Toast.makeText(getActivity(), "UnLiked!", Toast.LENGTH_LONG).show();
+        }
+
+        @Override
+        public void onDisliked() {
+            Toast.makeText(getActivity(), "DisLiked!", Toast.LENGTH_LONG).show();
+        }
+    };
 
     private void resetTrackInfo() {
         int max = 0;
@@ -249,7 +374,11 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mTxtAlbum.setText("");
     }
 
-    public void createNotification(Play play) {
+    public void showNotification(Play play) {
+        if (play == null) {
+            return;
+        }
+
         int stringId = getActivity().getApplicationInfo().labelRes;
         String applicationName = getString(stringId);
 
@@ -331,24 +460,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         }
     };
 
-    @Override
-    public void onPlayerInitialized(PlayInfo playInfo) {
-        updateTitle(playInfo);
-
-        // This is going to be called every time the Player registers itself to the service.
-        // For example when the app resumes.
-        // A Track may already be playing when that happens.
-        if (playInfo.getPlay() != null) {
-            onTrackChanged(playInfo.getPlay());
-        }
-    }
-
-    @Override
-    public void onError(PlayerError playerError) {
-        // Display error
-        Toast.makeText(getActivity(), playerError.toString(), Toast.LENGTH_LONG).show();
-    }
-
     private void updateTitle(PlayInfo playInfo) {
         final PackageManager pm = getActivity().getApplicationContext().getPackageManager();
         ApplicationInfo ai;
@@ -390,28 +501,6 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         });
     }
 
-    @Override
-    public void onPlacementChanged(Placement placement, List<Station> stationList) {
-        mPlacementsView.setSelection(mSelectedPlacementsIndex);
-
-        resetTrackInfo();
-        updateStations(stationList);
-    }
-
-    @Override
-    public void onStationChanged(Station station) {
-        resetTrackInfo();
-        mStationsView.setSelection(mSelectedStationIndex);
-        Toast.makeText(getActivity(), String.format("Station set to: %s (%s)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onTrackChanged(Play play) {
-        resetTrackInfo();
-
-        updateTrackInfo(play);
-    }
-
     private void updateTrackInfo(Play play) {
         mProgressBar.setMax(play.getAudioFile().getDurationInSeconds());
         mTxtDuration.setText(TimeUtils.toProgressFormat(play.getAudioFile().getDurationInSeconds()));
@@ -420,73 +509,7 @@ public class PlayFragment extends Fragment implements Player.PlayerListener, Pla
         mTxtArtist.setText(play.getAudioFile().getArtist().getName());
         mTxtAlbum.setText(play.getAudioFile().getRelease().getTitle());
 
-        createNotification(play);
+        showNotification(play);
     }
 
-    @Override
-    public void onNotificationWillShow(int notificationId) {
-//        createNotification(notificationId, play);
-    }
-
-    @Override
-    public void onPlaybackStateChanged(PlayInfo.State state) {
-        switch (state) {
-            case WAITING:
-                break;
-            case READY:
-                break;
-            case TUNING:
-                break;
-            case TUNED:
-                break;
-            case PAUSED:
-                break;
-            case PLAYING:
-                break;
-            case STALLED:
-                break;
-            case COMPLETE:
-                break;
-            case REQUESTING_SKIP:
-                break;
-        }
-    }
-
-    @Override
-    public void onSkipFailed() {
-        Toast.makeText(getActivity(), "Cannot Skip Track", Toast.LENGTH_LONG).show();
-    }
-
-    @Override
-    public void onEndOfPlaylist() {
-        Toast.makeText(getActivity(), "Reached end of Playlist", Toast.LENGTH_LONG).show();
-        resetTrackInfo();
-    }
-
-    @Override
-    public void onBufferUpdate(Play play, int percentage) {
-        mProgressBar.setSecondaryProgress((percentage * play.getAudioFile().getDurationInSeconds()) / 100);
-    }
-
-    @Override
-    public void onProgressUpdate(Play play, int elapsedTime, int totalTime) {
-        mProgressBar.setProgress(elapsedTime);
-        mTxtCurrentProgress.setText(TimeUtils.toProgressFormat(elapsedTime));
-        mTxtDuration.setText(TimeUtils.toProgressFormat(totalTime));
-    }
-
-    @Override
-    public void onLiked() {
-
-    }
-
-    @Override
-    public void onUnliked() {
-
-    }
-
-    @Override
-    public void onDisliked() {
-
-    }
 }
