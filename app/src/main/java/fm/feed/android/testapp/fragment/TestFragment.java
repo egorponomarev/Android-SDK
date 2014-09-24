@@ -50,7 +50,7 @@ import fm.feed.android.testapp.util.TimeUtils;
  * <p/>
  * Created by mharkins on 8/22/14.
  */
-public class PlayFragment extends Fragment {
+public class TestFragment extends Fragment {
 
     private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
@@ -91,11 +91,11 @@ public class PlayFragment extends Fragment {
     private int mSelectedStationIndex = -1;
     private int mSelectedPlacementsIndex = -1;
 
-    public PlayFragment() {
+    public TestFragment() {
     }
 
-    public static PlayFragment newFragment(int[] placements) {
-        PlayFragment fragment = new PlayFragment();
+    public static TestFragment newFragment(int[] placements) {
+        TestFragment fragment = new TestFragment();
         fragment.mPlacements = placements;
         return fragment;
     }
@@ -114,7 +114,7 @@ public class PlayFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+        View rootView = inflater.inflate(R.layout.fragment_test, container, false);
 
         mBtnTune = (Button) rootView.findViewById(R.id.tune);
         mBtnPlay = (ImageButton) rootView.findViewById(R.id.play);

@@ -4,7 +4,8 @@ package fm.feed.android.testapp.util;
  * Created by mharkins on 8/28/14.
  */
 public class TimeUtils {
-    private TimeUtils() {}
+    private TimeUtils() {
+    }
 
     public static String toProgressFormat(int s) {
         if (s >= 3600) {

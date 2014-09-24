@@ -14,9 +14,9 @@
     -->
 
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="horizontal">
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="horizontal">
 
     <TextView
         android:id="@+id/id"
@@ -25,6 +25,7 @@
         android:gravity="center"
         android:padding="5dp"
         />
+
     <TextView
         android:id="@+id/name"
         android:layout_width="fill_parent"

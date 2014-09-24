@@ -1,15 +1,18 @@
 package fm.feed.android.testapp;
 
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
-import fm.feed.android.testapp.fragment.PlayFragment;
+import fm.feed.android.testapp.fragment.MainFragment;
+import fm.feed.android.testapp.fragment.SlidingFragment;
+import fm.feed.android.testapp.fragment.TestFragment;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -19,10 +22,9 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
-            int[] placements = {10955, 10960};
 
             getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, PlayFragment.newFragment(placements))
+                    .add(R.id.container, new MainFragment())
                     .commit();
         }
 
@@ -50,5 +52,86 @@ public class MainActivity extends ActionBarActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+
+    private void showFragment(Fragment fragment, String tag) {
+        if (fragment == null) {
+            return;
+        }
+
+        FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+
+        if (fragment instanceof SlidingFragment) {
+            ft.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right, R.anim.slide_in_right, R.anim.slide_out_left);
+        }
+
+        ft.replace(R.id.container, fragment, tag);
+        ft.addToBackStack(tag);
+
+        ft.commit();
+
+    }
+
+    /**
+     * "Sliding Player" Button Callback
+     * <p>
+     * Shows a left sliding player
+     * </p>
+     *
+     * @param v
+     *         the Button
+     */
+    public void showSlidingPlayer(View v) {
+        FragmentManager fm = getSupportFragmentManager();
+        SlidingFragment fragment = (SlidingFragment) fm.findFragmentByTag(SlidingFragment.class.getSimpleName());
+
+        if (fragment == null) {
+            fragment = new SlidingFragment();
+        }
+        showFragment(fragment, SlidingFragment.class.getSimpleName());
+    }
+
+    /**
+     * "Test UI" Button Callback
+     * <p>
+     * Shows a Testing UI
+     * </p>
+     *
+     * @param v
+     *         the Button
+     */
+    public void showTestUI(View v) {
+        FragmentManager fm = getSupportFragmentManager();
+        TestFragment fragment = (TestFragment) fm.findFragmentByTag(TestFragment.class.getSimpleName());
+
+        if (fragment == null) {
+            int[] placements = {10955, 10960};
+            fragment = TestFragment.newFragment(placements);
+        }
+        showFragment(fragment, TestFragment.class.getSimpleName());
+    }
+
+    /**
+     * "Test UI" Button Callback
+     * <p>
+     * Shows a Testing UI
+     * </p>
+     *
+     * @param v
+     *         the Button
+     */
+    public void showBottomPlayer(View v) {
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        FragmentManager fm = getSupportFragmentManager();
+        if (fm.getBackStackEntryCount() > 1) {
+            fm.popBackStackImmediate();
+        } else {
+            super.onBackPressed();
+        }
     }
 }
