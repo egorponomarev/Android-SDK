@@ -1,0 +1,31 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/transparent"
+                android:clickable="true"
+                tools:context=".SlidingFragment">
+
+    <fm.feed.android.playersdk.view.PlayerView
+        android:id="@+id/bottom_player"
+        android:layout_width="match_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_height="400dp" >
+        <ImageButton
+            android:id="@+id/close"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_alignParentTop="true"
+            android:background="@android:color/transparent"
+            android:layout_margin="15dp"
+            android:src="@android:drawable/ic_menu_close_clear_cancel"/>
+
+        </fm.feed.android.playersdk.view.PlayerView>
+
+    <View android:id="@+id/overlay"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:layout_above="@id/bottom_player"
+        android:background="#99000000"/>
+</RelativeLayout>

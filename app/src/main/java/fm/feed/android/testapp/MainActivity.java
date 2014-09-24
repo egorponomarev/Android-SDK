@@ -11,6 +11,7 @@ import android.view.MenuItem;
 import android.view.View;
 
 import fm.feed.android.testapp.fragment.MainFragment;
+import fm.feed.android.testapp.fragment.SlidingBottomFragment;
 import fm.feed.android.testapp.fragment.SlidingFragment;
 import fm.feed.android.testapp.fragment.TestFragment;
 
@@ -22,10 +23,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         if (savedInstanceState == null) {
-
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new MainFragment())
-                    .commit();
+            showFragment(new MainFragment(), MainFragment.class.getSimpleName());
         }
 
         /**
@@ -70,7 +68,23 @@ public class MainActivity extends ActionBarActivity {
         ft.addToBackStack(tag);
 
         ft.commit();
+    }
 
+    private void addFragment(Fragment fragment, String tag) {
+        if (fragment == null) {
+            return;
+        }
+
+        FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+
+        if (fragment instanceof SlidingBottomFragment) {
+            ft.setCustomAnimations(R.anim.slide_in_top, R.anim.slide_out_bottom, R.anim.slide_in_bottom, R.anim.slide_out_top);
+        }
+
+        ft.add(R.id.container, fragment, tag);
+        ft.addToBackStack(tag);
+
+        ft.commit();
     }
 
     /**
@@ -122,7 +136,13 @@ public class MainActivity extends ActionBarActivity {
      *         the Button
      */
     public void showBottomPlayer(View v) {
+        FragmentManager fm = getSupportFragmentManager();
+        SlidingBottomFragment fragment = (SlidingBottomFragment) fm.findFragmentByTag(SlidingBottomFragment.class.getSimpleName());
 
+        if (fragment == null) {
+            fragment = new SlidingBottomFragment();
+        }
+        addFragment(fragment, SlidingBottomFragment.class.getSimpleName());
     }
 
     @Override
