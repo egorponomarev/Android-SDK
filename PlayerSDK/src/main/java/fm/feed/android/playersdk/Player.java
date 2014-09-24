@@ -140,15 +140,21 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
     }
 
     public void registerPlayerListener(PlayerListener playerListener) {
-        mPlayerListeners.add(playerListener);
+        if (!mPlayerListeners.contains(playerListener)) {
+            mPlayerListeners.add(playerListener);
+        }
     }
 
     public void registerSocialListener(SocialListener socialListener) {
-        mSocialListeners.add(socialListener);
+        if (!mSocialListeners.contains(socialListener)) {
+            mSocialListeners.add(socialListener);
+        }
     }
 
     public void registerNavListener(NavListener navListener) {
-        mNavListeners.add(navListener);
+        if (!mNavListeners.contains(navListener)) {
+            mNavListeners.add(navListener);
+        }
     }
 
     public void unregisterPlayerListener(PlayerListener playerListener) {

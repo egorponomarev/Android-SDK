@@ -9,6 +9,7 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 
 import fm.feed.android.testapp.fragment.MainFragment;
 import fm.feed.android.testapp.fragment.SlidingBottomFragment;
@@ -21,7 +22,11 @@ public class MainActivity extends ActionBarActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
+
         setContentView(R.layout.activity_main);
+
         if (savedInstanceState == null) {
             showFragment(new MainFragment(), MainFragment.class.getSimpleName());
         }
@@ -88,7 +93,7 @@ public class MainActivity extends ActionBarActivity {
     }
 
     /**
-     * "Sliding Player" Button Callback
+     * "Showcase - Sliding Fullscreen Player" Button Callback
      * <p>
      * Shows a left sliding player
      * </p>
@@ -127,9 +132,9 @@ public class MainActivity extends ActionBarActivity {
     }
 
     /**
-     * "Test UI" Button Callback
+     * "Showcase - Sliding Bottom Player" Button Callback
      * <p>
-     * Shows a Testing UI
+     * Shows a bottom sliding player
      * </p>
      *
      * @param v
