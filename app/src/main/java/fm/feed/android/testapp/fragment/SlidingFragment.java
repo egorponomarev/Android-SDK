@@ -9,6 +9,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 
+import fm.feed.android.playersdk.view.PlayerView;
 import fm.feed.android.testapp.R;
 
 /**
@@ -33,6 +34,8 @@ public class SlidingFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         RelativeLayout rootView = (RelativeLayout) inflater.inflate(R.layout.fragment_sliding, container, false);
+        PlayerView playerView = (PlayerView) rootView.findViewById(R.id.player);
+        playerView.setShareSubject("Currently listening from a sliding panel!");
         return rootView;
     }
 }

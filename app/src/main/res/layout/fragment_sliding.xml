@@ -6,6 +6,7 @@
                 tools:context=".SlidingFragment">
 
     <fm.feed.android.playersdk.view.PlayerView
+        android:id="@+id/player"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
 </RelativeLayout>

@@ -38,8 +38,36 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  * Created by mharkins on 8/21/14.
+ *
  */
-public class Player {
+
+/**
+ * Interface controlling the Feed Media Web-radio
+ * <h1>Class Overview</h1>
+ * To get started:
+ * <pre>
+ * {@code final Player player = Player.getInstance(getContext(), new Player.PlayerListener() {
+ *
+ *      @Override public void onPlayerInitialized(PlayInfo playInfo) {
+ *          player.play();
+ *      }
+ *
+ *      @Override public void onPlaybackStateChanged(PlayInfo.State state) {
+ *          // Called when the playback changes state
+ *      }
+ *
+ *      @Override public void onError(PlayerError playerError) {
+ *          // Called when there is an error
+ *      }
+ *
+ *      @Override public void onNotificationWillShow(int notificationId) {
+ *          // Called when the Foreground Service notification is created
+ *      }
+ *  }, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
+ * }</pre>
+ * </p>
+ */
+ public class Player {
     public static final String TAG = Player.class.getSimpleName();
 
     /**
