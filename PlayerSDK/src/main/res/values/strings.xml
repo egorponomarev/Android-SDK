@@ -1,7 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FeedmFM</string>
-    <string name="api_version">v2</string>
-    <string name="api_url">https://feed.fm/api/</string>
 
-    <string name="sdk_version">v0.5</string>
+    <string name="play_to_start">hit play to start the radio</string>
+    <string name="tuning">tuning…</string>
+    <string name="end_of_playlist">End of Playlist</string>
+
+    <string name="share_via">Share via</string>
+    <string name="share_subject_template">Listening to the embedded Radio!</string>
+    <string name="share_body_template">I\'m listening to %1$s from %2$s of the album %3$s</string>
+
 </resources>
