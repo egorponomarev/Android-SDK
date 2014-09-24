@@ -29,6 +29,7 @@ public class SlidingFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // Hide the Action Bar
         ActionBar actionBar = ((ActionBarActivity) getActivity()).getSupportActionBar();
         if (actionBar != null) {
             actionBar.hide();
@@ -38,8 +39,13 @@ public class SlidingFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         RelativeLayout rootView = (RelativeLayout) inflater.inflate(R.layout.fragment_sliding, container, false);
+
+        /**
+         * Override default PlayerView Shared Subject title
+         */
         PlayerView playerView = (PlayerView) rootView.findViewById(R.id.player);
         playerView.setShareSubject("Currently listening from a sliding panel!");
+
         return rootView;
     }
 }

@@ -46,6 +46,9 @@ public class SlidingBottomFragment extends Fragment {
             }
         });
 
+        /**
+         * Override default PlayerView Shared Subject title
+         */
         PlayerView playerView = (PlayerView) rootView.findViewById(R.id.player);
         playerView.setShareSubject("Currently listening from a bottom panel!");
 

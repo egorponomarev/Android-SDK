@@ -35,9 +35,9 @@ import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.PlayInfo;
+import fm.feed.android.playersdk.util.TimeUtils;
 import fm.feed.android.testapp.MainActivity;
 import fm.feed.android.testapp.R;
-import fm.feed.android.testapp.util.TimeUtils;
 
 /**
  * The MIT License (MIT)

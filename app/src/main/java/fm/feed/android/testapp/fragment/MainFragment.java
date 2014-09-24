@@ -27,6 +27,7 @@ public class MainFragment extends Fragment {
     public void onStart() {
         super.onStart();
 
+        // Show the action bar
         ((ActionBarActivity) getActivity()).getSupportActionBar().show();
     }
 }
