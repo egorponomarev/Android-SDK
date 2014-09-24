@@ -880,7 +880,7 @@ public class PlayerService extends Service {
     private void like() {
         if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
-            final String playId = playTask.getPlay().getId();
+            final Play play = playTask.getPlay();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
@@ -890,17 +890,17 @@ public class PlayerService extends Service {
 
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
-                    return mWebservice.like(playId);
+                    return mWebservice.like(play.getId());
                 }
 
                 @Override
                 public void onSuccess(Boolean aBoolean) {
+                    play.setLikeState(Play.LikeState.LIKED);
                     eventBus.post(new EventMessage(EventMessage.Status.LIKE));
                 }
 
                 @Override
                 public void onFail(FeedFMError error) {
-                    // TODO: log error
                     handleError(error);
                 }
             });
@@ -915,7 +915,7 @@ public class PlayerService extends Service {
 
         if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
-            final String playId = playTask.getPlay().getId();
+            final Play play = playTask.getPlay();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
@@ -925,17 +925,17 @@ public class PlayerService extends Service {
 
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
-                    return mWebservice.unlike(playId);
+                    return mWebservice.unlike(play.getId());
                 }
 
                 @Override
                 public void onSuccess(Boolean aBoolean) {
+                    play.setLikeState(Play.LikeState.NONE);
                     eventBus.post(new EventMessage(EventMessage.Status.UNLIKE));
                 }
 
                 @Override
                 public void onFail(FeedFMError error) {
-                    // TODO: log error
                     handleError(error);
                 }
             });
@@ -949,7 +949,7 @@ public class PlayerService extends Service {
     private void dislike() {
         if (mMainQueue.hasActivePlayTask()) {
             PlayTask playTask = (PlayTask) mMainQueue.peek();
-            final String playId = playTask.getPlay().getId();
+            final Play play = playTask.getPlay();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
@@ -959,11 +959,12 @@ public class PlayerService extends Service {
 
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
-                    return mWebservice.dislike(playId);
+                    return mWebservice.dislike(play.getId());
                 }
 
                 @Override
                 public void onSuccess(Boolean aBoolean) {
+                    play.setLikeState(Play.LikeState.DISLIKED);
                     eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
                 }
 

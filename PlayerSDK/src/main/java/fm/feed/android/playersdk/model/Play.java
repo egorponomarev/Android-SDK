@@ -15,6 +15,24 @@ public class Play {
     @SerializedName("audio_file")
     private AudioFile audioFile;
 
+    public static enum LikeState {
+        NONE(null),
+        LIKED("liked"),
+        DISLIKED("disliked");
+
+        private String value;
+
+        LikeState(String value) {
+            this.value = value;
+        }
+
+        public String getValue() {
+            return value;
+        }
+    }
+
+    private LikeState likeState = LikeState.NONE;
+
     /**
      * Id of the Play
      *
@@ -40,5 +58,13 @@ public class Play {
      */
     public AudioFile getAudioFile() {
         return audioFile;
+    }
+
+    public LikeState getLikeState() {
+        return likeState;
+    }
+
+    public void setLikeState(LikeState likeState) {
+        this.likeState = likeState;
     }
 }

@@ -65,7 +65,7 @@ public class Player {
 
     private boolean mRequiresAuthentication;
 
-    protected Player(Context context, Bus bus, PlayerListener playerListener, String token, String secret, int notificationId) {
+    protected Player(Context context, Bus bus, String token, String secret, int notificationId) {
         mEventBus = bus;
         mRequiresAuthentication = false;
 
@@ -73,8 +73,6 @@ public class Player {
         mEventBus.register(mPrivateServiceListener);
 
         mCredentials = new Credentials(token, secret);
-
-        registerPlayerListener(playerListener);
 
         startPlayerService(context, notificationId);
     }
@@ -107,8 +105,9 @@ public class Player {
      */
     public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret, Integer notificationId) {
         if (mInstance == null) {
-            mInstance = new Player(context, BusProvider.getInstance(), playerListener, token, secret, notificationId);
+            mInstance = new Player(context, BusProvider.getInstance(), token, secret, notificationId);
         }
+        mInstance.registerPlayerListener(playerListener);
         return mInstance;
     }
 
