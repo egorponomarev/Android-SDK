@@ -8,7 +8,7 @@
                 android:background="@drawable/background_gradient">
 
     <RelativeLayout
-        android:layout_width="match_parent"
+        android:layout_width="@dimen/ui_max_width"
         android:layout_height="wrap_content"
         android:padding="20dp"
         android:layout_centerInParent="true"

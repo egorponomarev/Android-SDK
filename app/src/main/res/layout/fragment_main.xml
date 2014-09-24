@@ -1,8 +1,9 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
               xmlns:tools="http://schemas.android.com/tools"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:background="@android:color/darker_gray"
+              android:layout_marginTop="?attr/actionBarSize"
+              android:background="@android:color/transparent"
               android:orientation="vertical"
               android:paddingTop="@dimen/activity_vertical_margin"
               android:paddingBottom="@dimen/activity_vertical_margin"
@@ -13,21 +14,24 @@
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
         android:text="Test UI"
         android:onClick="showTestUI"/>
 
     <Button
+        android:id="@+id/showcase_fullscreen"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:text="Sliding Player"
+        android:layout_centerHorizontal="true"
+        android:text="Showcase - Sliding Fullscreen Player"
         android:onClick="showSlidingPlayer"/>
 
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerVertical="true"
-        android:text="Bottom Player"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/showcase_fullscreen"
+        android:text="Showcase - Sliding Bottom Player"
         android:onClick="showBottomPlayer"/>
-</LinearLayout>
+</RelativeLayout>

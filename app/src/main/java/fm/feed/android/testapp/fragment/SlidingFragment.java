@@ -3,6 +3,7 @@ package fm.feed.android.testapp.fragment;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -28,7 +29,10 @@ public class SlidingFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        ((ActionBarActivity) getActivity()).getSupportActionBar().hide();
+        ActionBar actionBar = ((ActionBarActivity) getActivity()).getSupportActionBar();
+        if (actionBar != null) {
+            actionBar.hide();
+        }
     }
 
     @Override

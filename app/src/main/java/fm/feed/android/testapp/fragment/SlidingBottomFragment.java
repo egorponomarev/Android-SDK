@@ -3,7 +3,6 @@ package fm.feed.android.testapp.fragment;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -55,33 +54,32 @@ public class SlidingBottomFragment extends Fragment {
 
     @Override
     public Animation onCreateAnimation(int transit, boolean enter, int nextAnim) {
+        if (nextAnim == 0) {
+            mOverlay.setVisibility(View.VISIBLE);
+            return super.onCreateAnimation(transit, enter, nextAnim);
+        }
+
         if (!enter) {
             mOverlay.startAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.fade_out));
-        } else {
-            Animation anim = AnimationUtils.loadAnimation(getActivity(), nextAnim);
 
-            anim.setAnimationListener(new Animation.AnimationListener() {
-
-                public void onAnimationStart(Animation animation) {
-                    Log.d(TAG, "Animation started.");
-                    // additional functionality
-
-                    mOverlay.startAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.fade_in));
-                }
-
-                public void onAnimationRepeat(Animation animation) {
-                    Log.d(TAG, "Animation repeating.");
-                    // additional functionality
-                }
-
-                public void onAnimationEnd(Animation animation) {
-                    Log.d(TAG, "Animation ended.");
-                    // additional functionality
-                }
-            });
-            return anim;
+            return super.onCreateAnimation(transit, enter, nextAnim);
         }
-        return super.onCreateAnimation(transit, enter, nextAnim);
 
+        Animation anim = AnimationUtils.loadAnimation(getActivity(), nextAnim);
+
+        anim.setAnimationListener(new Animation.AnimationListener() {
+
+            public void onAnimationStart(Animation animation) {
+            }
+
+            public void onAnimationRepeat(Animation animation) {
+            }
+
+            public void onAnimationEnd(Animation animation) {
+                mOverlay.setVisibility(View.VISIBLE);
+                mOverlay.startAnimation(AnimationUtils.loadAnimation(getActivity(), R.anim.fade_in));
+            }
+        });
+        return anim;
     }
 }
