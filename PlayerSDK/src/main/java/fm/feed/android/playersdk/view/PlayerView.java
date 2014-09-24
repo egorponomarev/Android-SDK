@@ -218,6 +218,7 @@ public class PlayerView extends RelativeLayout {
         mSkip.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
+                setSvgResource(mSkip, R.drawable.ic_skip_normal);
                 mPlayer.skip();
             }
         });
@@ -322,12 +323,12 @@ public class PlayerView extends RelativeLayout {
 
     private void initializePlayer() {
         mPlayer = Player.getInstance(getContext(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
-        mPlayer.unregisterPlayerListener(mPlayerListener);
         mPlayer.registerPlayerListener(mPlayerListener);
         mPlayer.registerNavListener(mNavListener);
 
         if (mPlayer.hasPlay()) {
             updatePlayInfo(mPlayer.getPlay());
+            updateState(mPlayer.getState());
         } else {
             resetPlayInfo();
         }
@@ -343,38 +344,7 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onPlaybackStateChanged(PlayInfo.State state) {
-            // Set the SVG resource to the SVGImageView
-            setSvgResource(mPlayPause, R.drawable.ic_play_faded);
-            setSvgResource(mSkip, R.drawable.ic_skip_faded);
-
-            switch (state) {
-                case WAITING:
-                case READY:
-                    resetPlayInfo();
-                    break;
-                case PAUSED:
-                    setSvgResource(mPlayPause, R.drawable.ic_play_normal);
-                    break;
-                case TUNING:
-                    setSvgResource(mPlayPause, R.drawable.ic_pause_normal);
-                    resetPlayInfo();
-                    mArtist.setText(getContext().getString(R.string.tuning));
-                    break;
-                case TUNED:
-                case PLAYING:
-                    setSvgResource(mPlayPause, R.drawable.ic_pause_normal);
-                    if (mPlayer.hasPlay()) {
-                        updatePlayInfo(mPlayer.getPlay());
-                    }
-                    break;
-                case STALLED:
-                    break;
-                case COMPLETE:
-                    break;
-                case REQUESTING_SKIP:
-                    setSvgResource(mSkip, R.drawable.ic_skip_normal);
-                    break;
-            }
+            updateState(state);
         }
 
         @Override
@@ -415,7 +385,7 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onSkipFailed() {
-
+            setSvgResource(mSkip, R.drawable.ic_skip_faded);
         }
 
         @Override
@@ -427,6 +397,23 @@ public class PlayerView extends RelativeLayout {
         public void onProgressUpdate(Play play, int elapsedTime, int totalTime) {
             mProgressBar.setProgress(elapsedTime);
             mPrefix.setText(TimeUtils.toProgressFormat(elapsedTime));
+        }
+    };
+
+    private Player.SocialListener mSocialListener = new Player.SocialListener() {
+        @Override
+        public void onLiked() {
+            
+        }
+
+        @Override
+        public void onUnliked() {
+
+        }
+
+        @Override
+        public void onDisliked() {
+
         }
     };
 
@@ -448,6 +435,42 @@ public class PlayerView extends RelativeLayout {
         int duration = play.getAudioFile().getDurationInSeconds();
         mProgressBar.setMax(duration);
         mSuffix.setText(TimeUtils.toProgressFormat(duration));
+    }
+
+
+    private void updateState(PlayInfo.State state) {
+        // Set the SVG resource to the SVGImageView
+        setSvgResource(mPlayPause, R.drawable.ic_play_faded);
+        setSvgResource(mSkip, R.drawable.ic_skip_faded);
+
+        switch (state) {
+            case WAITING:
+            case READY:
+                resetPlayInfo();
+                break;
+            case PAUSED:
+                setSvgResource(mPlayPause, R.drawable.ic_play_normal);
+                break;
+            case TUNING:
+                setSvgResource(mPlayPause, R.drawable.ic_pause_normal);
+                resetPlayInfo();
+                mArtist.setText(getContext().getString(R.string.tuning));
+                break;
+            case TUNED:
+            case PLAYING:
+                setSvgResource(mPlayPause, R.drawable.ic_pause_normal);
+                if (mPlayer.hasPlay()) {
+                    updatePlayInfo(mPlayer.getPlay());
+                }
+                break;
+            case STALLED:
+                break;
+            case COMPLETE:
+                break;
+            case REQUESTING_SKIP:
+                setSvgResource(mSkip, R.drawable.ic_skip_normal);
+                break;
+        }
     }
 
     private SVGImageView newSvgImage(int weight, ImageView.ScaleType scaleType) {

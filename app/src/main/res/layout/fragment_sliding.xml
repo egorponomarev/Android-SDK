@@ -7,7 +7,5 @@
 
     <fm.feed.android.playersdk.view.PlayerView
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-    </fm.feed.android.playersdk.view.PlayerView>
+        android:layout_height="match_parent"/>
 </RelativeLayout>
