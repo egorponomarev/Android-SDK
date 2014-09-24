@@ -12,7 +12,6 @@ import android.net.NetworkInfo;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
-import android.widget.Toast;
 
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
@@ -531,7 +530,7 @@ public class PlayerService extends Service {
             final TuneTask task = new TuneTask(getContext(), queueManager, mWebservice, mMediaPlayerPool, new TuneTask.TuneTaskListener() {
                 @Override
                 public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
-                    // Only publish the Play info if the Tuning is done on the main queue (this means that this TuneTask isn't in the background).
+                    // Only publish the Play info if the Tuning is being done on the main queue (this means that this TuneTask isn't in the background).
                     if (!mMainQueue.hasActivePlayTask()) {
                         updateState(PlayInfo.State.TUNING);
 
@@ -549,12 +548,14 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onBufferingEnded() {
-                    updateState(PlayInfo.State.TUNED);
                 }
 
                 @Override
                 public void onSuccess(TuneTask tuneTask, FeedFMMediaPlayer mediaPlayer, Play play) {
-                    updateState(PlayInfo.State.TUNED);
+                    // Only publish the Play info if the Tuning is being done on the main queue (this means that this TuneTask isn't in the background).
+                    if (!mMainQueue.hasActivePlayTask()) {
+                        updateState(PlayInfo.State.TUNED);
+                    }
                 }
 
                 @Override
