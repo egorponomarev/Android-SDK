@@ -106,6 +106,11 @@ public class PlayerView extends RelativeLayout {
         initializePlayer();
     }
 
+    /**
+     * Returns the {@link fm.feed.android.playersdk.Player} object
+     *
+     * @return The {@link fm.feed.android.playersdk.Player} object
+     */
     public Player getPlayer() {
         return mPlayer;
     }
@@ -122,6 +127,9 @@ public class PlayerView extends RelativeLayout {
      * String artist = play.getAudioFile().getArtist().getName();<br/>
      * String album = play.getAudioFile().getRelease().getTitle();<br/>
      * </code>
+     * </p>
+     * <p>
+     * Default subject: <i>Music on my embedded web-radio!</i>
      * </p>
      *
      * @param subject
@@ -142,6 +150,9 @@ public class PlayerView extends RelativeLayout {
      * String artist = play.getAudioFile().getArtist().getName();<br/>
      * String album = play.getAudioFile().getRelease().getTitle();<br/>
      * </code>
+     * </p>
+     * <p>
+     * Default body: <i>I'm listening to <b>{track title}</b> from <b>{artist name}</b> of the album <b>{album name}</b></i>
      * </p>
      *
      * @param body
@@ -192,6 +203,10 @@ public class PlayerView extends RelativeLayout {
         mDislike.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (!mPlayer.hasPlay()) {
+                    return;
+                }
+
                 Play.LikeState likeState = mPlayer.getPlay().getLikeState();
                 switch (likeState) {
                     case NONE:
@@ -212,6 +227,9 @@ public class PlayerView extends RelativeLayout {
         mLike.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (!mPlayer.hasPlay()) {
+                    return;
+                }
 
                 Play.LikeState likeState = mPlayer.getPlay().getLikeState();
                 switch (likeState) {

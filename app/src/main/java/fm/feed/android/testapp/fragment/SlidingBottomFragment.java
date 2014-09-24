@@ -11,6 +11,7 @@ import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.RelativeLayout;
 
+import fm.feed.android.playersdk.view.PlayerView;
 import fm.feed.android.testapp.R;
 
 /**
@@ -45,6 +46,9 @@ public class SlidingBottomFragment extends Fragment {
                 getActivity().onBackPressed();
             }
         });
+
+        PlayerView playerView = (PlayerView) rootView.findViewById(R.id.player);
+        playerView.setShareSubject("Currently listening from a bottom panel!");
 
         return rootView;
     }

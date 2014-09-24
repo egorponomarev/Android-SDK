@@ -7,10 +7,10 @@
                 tools:context=".SlidingFragment">
 
     <fm.feed.android.playersdk.view.PlayerView
-        android:id="@+id/bottom_player"
+        android:id="@+id/player"
         android:layout_width="match_parent"
-        android:layout_alignParentBottom="true"
-        android:layout_height="400dp" >
+        android:layout_height="400dp"
+        android:layout_alignParentBottom="true">
         <ImageButton
             android:id="@+id/close"
             android:layout_width="wrap_content"
@@ -26,6 +26,6 @@
     <View android:id="@+id/overlay"
           android:layout_width="match_parent"
           android:layout_height="match_parent"
-          android:layout_above="@id/bottom_player"
+          android:layout_above="@id/player"
         android:background="#99000000"/>
 </RelativeLayout>

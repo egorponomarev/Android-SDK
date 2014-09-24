@@ -6,7 +6,7 @@
     <string name="end_of_playlist">End of Playlist</string>
 
     <string name="share_via">Share via</string>
-    <string name="share_subject_template">Listening to the embedded Radio!</string>
+    <string name="share_subject_template">Music on my embedded web-radio!</string>
     <string name="share_body_template">I\'m listening to %1$s from %2$s of the album %3$s</string>
 
 </resources>
