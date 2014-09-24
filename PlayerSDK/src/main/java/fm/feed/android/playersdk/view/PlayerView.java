@@ -192,17 +192,41 @@ public class PlayerView extends RelativeLayout {
         mDislike.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                setSvgResource(mDislike, R.drawable.ic_thumbdown_normal);
-                mPlayer.dislike();
-                // TODO: handle unlike
+                Play.LikeState likeState = mPlayer.getPlay().getLikeState();
+                switch (likeState) {
+                    case NONE:
+                        setSvgResource(mDislike, R.drawable.ic_thumbdown_normal);
+                        mPlayer.dislike();
+                        break;
+                    case LIKED:
+                        setSvgResource(mLike, R.drawable.ic_thumbup_faded);
+                        mPlayer.unlike();
+                        break;
+                    case DISLIKED:
+                        // Do nothing
+                        break;
+                }
             }
         });
 
         mLike.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                setSvgResource(mLike, R.drawable.ic_thumbup_normal);
-                mPlayer.like();
+
+                Play.LikeState likeState = mPlayer.getPlay().getLikeState();
+                switch (likeState) {
+                    case NONE:
+                        setSvgResource(mLike, R.drawable.ic_thumbup_normal);
+                        mPlayer.like();
+                        break;
+                    case LIKED:
+                        // Do nothing
+                        break;
+                    case DISLIKED:
+                        setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
+                        mPlayer.like();
+                        break;
+                }
             }
         });
         mPlayPause.setOnClickListener(new OnClickListener() {
@@ -257,6 +281,20 @@ public class PlayerView extends RelativeLayout {
         });
     }
 
+    private void initializePlayer() {
+        mPlayer = Player.getInstance(getContext(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
+        mPlayer.registerPlayerListener(mPlayerListener);
+        mPlayer.registerNavListener(mNavListener);
+        mPlayer.registerSocialListener(mSocialListener);
+
+        if (mPlayer.hasPlay()) {
+            updatePlayInfo(mPlayer.getPlay());
+            updateState(mPlayer.getState());
+        } else {
+            resetPlayInfo();
+        }
+    }
+
     // Hack while Player registers multiple times a same instance of a listener.
     private boolean mDetachedFromWindow = false;
 
@@ -269,6 +307,7 @@ public class PlayerView extends RelativeLayout {
             if (mDetachedFromWindow) {
                 mPlayer.registerNavListener(mNavListener);
                 mPlayer.registerPlayerListener(mPlayerListener);
+                mPlayer.registerSocialListener(mSocialListener);
 
                 if (mPlayer.hasPlay()) {
                     updatePlayInfo(mPlayer.getPlay());
@@ -288,6 +327,7 @@ public class PlayerView extends RelativeLayout {
         if (mPlayer != null) {
             mPlayer.unregisterNavListener(mNavListener);
             mPlayer.unregisterPlayerListener(mPlayerListener);
+            mPlayer.unregisterSocialListener(mSocialListener);
         }
     }
 
@@ -321,19 +361,6 @@ public class PlayerView extends RelativeLayout {
         super.onRestoreInstanceState(state);
     }
 
-    private void initializePlayer() {
-        mPlayer = Player.getInstance(getContext(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
-        mPlayer.registerPlayerListener(mPlayerListener);
-        mPlayer.registerNavListener(mNavListener);
-
-        if (mPlayer.hasPlay()) {
-            updatePlayInfo(mPlayer.getPlay());
-            updateState(mPlayer.getState());
-        } else {
-            resetPlayInfo();
-        }
-    }
-
     private Player.PlayerListener mPlayerListener = new Player.PlayerListener() {
         @Override
         public void onPlayerInitialized(PlayInfo playInfo) {
@@ -349,6 +376,7 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onError(PlayerError playerError) {
+
         }
 
         @Override
@@ -403,19 +431,39 @@ public class PlayerView extends RelativeLayout {
     private Player.SocialListener mSocialListener = new Player.SocialListener() {
         @Override
         public void onLiked() {
-            
+            updateLikeState(mPlayer.getPlay().getLikeState());
         }
 
         @Override
         public void onUnliked() {
-
+            updateLikeState(mPlayer.getPlay().getLikeState());
         }
 
         @Override
         public void onDisliked() {
-
+            updateLikeState(mPlayer.getPlay().getLikeState());
         }
     };
+
+    private void updateLikeState(Play.LikeState likeState) {
+        if (likeState == null) {
+            likeState = Play.LikeState.NONE;
+        }
+        switch (likeState) {
+            case NONE:
+                setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
+                setSvgResource(mLike, R.drawable.ic_thumbup_faded);
+                break;
+            case LIKED:
+                setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
+                setSvgResource(mLike, R.drawable.ic_thumbup_normal);
+                break;
+            case DISLIKED:
+                setSvgResource(mDislike, R.drawable.ic_thumbdown_normal);
+                setSvgResource(mLike, R.drawable.ic_thumbup_faded);
+                break;
+        }
+    }
 
     private void resetPlayInfo() {
         mTitle.setText("");
@@ -425,6 +473,8 @@ public class PlayerView extends RelativeLayout {
         mSuffix.setText(TimeUtils.toProgressFormat(0));
         mProgressBar.setProgress(0);
         mProgressBar.setMax(0);
+
+        updateLikeState(null);
     }
 
     private void updatePlayInfo(Play play) {
@@ -435,6 +485,8 @@ public class PlayerView extends RelativeLayout {
         int duration = play.getAudioFile().getDurationInSeconds();
         mProgressBar.setMax(duration);
         mSuffix.setText(TimeUtils.toProgressFormat(duration));
+
+        updateLikeState(play.getLikeState());
     }
 
 
