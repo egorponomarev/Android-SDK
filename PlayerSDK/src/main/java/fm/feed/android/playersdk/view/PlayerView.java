@@ -466,7 +466,7 @@ public class PlayerView extends RelativeLayout {
                     throw new PackageManager.NameNotFoundException();
                 i.addCategory(Intent.CATEGORY_LAUNCHER);
                 i.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
-                i.FLAG_ACTIVITY_SINGLE_TOP);
+                        i.FLAG_ACTIVITY_SINGLE_TOP);
             } catch (PackageManager.NameNotFoundException e) {
                 return;
             }
