@@ -21,7 +21,7 @@ apply plugin: 'robolectric'
 
 group = "fm.feed.android"
 archivesBaseName = "player-sdk"
-version = "1.1.0"
+version = "1.0.3-SNAPSHOT"
 
 configurations {
     archives {
@@ -63,6 +63,54 @@ android {
         abortOnError false
     }
 }
+
+android.libraryVariants.all { variant ->
+    // Task that only generates the end-user relevant javadoc.
+    javadocTask = tasks.create(name: "generate${variant.name.capitalize()}Javadoc", type: Javadoc) {
+        description "Generates Player Javadoc for $variant.name."
+        source = variant.javaCompile.source
+        destinationDir = file(project.docsDir.absolutePath + '/PlayerJavaDoc')
+        ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
+        classpath = files(variant.javaCompile.classpath.files) + files(ext.androidJar)
+        options.links("http://docs.oracle.com/javase/7/docs/api/");
+        options.links("http://d.android.com/reference/");
+
+        exclude '**/BuildConfig.java'
+        exclude '**/R.java'
+        exclude '**/service/**'
+        exclude '**/observer/**'
+    }
+
+    tasks.create(name: "generate${variant.name.capitalize()}JavadocFull", type: Javadoc) {
+        description "Generates Javadoc for $variant.name."
+        source = variant.javaCompile.source
+        ext.androidJar = "${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar"
+        classpath = files(variant.javaCompile.classpath.files) + files(ext.androidJar)
+        options.links("http://docs.oracle.com/javase/7/docs/api/");
+        options.links("http://d.android.com/reference/");
+
+        exclude '**/BuildConfig.java'
+        exclude '**/R.java'
+    }
+
+    androidJavadocsJar = tasks.create(name: "android${variant.name.capitalize()}JavadocsJar", type: Jar, dependsOn: javadocTask) {
+        classifier = 'javadoc'
+        from javadocTask.destinationDir
+    }
+
+    androidSourcesJar = tasks.create(name: "android${variant.name.capitalize()}SourcesJar", type: Jar) {
+        classifier = 'sources'
+        from android.sourceSets.main.java
+    }
+
+    artifacts {
+        //archives packageReleaseJar
+        archives androidSourcesJar
+        archives androidJavadocsJar
+    }
+}
+
+
 uploadArchives {
     configuration = configurations.archives
     repositories.mavenDeployer {

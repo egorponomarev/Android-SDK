@@ -46,25 +46,25 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  * <h1>Class Overview</h1>
  * To get started:
  * <pre>
- * {@code final Player player = Player.getInstance(getContext(), new Player.PlayerListener() {
+ * <code> final Player player = Player.getInstance(getContext(), new Player.PlayerListener() {
  *
- *      @Override public void onPlayerInitialized(PlayInfo playInfo) {
+ *      {@literal @}Override public void onPlayerInitialized(PlayInfo playInfo) {
  *          player.play();
  *      }
  *
- *      @Override public void onPlaybackStateChanged(PlayInfo.State state) {
+ *      {@literal @}Override public void onPlaybackStateChanged(PlayInfo.State state) {
  *          // Called when the playback changes state
  *      }
  *
- *      @Override public void onError(PlayerError playerError) {
+ *      {@literal @}Override public void onError(PlayerError playerError) {
  *          // Called when there is an error
  *      }
  *
- *      @Override public void onNotificationWillShow(int notificationId) {
+ *      {@literal @}Override public void onNotificationWillShow(int notificationId) {
  *          // Called when the Foreground Service notification is created
  *      }
  *  }, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
- * }</pre>
+ * </code></pre>
  * </p>
  */
  public class Player {
