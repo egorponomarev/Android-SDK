@@ -149,7 +149,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     }
 
     @Override
-    public Integer getElapsedTime() {
+    public Integer getElapsedTimeMillis() {
         return mLastProgress;
     }
 

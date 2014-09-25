@@ -38,7 +38,7 @@ public class ElapsedTimeManager {
         @Override
         public void run() {
             final String playId = mPlayTask.getPlay().getId();
-            final Integer elapsedTime = mPlayTask.getElapsedTime();
+            final Integer elapsedTime = mPlayTask.getElapsedTimeMillis() / 1000;
 
             SimpleNetworkTask<Boolean> elapsedTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
