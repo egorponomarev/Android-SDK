@@ -1,10 +1,16 @@
 package fm.feed.android.playersdk.view;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
+import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Parcelable;
+import android.support.v4.app.NotificationCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
@@ -26,6 +32,7 @@ import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.observer.AudioSettingsContentObserver;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.util.TimeUtils;
 
@@ -48,7 +55,11 @@ public class PlayerView extends RelativeLayout {
     private static final String AUTH_TOKEN = "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42";
     private static final String AUTH_SECRET = "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517";
 
-    private boolean mIsAutoPlay;
+    private AudioSettingsContentObserver mAudioSettingsContentObserver;
+
+    // XML attributes
+    private boolean mAutoPlay;
+    private boolean mHandlesNotification;
 
     private Player mPlayer;
 
@@ -94,13 +105,21 @@ public class PlayerView extends RelativeLayout {
                 attrs,
                 R.styleable.PlayerView);
 
-        mIsAutoPlay = a.getBoolean(R.styleable.PlayerView_autoPlay, false);
+        mAutoPlay = a.getBoolean(R.styleable.PlayerView_autoPlay, false);
+        mHandlesNotification = a.getBoolean(R.styleable.PlayerView_handlesNotification, true);
 
         //Don't forget this
         a.recycle();
 
         mShareSubject = null;
         mShareBody = null;
+
+        mAudioSettingsContentObserver = new AudioSettingsContentObserver(getContext(), new Handler(), new AudioSettingsContentObserver.VolumeListener() {
+            @Override
+            public void onChange(int volume, boolean increased) {
+                updateSpeakerUI();
+            }
+        });
 
         initializeView();
         initializePlayer();
@@ -160,6 +179,22 @@ public class PlayerView extends RelativeLayout {
      */
     public void setShareBody(String body) {
         mShareBody = body;
+    }
+
+    public boolean isAutoPlay() {
+        return mAutoPlay;
+    }
+
+    public void setIsAutoPlay(boolean mAutoPlay) {
+        this.mAutoPlay = mAutoPlay;
+    }
+
+    public boolean handlesNotification() {
+        return mHandlesNotification;
+    }
+
+    public void setHandlesNotification(boolean mHandlesNotification) {
+        this.mHandlesNotification = mHandlesNotification;
     }
 
     private void initializeView() {
@@ -297,6 +332,29 @@ public class PlayerView extends RelativeLayout {
                 getContext().startActivity(Intent.createChooser(intent, getContext().getString(R.string.share_via)));
             }
         });
+
+        mVolume.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                AudioManager am =
+                        (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
+                int volume = mAudioSettingsContentObserver.getCurrentVolume();
+                am.setStreamVolume(
+                        AudioManager.STREAM_MUSIC,
+                        volume,
+                        AudioManager.FLAG_SHOW_UI);
+            }
+        });
+
+        updateSpeakerUI();
+    }
+
+    private void updateSpeakerUI() {
+        if (mAudioSettingsContentObserver.getCurrentVolume() == 0) {
+            setSvgResource(mVolume, R.drawable.ic_speakerhigh_faded);
+        } else {
+            setSvgResource(mVolume, R.drawable.ic_speakerhigh_normal);
+        }
     }
 
     private void initializePlayer() {
@@ -313,26 +371,21 @@ public class PlayerView extends RelativeLayout {
         }
     }
 
-    // Hack while Player registers multiple times a same instance of a listener.
-    private boolean mDetachedFromWindow = false;
-
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
 
-        // If the Player has been initialized
-        if (mPlayer != null) {
-            if (mDetachedFromWindow) {
-                mPlayer.registerNavListener(mNavListener);
-                mPlayer.registerPlayerListener(mPlayerListener);
-                mPlayer.registerSocialListener(mSocialListener);
+        getContext().getContentResolver().registerContentObserver(android.provider.Settings.System.CONTENT_URI, true, mAudioSettingsContentObserver);
 
-                if (mPlayer.hasPlay()) {
-                    updatePlayInfo(mPlayer.getPlay());
-                }
-            }
-        } else {
-//            resetPlayInfo();
+        // If the Player has been initialized
+        mPlayer.registerNavListener(mNavListener);
+        mPlayer.registerPlayerListener(mPlayerListener);
+        mPlayer.registerSocialListener(mSocialListener);
+
+        if (mPlayer.hasPlay()) {
+            updatePlayInfo(mPlayer.getPlay());
+
+            mPlayerListener.onNotificationWillShow(mPlayer.getNotificationId());
         }
     }
 
@@ -340,13 +393,11 @@ public class PlayerView extends RelativeLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
 
-        mDetachedFromWindow = true;
+        mPlayer.unregisterNavListener(mNavListener);
+        mPlayer.unregisterPlayerListener(mPlayerListener);
+        mPlayer.unregisterSocialListener(mSocialListener);
 
-        if (mPlayer != null) {
-            mPlayer.unregisterNavListener(mNavListener);
-            mPlayer.unregisterPlayerListener(mPlayerListener);
-            mPlayer.unregisterSocialListener(mSocialListener);
-        }
+        getContext().getContentResolver().unregisterContentObserver(mAudioSettingsContentObserver);
     }
 
     @Override
@@ -382,7 +433,7 @@ public class PlayerView extends RelativeLayout {
     private Player.PlayerListener mPlayerListener = new Player.PlayerListener() {
         @Override
         public void onPlayerInitialized(PlayInfo playInfo) {
-            if (mIsAutoPlay) {
+            if (mAutoPlay) {
                 mPlayer.play();
             }
         }
@@ -399,7 +450,44 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onNotificationWillShow(int notificationId) {
+            // The user can decide not to override the notification when it shows.
+            if (!mHandlesNotification) {
+                return;
+            }
 
+            int stringId = getContext().getApplicationInfo().labelRes;
+            String applicationName = getContext().getString(stringId);
+
+            Intent i;
+            PackageManager manager = getContext().getPackageManager();
+            try {
+                i = manager.getLaunchIntentForPackage(getContext().getApplicationInfo().packageName);
+                if (i == null)
+                    throw new PackageManager.NameNotFoundException();
+                i.addCategory(Intent.CATEGORY_LAUNCHER);
+                i.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
+                i.FLAG_ACTIVITY_SINGLE_TOP);
+            } catch (PackageManager.NameNotFoundException e) {
+                return;
+            }
+
+            PendingIntent pi = PendingIntent.getActivity(getContext().getApplicationContext(), 0, i,
+                    PendingIntent.FLAG_UPDATE_CURRENT);
+
+            String title = mPlayer.getPlay().getAudioFile().getTrack().getTitle();
+
+            NotificationCompat.Builder mBuilder =
+                    new NotificationCompat.Builder(getContext());
+            mBuilder.setContentIntent(pi);
+            mBuilder.setContentTitle(applicationName);
+            mBuilder.setContentText(getContext().getString(R.string.notification_body_template, title));
+            mBuilder.setOngoing(true);
+            mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
+
+            NotificationManager mNotificationManager =
+                    (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+            // NOTIFICATION_ID allows you to update the notification later on.
+            mNotificationManager.notify(mPlayer.getNotificationId(), mBuilder.build());
         }
     };
 

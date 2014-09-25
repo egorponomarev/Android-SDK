@@ -29,5 +29,5 @@ public abstract class SkippableTask<Params, Progress, Result> extends NetworkAbs
      */
     public abstract boolean isSkippableCandidate();
 
-    public abstract Integer getElapsedTime();
+    public abstract Integer getElapsedTimeMillis();
 }

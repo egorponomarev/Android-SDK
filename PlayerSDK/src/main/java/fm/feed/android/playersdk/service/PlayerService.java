@@ -743,9 +743,9 @@ public class PlayerService extends Service {
 
             @Override
             public void onPlayFinished(final Play play, boolean isSkipped) {
-                updateState(PlayInfo.State.COMPLETE);
-
                 if (!isSkipped) {
+                    updateState(PlayInfo.State.COMPLETE);
+
                     SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                         @Override
                         public void onStart() {
@@ -821,7 +821,7 @@ public class PlayerService extends Service {
 
                 @Override
                 public Boolean performRequestSynchronous() throws FeedFMError {
-                    return mWebservice.skip(play.getId(), task.getElapsedTime(), force);
+                    return mWebservice.skip(play.getId(), task.getElapsedTimeMillis() / 1000, force);
                 }
 
                 @Override

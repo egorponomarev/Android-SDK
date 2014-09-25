@@ -227,7 +227,7 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     }
 
     @Override
-    public Integer getElapsedTime() {
+    public Integer getElapsedTimeMillis() {
         return 0;
     }
 

@@ -9,4 +9,6 @@
     <string name="share_subject_template">Music on my embedded web-radio!</string>
     <string name="share_body_template">I\'m listening to %1$s from %2$s of the album %3$s</string>
 
+    <string name="notification_body_template">Playing: %s</string>
+
 </resources>

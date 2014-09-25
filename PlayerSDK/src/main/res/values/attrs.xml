@@ -2,5 +2,6 @@
 <resources>
     <declare-styleable name="PlayerView">
         <attr name="autoPlay" format="boolean"/>
+        <attr name="handlesNotification" format="boolean"/>
     </declare-styleable>
 </resources>
