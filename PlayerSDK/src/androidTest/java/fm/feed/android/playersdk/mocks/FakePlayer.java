@@ -1,16 +1,10 @@
 package fm.feed.android.playersdk.mocks;
 
 import android.content.Context;
-import android.content.Intent;
-
-import fm.feed.android.playersdk.Player;
-import fm.feed.android.playersdk.service.PlayerService;
 
 import com.squareup.otto.Bus;
 
-import org.robolectric.Robolectric;
-
-import java.util.Date;
+import fm.feed.android.playersdk.Player;
 
 /**
  * Created by mharkins on 8/27/14.
@@ -22,7 +16,8 @@ public class FakePlayer extends Player {
     private DummyBusProvider mDummyBusProvider;
 
     private FakePlayer(Context context, Bus bus, PlayerListener playerListener, String token, String secret) {
-        super(context, bus, playerListener, token, secret, -1);
+        super(context, bus, token, secret, -1);
+        registerPlayerListener(playerListener);
     }
 
     public static FakePlayer getInstance(Context context, Bus busProvider, PlayerListener playerListener, String token, String secret) {
