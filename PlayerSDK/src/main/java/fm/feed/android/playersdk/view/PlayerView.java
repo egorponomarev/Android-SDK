@@ -35,6 +35,7 @@ import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.observer.AudioSettingsContentObserver;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.util.TimeUtils;
+import fm.feed.android.playersdk.util.UIUtils;
 
 /**
  * The MIT License (MIT)
@@ -209,7 +210,7 @@ public class PlayerView extends RelativeLayout {
         LinearLayout topContainer = (LinearLayout) rootView.findViewById(R.id.pu_top_icons);
         LinearLayout bottomContainer = (LinearLayout) rootView.findViewById(R.id.pu_bottom_icons);
 
-        mSizeBaseline = (int) convertDpToPixel(DEFAULT_SVG_SIZE_DP);
+        mSizeBaseline = (int) UIUtils.convertDpToPixel(getContext(), DEFAULT_SVG_SIZE_DP);
 
         // We need to create the SVGImageView instances and add them programmatically.
         mDislike = newSvgImage(1, ImageView.ScaleType.FIT_START);
@@ -646,29 +647,5 @@ public class PlayerView extends RelativeLayout {
             e.printStackTrace();
         }
         return imageView;
-    }
-
-    /**
-     * This method converts dp unit to equivalent pixels, depending on device density.
-     *
-     * @param dp
-     *         A value in dp (density independent pixels) unit. Which we need to convert into pixels
-     *
-     * @return A float value to represent px equivalent to dp depending on device density
-     */
-    private float convertDpToPixel(float dp) {
-        return dp * getContext().getResources().getDisplayMetrics().density;
-    }
-
-    /**
-     * This method converts device specific pixels to density independent pixels.
-     *
-     * @param px
-     *         A value in px (pixels) unit. Which we need to convert into db
-     *
-     * @return A float value to represent dp equivalent to px value
-     */
-    private float convertPixelsToDp(float px) {
-        return px / getContext().getResources().getDisplayMetrics().density;
     }
 }

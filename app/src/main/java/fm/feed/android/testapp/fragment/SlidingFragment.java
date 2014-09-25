@@ -8,8 +8,14 @@ import android.support.v7.app.ActionBarActivity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.RelativeLayout;
 
+import com.caverock.androidsvg.SVG;
+import com.caverock.androidsvg.SVGImageView;
+import com.caverock.androidsvg.SVGParseException;
+
+import fm.feed.android.playersdk.util.UIUtils;
 import fm.feed.android.playersdk.view.PlayerView;
 import fm.feed.android.testapp.R;
 
@@ -25,9 +31,11 @@ import fm.feed.android.testapp.R;
  * Created by mharkins on 9/23/14.
  */
 public class SlidingFragment extends Fragment {
+    private static final int DEFAULT_SVG_SIZE_DP = 26;
+
     @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    public void onStart() {
+        super.onStart();
 
         // Hide the Action Bar
         ActionBar actionBar = ((ActionBarActivity) getActivity()).getSupportActionBar();
@@ -45,6 +53,35 @@ public class SlidingFragment extends Fragment {
          */
         PlayerView playerView = (PlayerView) rootView.findViewById(R.id.player);
         playerView.setShareSubject("Currently listening from a sliding panel!");
+
+        int sizeBaseline = -2;//(int) UIUtils.convertDpToPixel(getActivity(), DEFAULT_SVG_SIZE_DP);
+        int margin = (int) UIUtils.convertDpToPixel(getActivity(), getResources().getDimension(R.dimen.player_padding));
+
+        SVGImageView closeButton = new SVGImageView(getActivity());
+
+        try {
+            closeButton.setSVG(SVG.getFromResource(getActivity(), R.drawable.ic_backarrow_normal));
+        } catch (SVGParseException e) {
+            e.printStackTrace();
+        }
+
+        RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(sizeBaseline, sizeBaseline);
+        layoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
+        layoutParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+
+        closeButton.setLayoutParams(layoutParams);
+        closeButton.setScaleType(ImageView.ScaleType.FIT_START);
+        closeButton.setPadding(margin, margin, margin * 2, margin * 2);
+
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                getActivity().onBackPressed();
+            }
+        });
+
+        playerView.addView(closeButton);
+
 
         return rootView;
     }

@@ -11,7 +11,7 @@
     <RelativeLayout
         android:layout_width="@dimen/ui_max_width"
         android:layout_height="wrap_content"
-        android:padding="20dp"
+        android:padding="@dimen/player_padding"
         android:layout_centerInParent="true">
         <TextView
             android:id="@+id/pu_artist"
