@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
 import android.media.AudioManager;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Parcelable;
 import android.support.v4.app.NotificationCompat;
 import android.util.AttributeSet;
@@ -31,6 +32,7 @@ import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.observer.AudioSettingsContentObserver;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.util.TimeUtils;
 
@@ -52,6 +54,8 @@ public class PlayerView extends RelativeLayout {
 
     private static final String AUTH_TOKEN = "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42";
     private static final String AUTH_SECRET = "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517";
+
+    private AudioSettingsContentObserver mAudioSettingsContentObserver;
 
     // XML attributes
     private boolean mAutoPlay;
@@ -109,6 +113,13 @@ public class PlayerView extends RelativeLayout {
 
         mShareSubject = null;
         mShareBody = null;
+
+        mAudioSettingsContentObserver = new AudioSettingsContentObserver(getContext(), new Handler(), new AudioSettingsContentObserver.VolumeListener() {
+            @Override
+            public void onChange(int volume, boolean increased) {
+                updateSpeakerUI();
+            }
+        });
 
         initializeView();
         initializePlayer();
@@ -321,23 +332,17 @@ public class PlayerView extends RelativeLayout {
                 getContext().startActivity(Intent.createChooser(intent, getContext().getString(R.string.share_via)));
             }
         });
+
         mVolume.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
                 AudioManager am =
                         (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
-                if (am.getStreamVolume(AudioManager.STREAM_MUSIC) == 0) {
-                    am.setStreamVolume(
-                            AudioManager.STREAM_MUSIC,
-                            5,
-                            0);
-                } else {
-                    am.setStreamVolume(
-                            AudioManager.STREAM_MUSIC,
-                            0,
-                            0);
-                }
-                updateSpeakerUI();
+                int volume = mAudioSettingsContentObserver.getCurrentVolume();
+                am.setStreamVolume(
+                        AudioManager.STREAM_MUSIC,
+                        volume,
+                        AudioManager.FLAG_SHOW_UI);
             }
         });
 
@@ -345,10 +350,8 @@ public class PlayerView extends RelativeLayout {
     }
 
     private void updateSpeakerUI() {
-        AudioManager am =
-                (AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE);
-        if (am.getStreamVolume(AudioManager.STREAM_MUSIC) == 0) {
-            setSvgResource(mVolume, R.drawable.ic_speakermute_faded);
+        if (mAudioSettingsContentObserver.getCurrentVolume() == 0) {
+            setSvgResource(mVolume, R.drawable.ic_speakerhigh_faded);
         } else {
             setSvgResource(mVolume, R.drawable.ic_speakerhigh_normal);
         }
@@ -368,26 +371,21 @@ public class PlayerView extends RelativeLayout {
         }
     }
 
-    // Hack while Player registers multiple times a same instance of a listener.
-    private boolean mDetachedFromWindow = false;
-
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
 
+        getContext().getContentResolver().registerContentObserver(android.provider.Settings.System.CONTENT_URI, true, mAudioSettingsContentObserver);
+
         // If the Player has been initialized
-        if (mPlayer != null) {
-            if (mDetachedFromWindow) {
-                mPlayer.registerNavListener(mNavListener);
-                mPlayer.registerPlayerListener(mPlayerListener);
-                mPlayer.registerSocialListener(mSocialListener);
+        mPlayer.registerNavListener(mNavListener);
+        mPlayer.registerPlayerListener(mPlayerListener);
+        mPlayer.registerSocialListener(mSocialListener);
 
-                if (mPlayer.hasPlay()) {
-                    updatePlayInfo(mPlayer.getPlay());
+        if (mPlayer.hasPlay()) {
+            updatePlayInfo(mPlayer.getPlay());
 
-                    mPlayerListener.onNotificationWillShow(mPlayer.getNotificationId());
-                }
-            }
+            mPlayerListener.onNotificationWillShow(mPlayer.getNotificationId());
         }
     }
 
@@ -395,13 +393,11 @@ public class PlayerView extends RelativeLayout {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
 
-        mDetachedFromWindow = true;
+        mPlayer.unregisterNavListener(mNavListener);
+        mPlayer.unregisterPlayerListener(mPlayerListener);
+        mPlayer.unregisterSocialListener(mSocialListener);
 
-        if (mPlayer != null) {
-            mPlayer.unregisterNavListener(mNavListener);
-            mPlayer.unregisterPlayerListener(mPlayerListener);
-            mPlayer.unregisterSocialListener(mSocialListener);
-        }
+        getContext().getContentResolver().unregisterContentObserver(mAudioSettingsContentObserver);
     }
 
     @Override
@@ -470,7 +466,7 @@ public class PlayerView extends RelativeLayout {
                     throw new PackageManager.NameNotFoundException();
                 i.addCategory(Intent.CATEGORY_LAUNCHER);
                 i.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
-                i.FLAG_ACTIVITY_SINGLE_TOP);
+                        i.FLAG_ACTIVITY_SINGLE_TOP);
             } catch (PackageManager.NameNotFoundException e) {
                 return;
             }
