@@ -11,4 +11,20 @@
 
     <string name="notification_body_template">Playing: %s</string>
 
+    <string name="accessibility_progress_indicator">Progress Indicator</string>
+
+    <string name="accessibility_play">Play</string>
+    <string name="accessibility_pause">Pause</string>
+    <string name="accessibility_like">Like</string>
+    <string name="accessibility_liked">Liked</string>
+    <string name="accessibility_dislike">Dislike</string>
+    <string name="accessibility_disliked">Disliked</string>
+    <string name="accessibility_unlike">Unlike</string>
+    <string name="accessibility_skip">Skip</string>
+    <string name="accessibility_skipping">Skipping</string>
+    <string name="accessibility_share">Share</string>
+    <string name="accessibility_volume_muted">Volume Muted</string>
+    <string name="accessibility_volume_on">Volume On</string>
+
+
 </resources>

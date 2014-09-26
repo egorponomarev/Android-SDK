@@ -68,7 +68,7 @@ public class PlayerView extends RelativeLayout {
     private String mShareBody;
 
     private static final int DEFAULT_SVG_SIZE_DP = 26;
-    private int mSizeBaseline;
+    private static final int DEFAULT_PADDING_DP = 10;
 
     private TextView mTitle;
     private TextView mArtist;
@@ -210,8 +210,6 @@ public class PlayerView extends RelativeLayout {
         LinearLayout topContainer = (LinearLayout) rootView.findViewById(R.id.pu_top_icons);
         LinearLayout bottomContainer = (LinearLayout) rootView.findViewById(R.id.pu_bottom_icons);
 
-        mSizeBaseline = (int) UIUtils.convertDpToPixel(getContext(), DEFAULT_SVG_SIZE_DP);
-
         // We need to create the SVGImageView instances and add them programmatically.
         mDislike = newSvgImage(1, ImageView.ScaleType.FIT_START);
         mLike = newSvgImage(2, ImageView.ScaleType.FIT_CENTER);
@@ -221,12 +219,12 @@ public class PlayerView extends RelativeLayout {
         mShare = newSvgImage(1, ImageView.ScaleType.FIT_END);
 
         // Set the SVG resource to the SVGImageView
-        setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
-        setSvgResource(mLike, R.drawable.ic_thumbup_faded);
-        setSvgResource(mPlayPause, R.drawable.ic_play_faded);
-        setSvgResource(mSkip, R.drawable.ic_skip_faded);
-        setSvgResource(mVolume, R.drawable.ic_speakermute_faded);
-        setSvgResource(mShare, R.drawable.ic_share_faded);
+        setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_dislike);
+        setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
+        setSvgResource(mPlayPause, R.drawable.ic_play_faded, R.string.accessibility_play);
+        setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
+        setSvgResource(mVolume, R.drawable.ic_speakermute_faded, R.string.accessibility_volume_muted);
+        setSvgResource(mShare, R.drawable.ic_share_faded, R.string.accessibility_share);
 
         // Add SVGImageViews to the layout.
         topContainer.addView(mDislike);
@@ -246,11 +244,11 @@ public class PlayerView extends RelativeLayout {
                 Play.LikeState likeState = mPlayer.getPlay().getLikeState();
                 switch (likeState) {
                     case NONE:
-                        setSvgResource(mDislike, R.drawable.ic_thumbdown_normal);
+                        setSvgResource(mDislike, R.drawable.ic_thumbdown_normal, R.string.accessibility_disliked);
                         mPlayer.dislike();
                         break;
                     case LIKED:
-                        setSvgResource(mLike, R.drawable.ic_thumbup_faded);
+                        setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
                         mPlayer.unlike();
                         break;
                     case DISLIKED:
@@ -270,14 +268,15 @@ public class PlayerView extends RelativeLayout {
                 Play.LikeState likeState = mPlayer.getPlay().getLikeState();
                 switch (likeState) {
                     case NONE:
-                        setSvgResource(mLike, R.drawable.ic_thumbup_normal);
+                        setSvgResource(mLike, R.drawable.ic_thumbup_normal, R.string.accessibility_liked);
                         mPlayer.like();
                         break;
                     case LIKED:
                         // Do nothing
                         break;
                     case DISLIKED:
-                        setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
+                        setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_unlike);
+                        setSvgResource(mLike, R.drawable.ic_thumbup_normal, R.string.accessibility_liked);
                         mPlayer.like();
                         break;
                 }
@@ -296,7 +295,7 @@ public class PlayerView extends RelativeLayout {
         mSkip.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                setSvgResource(mSkip, R.drawable.ic_skip_normal);
+                setSvgResource(mSkip, R.drawable.ic_skip_normal, R.string.accessibility_skipping);
                 mPlayer.skip();
             }
         });
@@ -352,9 +351,9 @@ public class PlayerView extends RelativeLayout {
 
     private void updateSpeakerUI() {
         if (mAudioSettingsContentObserver.getCurrentVolume() == 0) {
-            setSvgResource(mVolume, R.drawable.ic_speakerhigh_faded);
+            setSvgResource(mVolume, R.drawable.ic_speakerhigh_faded, R.string.accessibility_volume_muted);
         } else {
-            setSvgResource(mVolume, R.drawable.ic_speakerhigh_normal);
+            setSvgResource(mVolume, R.drawable.ic_speakerhigh_normal, R.string.accessibility_volume_on);
         }
     }
 
@@ -506,9 +505,9 @@ public class PlayerView extends RelativeLayout {
         @Override
         public void onTrackChanged(Play play) {
             // Set the SVG resource to the SVGImageView
-            setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
-            setSvgResource(mLike, R.drawable.ic_thumbup_faded);
-            setSvgResource(mSkip, R.drawable.ic_skip_faded);
+            setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_dislike);
+            setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
+            setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
         }
 
         @Override
@@ -520,7 +519,7 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onSkipFailed() {
-            setSvgResource(mSkip, R.drawable.ic_skip_faded);
+            setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
         }
 
         @Override
@@ -532,6 +531,7 @@ public class PlayerView extends RelativeLayout {
         public void onProgressUpdate(Play play, int elapsedTime, int totalTime) {
             mProgressBar.setProgress(elapsedTime);
             mPrefix.setText(TimeUtils.toProgressFormat(elapsedTime));
+            mPrefix.setContentDescription(TimeUtils.toProgressAccessibilityFormat(elapsedTime));
         }
     };
 
@@ -558,16 +558,16 @@ public class PlayerView extends RelativeLayout {
         }
         switch (likeState) {
             case NONE:
-                setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
-                setSvgResource(mLike, R.drawable.ic_thumbup_faded);
+                setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_dislike);
+                setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
                 break;
             case LIKED:
-                setSvgResource(mDislike, R.drawable.ic_thumbdown_faded);
-                setSvgResource(mLike, R.drawable.ic_thumbup_normal);
+                setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_unlike);
+                setSvgResource(mLike, R.drawable.ic_thumbup_normal, R.string.accessibility_liked);
                 break;
             case DISLIKED:
-                setSvgResource(mDislike, R.drawable.ic_thumbdown_normal);
-                setSvgResource(mLike, R.drawable.ic_thumbup_faded);
+                setSvgResource(mDislike, R.drawable.ic_thumbdown_normal, R.string.accessibility_disliked);
+                setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
                 break;
         }
     }
@@ -577,7 +577,9 @@ public class PlayerView extends RelativeLayout {
         mArtist.setText(getContext().getString(R.string.play_to_start));
         mAlbum.setText("");
         mPrefix.setText(TimeUtils.toProgressFormat(0));
+        mPrefix.setContentDescription(TimeUtils.toProgressAccessibilityFormat(0));
         mSuffix.setText(TimeUtils.toProgressFormat(0));
+        mSuffix.setContentDescription(TimeUtils.toProgressAccessibilityFormat(0));
         mProgressBar.setProgress(0);
         mProgressBar.setMax(0);
 
@@ -599,8 +601,8 @@ public class PlayerView extends RelativeLayout {
 
     private void updateState(PlayInfo.State state) {
         // Set the SVG resource to the SVGImageView
-        setSvgResource(mPlayPause, R.drawable.ic_play_faded);
-        setSvgResource(mSkip, R.drawable.ic_skip_faded);
+        setSvgResource(mPlayPause, R.drawable.ic_play_faded, R.string.accessibility_play);
+        setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
 
         switch (state) {
             case WAITING:
@@ -608,16 +610,16 @@ public class PlayerView extends RelativeLayout {
                 resetPlayInfo();
                 break;
             case PAUSED:
-                setSvgResource(mPlayPause, R.drawable.ic_play_normal);
+                setSvgResource(mPlayPause, R.drawable.ic_play_normal, R.string.accessibility_play);
                 break;
             case TUNING:
-                setSvgResource(mPlayPause, R.drawable.ic_pause_normal);
+                setSvgResource(mPlayPause, R.drawable.ic_pause_normal, R.string.accessibility_pause);
                 resetPlayInfo();
                 mArtist.setText(getContext().getString(R.string.tuning));
                 break;
             case TUNED:
             case PLAYING:
-                setSvgResource(mPlayPause, R.drawable.ic_pause_normal);
+                setSvgResource(mPlayPause, R.drawable.ic_pause_normal, R.string.accessibility_pause);
                 if (mPlayer.hasPlay()) {
                     updatePlayInfo(mPlayer.getPlay());
                 }
@@ -627,21 +629,26 @@ public class PlayerView extends RelativeLayout {
             case COMPLETE:
                 break;
             case REQUESTING_SKIP:
-                setSvgResource(mSkip, R.drawable.ic_skip_normal);
+                setSvgResource(mSkip, R.drawable.ic_skip_normal, R.string.accessibility_skipping);
                 break;
         }
     }
 
     private SVGImageView newSvgImage(int weight, ImageView.ScaleType scaleType) {
         SVGImageView imgView = new SVGImageView(getContext());
-        imgView.setLayoutParams(new LinearLayout.LayoutParams(mSizeBaseline, mSizeBaseline, weight));
+
+        int paddingInPixels = (int) UIUtils.convertDpToPixel(getContext(), DEFAULT_PADDING_DP);
+        int sizeInPixels = (int) UIUtils.convertDpToPixel(getContext(), DEFAULT_SVG_SIZE_DP);
+        imgView.setLayoutParams(new LinearLayout.LayoutParams(sizeInPixels, sizeInPixels + paddingInPixels * 2, weight));
         imgView.setScaleType(scaleType);
+        imgView.setPadding(0, paddingInPixels, 0, paddingInPixels);
         return imgView;
     }
 
-    private SVGImageView setSvgResource(SVGImageView imageView, int resourceId) {
+    private SVGImageView setSvgResource(SVGImageView imageView, int resourceId, int contentDescriptionResId) {
         try {
             imageView.setSVG(SVG.getFromResource(getContext(), resourceId));
+            imageView.setContentDescription(getContext().getString(contentDescriptionResId));
 
         } catch (SVGParseException e) {
             e.printStackTrace();

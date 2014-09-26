@@ -54,13 +54,14 @@ public class SlidingFragment extends Fragment {
         PlayerView playerView = (PlayerView) rootView.findViewById(R.id.player);
         playerView.setShareSubject("Currently listening from a sliding panel!");
 
-        int sizeBaseline = -2;//(int) UIUtils.convertDpToPixel(getActivity(), DEFAULT_SVG_SIZE_DP);
+        int sizeBaseline = (int) UIUtils.convertDpToPixel(getActivity(), DEFAULT_SVG_SIZE_DP);
         int margin = (int) UIUtils.convertDpToPixel(getActivity(), getResources().getDimension(R.dimen.player_padding));
 
         SVGImageView closeButton = new SVGImageView(getActivity());
 
         try {
             closeButton.setSVG(SVG.getFromResource(getActivity(), R.drawable.ic_backarrow_normal));
+            closeButton.setContentDescription(getString(R.string.accessibility_back));
         } catch (SVGParseException e) {
             e.printStackTrace();
         }
@@ -68,10 +69,12 @@ public class SlidingFragment extends Fragment {
         RelativeLayout.LayoutParams layoutParams = new RelativeLayout.LayoutParams(sizeBaseline, sizeBaseline);
         layoutParams.addRule(RelativeLayout.ALIGN_PARENT_LEFT);
         layoutParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        layoutParams.setMargins(margin, margin, margin * 2, margin * 2);
 
         closeButton.setLayoutParams(layoutParams);
         closeButton.setScaleType(ImageView.ScaleType.FIT_START);
-        closeButton.setPadding(margin, margin, margin * 2, margin * 2);
+        int padding = DEFAULT_SVG_SIZE_DP / 2;
+        closeButton.setPadding(0, 0, padding, padding);
 
         closeButton.setOnClickListener(new View.OnClickListener() {
             @Override
