@@ -93,8 +93,8 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
             // When retrying this task, the Play information might already have been collected.
             if (mPlay == null) {
                 mPlay = mWebservice.getPlay(mClientId, mPlayInfo.getPlacement(), mPlayInfo.getStation(),
-                        null, // For now don't put in the AudioFormat
-                        null);
+                        Configuration.DEFAULT_AUDIO_FORMAT, // For now don't put in the AudioFormat
+                        Configuration.DEFAULT_BITRATE);
             }
 
             mHandler.post(new Runnable() {

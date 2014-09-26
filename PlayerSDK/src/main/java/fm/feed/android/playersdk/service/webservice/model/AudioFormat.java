@@ -13,7 +13,7 @@ package fm.feed.android.playersdk.service.webservice.model;
  */
 public enum AudioFormat {
     MP3("mp3"),
-    AAC("acc");
+    AAC("aac");
 
 
     private String mValue;

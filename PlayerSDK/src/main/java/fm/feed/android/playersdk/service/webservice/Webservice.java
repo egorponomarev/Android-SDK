@@ -1,6 +1,7 @@
 package fm.feed.android.playersdk.service.webservice;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -47,6 +48,8 @@ import retrofit.http.Path;
  * Created by mharkins on 8/22/14.
  */
 public class Webservice {
+    private static final String TAG = Webservice.class.getSimpleName();
+
     private Credentials mCredentials;
 
     protected RestInterface mRestService;
@@ -124,6 +127,8 @@ public class Webservice {
             @Override
             public PlayResponse execute() throws RetrofitError {
                 String audioFormatStr = WebserviceUtils.getAudioFormatStr(audioFormats);
+                Log.d(TAG, "Audio Format Str: " + audioFormatStr);
+
                 Integer placementId = placement == null ? null : placement.getId();
                 Integer stationId = station == null ? null : station.getId();
 
@@ -132,7 +137,7 @@ public class Webservice {
                         placementId,
                         stationId,
                         audioFormatStr,
-                        192);
+                        maxBitrate);
             }
         };
         return r.get();

@@ -1,5 +1,7 @@
 package fm.feed.android.playersdk.service.constant;
 
+import fm.feed.android.playersdk.service.webservice.model.AudioFormat;
+
 /**
  * The MIT License (MIT)
  *
@@ -25,6 +27,9 @@ public class Configuration {
      * This would happen when an audio file can't be parsed properly by the Media Player.
      */
     public static final int MAX_FORCE_SKIP_COUNT = 2;
+
+    public static final int DEFAULT_BITRATE = 64;
+    public static final AudioFormat[] DEFAULT_AUDIO_FORMAT = new AudioFormat[] { AudioFormat.AAC };
 
 
     public static final String WIFI_LOCK_TAG = "fm.feed.wifilock";
