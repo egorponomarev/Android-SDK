@@ -3,5 +3,5 @@
     <string name="api_version">v2</string>
     <string name="api_url">https://feed.fm/api/</string>
 
-    <string name="sdk_version">v1.1</string>
+    <string name="sdk_version">v1.0.3</string>
 </resources>
