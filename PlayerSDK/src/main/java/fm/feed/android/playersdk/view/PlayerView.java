@@ -508,6 +508,7 @@ public class PlayerView extends RelativeLayout {
             setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_dislike);
             setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
             setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
+            mSkip.setVisibility(View.VISIBLE);
         }
 
         @Override
@@ -520,6 +521,8 @@ public class PlayerView extends RelativeLayout {
         @Override
         public void onSkipFailed() {
             setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
+
+            mSkip.setVisibility(View.GONE);
         }
 
         @Override

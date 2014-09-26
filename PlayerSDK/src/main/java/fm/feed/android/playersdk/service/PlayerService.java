@@ -966,6 +966,9 @@ public class PlayerService extends Service {
                 public void onSuccess(Boolean aBoolean) {
                     play.setLikeState(Play.LikeState.DISLIKED);
                     eventBus.post(new EventMessage(EventMessage.Status.DISLIKE));
+
+                    // When a song is disliked it should be skipped
+                    skip();
                 }
 
                 @Override
