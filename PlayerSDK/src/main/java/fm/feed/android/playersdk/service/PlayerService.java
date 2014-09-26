@@ -284,6 +284,11 @@ public class PlayerService extends Service {
         eventBus.post(new EventMessage(EventMessage.Status.STATUS_UPDATED));
     }
 
+    private void updateSkippable(boolean canSkip) {
+        mPlayInfo.setSkippable(canSkip);
+        eventBus.post(new EventMessage(EventMessage.Status.SKIP_STATUS_UPDATED));
+    }
+
     /**
      * Is the Service currently in the process of playing music or at least preparing to play music.
      *
@@ -529,10 +534,18 @@ public class PlayerService extends Service {
             // Tune in a separate Queue if we are already playing something.
             final TuneTask task = new TuneTask(getContext(), queueManager, mWebservice, mMediaPlayerPool, new TuneTask.TuneTaskListener() {
                 @Override
-                public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
+                public void onTuneTaskBegin(TuneTask tuneTask) {
                     // Only publish the Play info if the Tuning is being done on the main queue (this means that this TuneTask isn't in the background).
                     if (!mMainQueue.hasActivePlayTask()) {
                         updateState(PlayInfo.State.TUNING);
+                    }
+                }
+
+                @Override
+                public void onMetaDataLoaded(TuneTask tuneTask, Play play) {
+                    // Only publish the Play info if the Tuning is being done on the main queue (this means that this TuneTask isn't in the background).
+                    if (!mMainQueue.hasActivePlayTask()) {
+                        mPlayInfo.setCurrentPlay(play);
 
                         eventBus.post(play);
                     }
@@ -560,6 +573,8 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onUnkownError(final TuneTask tuneTask, FeedFMError feedFMError) {
+                    mPlayInfo.setCurrentPlay(null);
+
                     // If we have an unknown error for this stream, forcefully skip this song.
                     // First we need to mark this song as started.
 
@@ -596,6 +611,8 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onApiError(TuneTask tuneTask, FeedFMError mApiError) {
+                    mPlayInfo.setCurrentPlay(null);
+
                     handleError(mApiError);
                 }
             }, mPlayInfo, mPlayInfo.getClientId());
@@ -670,10 +687,10 @@ public class PlayerService extends Service {
                         if (mMainQueue.hasActivePlayTask()) {
                             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
-                            mPlayInfo.setSkippable(canSkip);
                             if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
                                 playTask.setSkippable(canSkip);
                             }
+                            updateSkippable(canSkip);
                         }
                     }
 
@@ -686,6 +703,8 @@ public class PlayerService extends Service {
 
                     @Override
                     public void onFail(FeedFMError error) {
+                        mPlayInfo.setCurrentPlay(null);
+
                         if (ApiErrorEnum.fromError(error) == ApiErrorEnum.PLAYBACK_ALREADY_STARTED) {
                             // Server already got the Start message even if we didn't get a response.
                             // Set to skippable and let server decide if we can skip the song later on.
@@ -743,7 +762,11 @@ public class PlayerService extends Service {
 
             @Override
             public void onPlayFinished(final Play play, boolean isSkipped) {
+                if (play == mPlayInfo.getPlay()) {
+                    mPlayInfo.setCurrentPlay(null);
+                }
                 if (!isSkipped) {
+                    updateSkippable(false);
                     updateState(PlayInfo.State.COMPLETE);
 
                     SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
@@ -837,6 +860,7 @@ public class PlayerService extends Service {
                     } else {
                         onFail(null);
                     }
+                    updateSkippable(canSkip);
                 }
 
                 @Override

@@ -35,6 +35,8 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     private static final String TAG = TuneTask.class.getSimpleName();
 
     public interface TuneTaskListener {
+        public void onTuneTaskBegin(TuneTask tuneTask);
+
         public void onMetaDataLoaded(TuneTask tuneTask, Play play);
 
         public void onBufferingStarted();
@@ -83,6 +85,10 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     @Override
     protected void onPreExecute() {
         super.onPreExecute();
+
+        if (mListener != null) {
+            mListener.onTuneTaskBegin(this);
+        }
     }
 
     @Override

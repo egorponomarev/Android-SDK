@@ -14,6 +14,7 @@ package fm.feed.android.playersdk.service.bus;
 public class EventMessage {
     public enum Status {
         SKIP_FAILED,
+        SKIP_STATUS_UPDATED,
         LIKE,
         UNLIKE,
         DISLIKE,

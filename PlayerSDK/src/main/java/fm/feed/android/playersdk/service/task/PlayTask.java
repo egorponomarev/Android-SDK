@@ -51,7 +51,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     private boolean mCompleted = false;
     private boolean mBuffering = false;
-    private boolean mSkippable = true;
+    private boolean mSkippable = false;
     private int mSystemPauses = 0;
     private boolean mPausedByUser = false;
 
@@ -379,7 +379,6 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        Log.d(TAG, String.format("onCompletion was called: (pos: %d, dur: %d", mp.getCurrentPosition(), mp.getDuration()));
         mCompleted = true;
     }
 

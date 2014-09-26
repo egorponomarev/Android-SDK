@@ -22,6 +22,7 @@
     <string name="accessibility_unlike">Unlike</string>
     <string name="accessibility_skip">Skip</string>
     <string name="accessibility_skipping">Skipping</string>
+    <string name="accessibility_skip_disabled">Can\'t Skip</string>
     <string name="accessibility_share">Share</string>
     <string name="accessibility_volume_muted">Volume Muted</string>
     <string name="accessibility_volume_on">Volume On</string>

@@ -67,7 +67,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  * </code></pre>
  * </p>
  */
- public class Player {
+public class Player {
     public static final String TAG = Player.class.getSimpleName();
 
     /**
@@ -167,6 +167,18 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
     public void unregisterNavListener(NavListener navListener) {
         mNavListeners.remove(navListener);
+    }
+
+    /**
+     * Returns whether or not the PlayerService is initialized yet.
+     * <p>
+     * If not ready yet; the Player will not have the {@link fm.feed.android.playersdk.service.PlayInfo} initialized; and the {@link fm.feed.android.playersdk.service.PlayInfo.State} will be null.
+     * </p>
+     *
+     * @return {@code true} if initialized, {@code false} otherwise.
+     */
+    public boolean isInitialized() {
+        return mPlayInfo != null;
     }
 
     /**
@@ -426,6 +438,12 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
                             for (NavListener listener : mNavListeners) {
                                 listener.onSkipFailed();
                             }
+                            break;
+                        case SKIP_STATUS_UPDATED:
+                            for (PlayerListener listener : mPlayerListeners) {
+                                listener.onSkipStatusChange(isSkippable());
+                            }
+                            break;
                         case LIKE:
                             for (SocialListener listener : mSocialListeners) {
                                 listener.onLiked();
@@ -583,6 +601,20 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
          *         {@link fm.feed.android.playersdk.service.PlayInfo.State} of the Player.
          */
         public void onPlaybackStateChanged(PlayInfo.State state);
+
+        /**
+         * Called when the Skip status has changed.
+         * <p>
+         * Users can only skip an X number of times within a certain timeperiod
+         * </p>
+         * <p>
+         * Skip status can also be accessed with {@link Player#isSkippable()}
+         * </p>
+         *
+         * @param skippable
+         *         Skip Status
+         */
+        public void onSkipStatusChange(boolean skippable);
 
         /**
          * Called when there is an unhandled error.

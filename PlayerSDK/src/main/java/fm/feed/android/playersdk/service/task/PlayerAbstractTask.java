@@ -22,7 +22,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 public abstract class PlayerAbstractTask<Params, Progress, Result> extends AsyncTask<Params, Progress, Result> {
     private TaskQueueManager mQueueManager;
 
-    protected Handler mHandler = new Handler(Looper.getMainLooper());
+    protected Handler mHandler = new Handler(Looper.myLooper());
     private Runnable mTaskCancelled = new Runnable() {
         @Override
         public void run() {

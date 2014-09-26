@@ -222,8 +222,8 @@ public class PlayerView extends RelativeLayout {
         setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_dislike);
         setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
         setSvgResource(mPlayPause, R.drawable.ic_play_faded, R.string.accessibility_play);
-        setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
-        setSvgResource(mVolume, R.drawable.ic_speakermute_faded, R.string.accessibility_volume_muted);
+        setSvgResource(mSkip, R.drawable.ic_skip_disabled, R.string.accessibility_skip_disabled);
+        setSvgResource(mVolume, R.drawable.ic_speakerhigh_faded, R.string.accessibility_volume_muted);
         setSvgResource(mShare, R.drawable.ic_share_faded, R.string.accessibility_share);
 
         // Add SVGImageViews to the layout.
@@ -295,8 +295,10 @@ public class PlayerView extends RelativeLayout {
         mSkip.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                setSvgResource(mSkip, R.drawable.ic_skip_normal, R.string.accessibility_skipping);
-                mPlayer.skip();
+                if (mPlayer.isSkippable()) {
+                    setSvgResource(mSkip, R.drawable.ic_skip_normal, R.string.accessibility_skipping);
+                    mPlayer.skip();
+                }
             }
         });
         mShare.setOnClickListener(new OnClickListener() {
@@ -363,12 +365,16 @@ public class PlayerView extends RelativeLayout {
         mPlayer.registerNavListener(mNavListener);
         mPlayer.registerSocialListener(mSocialListener);
 
-        if (mPlayer.hasPlay()) {
-            updatePlayInfo(mPlayer.getPlay());
+        resetPlayInfo();
+
+        if (mPlayer.isInitialized()) {
+            if (mPlayer.hasPlay()) {
+                updatePlayInfo(mPlayer.getPlay());
+            }
             updateState(mPlayer.getState());
-        } else {
-            resetPlayInfo();
         }
+
+        updateSkipStatus(mPlayer.isSkippable());
     }
 
     @Override
@@ -436,11 +442,17 @@ public class PlayerView extends RelativeLayout {
             if (mAutoPlay) {
                 mPlayer.play();
             }
+            updateState(mPlayer.getState());
         }
 
         @Override
         public void onPlaybackStateChanged(PlayInfo.State state) {
             updateState(state);
+        }
+
+        @Override
+        public void onSkipStatusChange(boolean skippable) {
+            updateSkipStatus(skippable);
         }
 
         @Override
@@ -504,11 +516,19 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onTrackChanged(Play play) {
+            resetPlayInfo();
+
             // Set the SVG resource to the SVGImageView
             setSvgResource(mDislike, R.drawable.ic_thumbdown_faded, R.string.accessibility_dislike);
             setSvgResource(mLike, R.drawable.ic_thumbup_faded, R.string.accessibility_like);
-            setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
-            mSkip.setVisibility(View.VISIBLE);
+
+            if (mPlayer.isSkippable()) {
+                setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
+            } else {
+                setSvgResource(mSkip, R.drawable.ic_skip_disabled, R.string.accessibility_skip_disabled);
+            }
+
+            updatePlayInfo(play);
         }
 
         @Override
@@ -520,9 +540,7 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public void onSkipFailed() {
-            setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
-
-            mSkip.setVisibility(View.GONE);
+            setSvgResource(mSkip, R.drawable.ic_skip_disabled, R.string.accessibility_skip_disabled);
         }
 
         @Override
@@ -605,7 +623,6 @@ public class PlayerView extends RelativeLayout {
     private void updateState(PlayInfo.State state) {
         // Set the SVG resource to the SVGImageView
         setSvgResource(mPlayPause, R.drawable.ic_play_faded, R.string.accessibility_play);
-        setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
 
         switch (state) {
             case WAITING:
@@ -617,8 +634,12 @@ public class PlayerView extends RelativeLayout {
                 break;
             case TUNING:
                 setSvgResource(mPlayPause, R.drawable.ic_pause_normal, R.string.accessibility_pause);
-                resetPlayInfo();
-                mArtist.setText(getContext().getString(R.string.tuning));
+                if (mPlayer.hasPlay()) {
+                    updatePlayInfo(mPlayer.getPlay());
+                } else {
+                    resetPlayInfo();
+                    mArtist.setText(getContext().getString(R.string.tuning));
+                }
                 break;
             case TUNED:
             case PLAYING:
@@ -634,6 +655,14 @@ public class PlayerView extends RelativeLayout {
             case REQUESTING_SKIP:
                 setSvgResource(mSkip, R.drawable.ic_skip_normal, R.string.accessibility_skipping);
                 break;
+        }
+    }
+
+    private void updateSkipStatus(boolean skippable) {
+        if (skippable) {
+            setSvgResource(mSkip, R.drawable.ic_skip_faded, R.string.accessibility_skip);
+        } else {
+            setSvgResource(mSkip, R.drawable.ic_skip_disabled, R.string.accessibility_skip_disabled);
         }
     }
 

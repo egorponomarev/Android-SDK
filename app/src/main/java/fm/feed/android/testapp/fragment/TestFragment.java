@@ -279,6 +279,11 @@ public class TestFragment extends Fragment {
         }
 
         @Override
+        public void onSkipStatusChange(boolean skippable) {
+
+        }
+
+        @Override
         public void onError(PlayerError playerError) {
             // Display error
             Toast.makeText(getActivity(), playerError.toString(), Toast.LENGTH_LONG).show();
