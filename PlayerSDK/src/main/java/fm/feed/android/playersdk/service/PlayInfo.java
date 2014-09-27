@@ -10,13 +10,13 @@ import fm.feed.android.playersdk.model.Station;
 
 /**
  * The MIT License (MIT)
- *
+ * <p/>
  * Copyright (c) 2014 Feed Media, Inc
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
+ * <p/>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * <p/>
  * Created by mharkins on 8/29/14.
  */
 public class PlayInfo {
@@ -79,7 +79,6 @@ public class PlayInfo {
     }
 
     private String mSdkVersion;
-    private int mNotificationId;
 
     private String mClientId;
 
@@ -101,10 +100,6 @@ public class PlayInfo {
     // -----------------
     // Protected Accessors
     // -----------------
-
-    protected void setNotificationId(int notificationId) {
-        this.mNotificationId = notificationId;
-    }
 
     protected String getClientId() {
         return mClientId;
@@ -164,18 +159,6 @@ public class PlayInfo {
      */
     public String getSdkVersion() {
         return mSdkVersion;
-    }
-
-    /**
-     * The Notification Id used for persisting the Service in the background.
-     * <p>
-     * For more details see: <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a>.
-     * </p>
-     *
-     * @return
-     */
-    public int getNotificationId() {
-        return mNotificationId;
     }
 
     /**

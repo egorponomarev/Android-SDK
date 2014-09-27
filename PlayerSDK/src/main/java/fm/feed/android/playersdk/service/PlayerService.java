@@ -1,7 +1,7 @@
 package fm.feed.android.playersdk.service;
 
 import android.annotation.SuppressLint;
-import android.app.NotificationManager;
+import android.app.Notification;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,7 +10,6 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.IBinder;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import com.squareup.otto.Bus;
@@ -19,6 +18,7 @@ import com.squareup.otto.Subscribe;
 import java.util.Date;
 import java.util.List;
 
+import fm.feed.android.playersdk.Player;
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
@@ -27,6 +27,7 @@ import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.OutNotificationBuilder;
 import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
@@ -70,8 +71,6 @@ public class PlayerService extends Service {
     protected static Bus eventBus = BusProvider.getInstance();
 
     protected Webservice mWebservice;
-    protected PlayInfo mPlayInfo;
-    protected DataPersister mDataPersister;
 
     protected AudioFocusManager mAudioFocusManager;
 
@@ -83,6 +82,11 @@ public class PlayerService extends Service {
     protected MediaPlayerPool mMediaPlayerPool;
 
     protected ElapsedTimeManager mElapsedTimeManager;
+
+    protected PlayInfo mPlayInfo;
+    protected DataPersister mDataPersister;
+
+    protected Player.NotificationBuilder mNotificationBuilder;
 
     protected boolean mInitialized;
     protected boolean mValidStart;
@@ -98,7 +102,6 @@ public class PlayerService extends Service {
 
     public static enum ExtraKeys {
         timestamp,
-        notificationId,
         buildType;
 
         ExtraKeys() {
@@ -222,11 +225,6 @@ public class PlayerService extends Service {
      * @param intent
      */
     private void resume(Intent intent) {
-        int notificationId = intent.getIntExtra(ExtraKeys.notificationId.toString(), -1);
-        if (notificationId >= 0) {
-            mPlayInfo.setNotificationId(notificationId);
-        }
-
         eventBus.post(mPlayInfo);
     }
 
@@ -254,28 +252,24 @@ public class PlayerService extends Service {
     }
 
 
-    protected void enableForeground() {
-        int stringId = getApplicationInfo().labelRes;
-        String applicationName = getString(stringId);
-
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(this);
-        if (mDebug == BuildType.DEBUG) {
-            mBuilder.setContentTitle(applicationName + "-SDK");
-        } else {
-            mBuilder.setContentTitle(applicationName);
+    protected void updateNotification(Play play) {
+        // If there is no notification builder, then don't enable foreground
+        if (mNotificationBuilder == null) {
+            return;
         }
-        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
 
-        // Make Service live even if Application is shut down by system
-        startForeground(mPlayInfo.getNotificationId(), mBuilder.build());
-        eventBus.post(new EventMessage(EventMessage.Status.NOTIFICATION_WILL_SHOW));
+        Notification notification = mNotificationBuilder.build(this, play);
+        if (notification != null) {
+            startForeground(mNotificationBuilder.getNotificationId(), notification);
+        }
     }
 
     protected void disableForeground() {
-        NotificationManager mNotificationManager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        mNotificationManager.cancel(mPlayInfo.getNotificationId());
+        if (mNotificationBuilder == null) {
+            return;
+        }
+
+        mNotificationBuilder.destroy(this);
         stopForeground(true);
     }
 
@@ -320,6 +314,12 @@ public class PlayerService extends Service {
 
         getClientId();
         setPlacement(null, false); // Get the default placement information
+    }
+
+    @Subscribe
+    @SuppressWarnings("unused")
+    public void setNotificationBuilder(OutNotificationBuilder notificationBuilderWrapper) {
+        this.mNotificationBuilder = notificationBuilderWrapper.getObject();
     }
 
     @Subscribe
@@ -547,7 +547,10 @@ public class PlayerService extends Service {
                     if (!mMainQueue.hasActivePlayTask()) {
                         mPlayInfo.setCurrentPlay(play);
 
+                        updateNotification(play);
+
                         eventBus.post(play);
+
                     }
                 }
 
@@ -573,7 +576,11 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onUnkownError(final TuneTask tuneTask, FeedFMError feedFMError) {
-                    mPlayInfo.setCurrentPlay(null);
+                    if (!mMainQueue.hasActivePlayTask()) {
+                        mPlayInfo.setCurrentPlay(null);
+
+                        disableForeground();
+                    }
 
                     // If we have an unknown error for this stream, forcefully skip this song.
                     // First we need to mark this song as started.
@@ -611,7 +618,11 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onApiError(TuneTask tuneTask, FeedFMError mApiError) {
-                    mPlayInfo.setCurrentPlay(null);
+                    if (!mMainQueue.hasActivePlayTask()) {
+                        mPlayInfo.setCurrentPlay(null);
+
+                        disableForeground();
+                    }
 
                     handleError(mApiError);
                 }
@@ -653,7 +664,7 @@ public class PlayerService extends Service {
             if (playTask.isPaused()) {
                 playTask.play(true);
 
-                enableForeground();
+                updateNotification(playTask.getPlay());
                 return;
             }
         }
@@ -668,8 +679,9 @@ public class PlayerService extends Service {
                 mForceSkipCount = 0;
                 mPlayInfo.setCurrentPlay(play);
 
+                updateNotification(play);
+
                 eventBus.post(play);
-                enableForeground();
 
                 final String playId = play.getId();
 

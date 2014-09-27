@@ -61,7 +61,7 @@ public class FakePlayerService extends PlayerService {
 //    }
 //
     @Override
-    protected void enableForeground() {
+    protected void updateNotification() {
         eventBus.post(new EventMessage(EventMessage.Status.NOTIFICATION_WILL_SHOW));
     }
 

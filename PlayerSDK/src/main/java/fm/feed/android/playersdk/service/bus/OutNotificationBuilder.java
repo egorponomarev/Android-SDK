@@ -1,5 +1,7 @@
 package fm.feed.android.playersdk.service.bus;
 
+import fm.feed.android.playersdk.Player;
+
 /**
  * The MIT License (MIT)
  *
@@ -11,24 +13,8 @@ package fm.feed.android.playersdk.service.bus;
  *
  * Created by mharkins on 8/22/14.
  */
-public class EventMessage {
-    public enum Status {
-        SKIP_FAILED,
-        SKIP_STATUS_UPDATED,
-        LIKE,
-        UNLIKE,
-        DISLIKE,
-        END_OF_PLAYLIST,
-        STATUS_UPDATED
-    }
-
-    private Status mStatus;
-
-    public EventMessage(Status status) {
-        mStatus = status;
-    }
-
-    public Status getStatus() {
-        return mStatus;
+public class OutNotificationBuilder extends Wrap<Player.NotificationBuilder> {
+    public OutNotificationBuilder(Player.NotificationBuilder mObject) {
+        super(mObject);
     }
 }

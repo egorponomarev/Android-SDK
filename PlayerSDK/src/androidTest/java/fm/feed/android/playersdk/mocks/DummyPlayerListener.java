@@ -67,8 +67,13 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
     }
 
     @Override
-    public void onNotificationWillShow(int notificationId) {
-        didCallShowNotification = true;
+    public Player.NotificationBuilder getNotificationBuilder() {
+        return null;
+    }
+
+    @Override
+    public void onSkipStatusChange(boolean skippable) {
+
     }
 
     @Override

@@ -1,5 +1,6 @@
 package fm.feed.android.testapp.fragment;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -108,7 +109,7 @@ public class TestFragment extends Fragment {
          * Initializes the Player Object.
          * Starts the foreground Service (music will keep running when app is killed, unless mPlayer.pause() is called prior to that).
          */
-        mPlayer = Player.getInstance(getActivity(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
+        mPlayer = Player.getInstance(getActivity(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET);
     }
 
     @Override
@@ -252,6 +253,48 @@ public class TestFragment extends Fragment {
         }
 
         @Override
+        public Player.NotificationBuilder getNotificationBuilder() {
+            Player.NotificationBuilder notificationBuilder = new Player.NotificationBuilder() {
+                @Override
+                public Notification build(Context serviceContext, Play play) {
+                    int stringId = getActivity().getApplicationInfo().labelRes;
+                    String applicationName = getString(stringId);
+
+                    Intent intent = new Intent(getActivity().getApplicationContext(), MainActivity.class);
+                    intent.setAction(Intent.ACTION_MAIN);
+
+                    intent.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                    PendingIntent pi = PendingIntent.getActivity(getActivity().getApplicationContext(), 0, intent,
+                            PendingIntent.FLAG_UPDATE_CURRENT);
+
+                    NotificationCompat.Builder mBuilder =
+                            new NotificationCompat.Builder(getActivity());
+                    mBuilder.setContentIntent(pi);
+                    mBuilder.setContentTitle(applicationName);
+                    mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
+                    mBuilder.setOngoing(true);
+                    mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
+
+                    return mBuilder.build();
+                }
+
+                @Override
+                public void destroy(Context serviceContext) {
+                    NotificationManager mNotificationManager =
+                            (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
+                    mNotificationManager.cancel(CUSTOM_NOTIFICATION_ID);
+                }
+
+                @Override
+                public int getNotificationId() {
+                    return CUSTOM_NOTIFICATION_ID;
+                }
+            };
+            return null; // Don't return a notification builder as we want to be using the one in PlayerView
+        }
+
+        @Override
         public void onPlaybackStateChanged(PlayInfo.State state) {
             /**
              * Handle each state change by updating the UI
@@ -287,12 +330,6 @@ public class TestFragment extends Fragment {
         public void onError(PlayerError playerError) {
             // Display error
             Toast.makeText(getActivity(), playerError.toString(), Toast.LENGTH_LONG).show();
-        }
-
-        @Override
-        public void onNotificationWillShow(int notificationId) {
-            // Show a notification indicating the play state.
-            showNotification(mPlayer.getPlay());
         }
     };
 
@@ -377,42 +414,6 @@ public class TestFragment extends Fragment {
         mTxtTitle.setText("");
         mTxtArtist.setText("");
         mTxtAlbum.setText("");
-    }
-
-    public void showNotification(Play play) {
-        if (play == null) {
-            return;
-        }
-
-        int stringId = getActivity().getApplicationInfo().labelRes;
-        String applicationName = getString(stringId);
-
-        Intent intent = new Intent(getActivity().getApplicationContext(), MainActivity.class);
-        intent.setAction(Intent.ACTION_MAIN);
-
-        intent.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
-                Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pi = PendingIntent.getActivity(getActivity().getApplicationContext(), 0, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT);
-
-        NotificationCompat.Builder mBuilder =
-                new NotificationCompat.Builder(getActivity());
-        mBuilder.setContentIntent(pi);
-        mBuilder.setContentTitle(applicationName);
-        mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
-        mBuilder.setOngoing(true);
-        mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
-
-        NotificationManager mNotificationManager =
-                (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-        // NOTIFICATION_ID allows you to update the notification later on.
-        mNotificationManager.notify(mPlayer.getNotificationId(), mBuilder.build());
-    }
-
-    public void clearNotification() {
-        NotificationManager mNotificationManager =
-                (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-        mNotificationManager.cancel(mPlayer.getNotificationId());
     }
 
     @SuppressWarnings("unused")
@@ -513,8 +514,6 @@ public class TestFragment extends Fragment {
         mTxtTitle.setText(play.getAudioFile().getTrack().getTitle());
         mTxtArtist.setText(play.getAudioFile().getArtist().getName());
         mTxtAlbum.setText(play.getAudioFile().getRelease().getTitle());
-
-        showNotification(play);
     }
 
 }

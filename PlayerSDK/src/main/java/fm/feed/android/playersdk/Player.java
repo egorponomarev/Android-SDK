@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk;
 
+import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
@@ -21,6 +22,7 @@ import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.OutNotificationBuilder;
 import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
@@ -93,7 +95,7 @@ public class Player {
 
     private boolean mRequiresAuthentication;
 
-    protected Player(Context context, Bus bus, String token, String secret, int notificationId) {
+    protected Player(Context context, Bus bus, String token, String secret) {
         mEventBus = bus;
         mRequiresAuthentication = false;
 
@@ -102,38 +104,28 @@ public class Player {
 
         mCredentials = new Credentials(token, secret);
 
-        startPlayerService(context, notificationId);
+        startPlayerService(context);
     }
 
-    protected void startPlayerService(Context context, Integer notificationId) {
+    protected void startPlayerService(Context context) {
         // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
         intent.putExtra(PlayerService.ExtraKeys.timestamp.toString(), new Date().getTime());
         intent.putExtra(PlayerService.ExtraKeys.buildType.toString(), mDebug.name());
 
-
-        if (notificationId >= -1) {
-            intent.putExtra(PlayerService.ExtraKeys.notificationId.toString(), notificationId);
-        }
         context.startService(intent);
-    }
-
-    public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret) {
-        return getInstance(context, playerListener, token, secret, null);
     }
 
     /**
      * Get a Singleton instance of the {@link fm.feed.android.playersdk.Player}.
      *
      * @param context
-     * @param notificationId
-     *         a custom ID for the notification that will be created when the Service runs in the foreground.
      *
      * @return
      */
-    public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret, Integer notificationId) {
+    public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret) {
         if (mInstance == null) {
-            mInstance = new Player(context, BusProvider.getInstance(), token, secret, notificationId);
+            mInstance = new Player(context, BusProvider.getInstance(), token, secret);
         }
         mInstance.registerPlayerListener(playerListener);
         return mInstance;
@@ -368,19 +360,6 @@ public class Player {
     }
 
     /**
-     * The Notification Id used for persisting the Service in the background.
-     * <p>
-     * For more details see: <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a>.
-     * </p>
-     *
-     * @return
-     */
-    public int getNotificationId() {
-        return mPlayInfo != null ? mPlayInfo.getNotificationId() : -1;
-    }
-
-
-    /**
      * Can this {@link Play} be skipped
      * <p>
      * A user can only skip tracks a certain number of times. Depending on server/station rules.
@@ -412,6 +391,12 @@ public class Player {
             mPlayInfo = playInfo;
 
             mRequiresAuthentication = !mPlayInfo.hasCredentials();
+
+            NotificationBuilder notificationBuilder = mPlayerListeners.isEmpty() ? null : mPlayerListeners.get(0).getNotificationBuilder();
+            if (notificationBuilder != null) {
+                mEventBus.post(new OutNotificationBuilder(notificationBuilder));
+            }
+
             if (mRequiresAuthentication) {
                 setCredentials(mCredentials.getToken(), mCredentials.getSecret());
             } else {
@@ -462,11 +447,6 @@ public class Player {
                         case END_OF_PLAYLIST:
                             for (NavListener listener : mNavListeners) {
                                 listener.onEndOfPlaylist();
-                            }
-                            break;
-                        case NOTIFICATION_WILL_SHOW:
-                            for (PlayerListener listener : mPlayerListeners) {
-                                listener.onNotificationWillShow(getNotificationId());
                             }
                             break;
                         default:
@@ -583,6 +563,14 @@ public class Player {
         public void onPlayerInitialized(PlayInfo playInfo);
 
         /**
+         * The {@link fm.feed.android.playersdk.Player.NotificationBuilder} that will handle creating the play notifications.
+         *
+         * @return The {@link fm.feed.android.playersdk.Player.NotificationBuilder} that will handle creating the play notifications.
+         * If {@code null} the radio will not keep playing when the application is killed.
+         */
+        public NotificationBuilder getNotificationBuilder();
+
+        /**
          * Called when the playback state changes
          * <p>
          * Can be one of:
@@ -622,20 +610,6 @@ public class Player {
          * @param playerError
          */
         public void onError(PlayerError playerError);
-
-        /**
-         * Called when the Service will start showing the Persistent notification
-         * <p>
-         * You can override the notification to display your custom layout.
-         * </p>
-         * <p>
-         * See <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a> for more details.
-         * </p>
-         *
-         * @param notificationId
-         *         The notification Id used to override the default Service notification.
-         */
-        public void onNotificationWillShow(int notificationId);
     }
 
     /**
@@ -719,5 +693,32 @@ public class Player {
          * Called when the song has been disliked
          */
         public void onDisliked();
+    }
+
+    /**
+     * The notification builder used by the Service to enable foreground (running radio while app is killed)
+     */
+    public interface NotificationBuilder {
+        /**
+         * Called when the Service will show the Persistent notification with a new play
+         * <p>
+         * Provide your own implementation of the Notification based on the {@link fm.feed.android.playersdk.model.Play}
+         * </p>
+         * <p>
+         * See <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a> for more details.
+         * </p>
+         *
+         * @param serviceContext the Service context.
+         * @param play the current Play
+         */
+        public Notification build(Context serviceContext, Play play);
+
+        /**
+         * Called when the notification should disappear to allow the service to shut down.
+         * @param serviceContext
+         */
+        public void destroy(Context serviceContext);
+
+        public int getNotificationId();
     }
 }

@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk.view;
 
+import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -360,7 +361,7 @@ public class PlayerView extends RelativeLayout {
     }
 
     private void initializePlayer() {
-        mPlayer = Player.getInstance(getContext(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
+        mPlayer = Player.getInstance(getContext(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET);
         mPlayer.registerPlayerListener(mPlayerListener);
         mPlayer.registerNavListener(mNavListener);
         mPlayer.registerSocialListener(mSocialListener);
@@ -390,8 +391,6 @@ public class PlayerView extends RelativeLayout {
 
         if (mPlayer.hasPlay()) {
             updatePlayInfo(mPlayer.getPlay());
-
-            mPlayerListener.onNotificationWillShow(mPlayer.getNotificationId());
         }
     }
 
@@ -446,6 +445,11 @@ public class PlayerView extends RelativeLayout {
         }
 
         @Override
+        public Player.NotificationBuilder getNotificationBuilder() {
+            return mNotificationBuilder;
+        }
+
+        @Override
         public void onPlaybackStateChanged(PlayInfo.State state) {
             updateState(state);
         }
@@ -458,48 +462,6 @@ public class PlayerView extends RelativeLayout {
         @Override
         public void onError(PlayerError playerError) {
 
-        }
-
-        @Override
-        public void onNotificationWillShow(int notificationId) {
-            // The user can decide not to override the notification when it shows.
-            if (!mHandlesNotification) {
-                return;
-            }
-
-            int stringId = getContext().getApplicationInfo().labelRes;
-            String applicationName = getContext().getString(stringId);
-
-            Intent i;
-            PackageManager manager = getContext().getPackageManager();
-            try {
-                i = manager.getLaunchIntentForPackage(getContext().getApplicationInfo().packageName);
-                if (i == null)
-                    throw new PackageManager.NameNotFoundException();
-                i.addCategory(Intent.CATEGORY_LAUNCHER);
-                i.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
-                        i.FLAG_ACTIVITY_SINGLE_TOP);
-            } catch (PackageManager.NameNotFoundException e) {
-                return;
-            }
-
-            PendingIntent pi = PendingIntent.getActivity(getContext().getApplicationContext(), 0, i,
-                    PendingIntent.FLAG_UPDATE_CURRENT);
-
-            String title = mPlayer.getPlay().getAudioFile().getTrack().getTitle();
-
-            NotificationCompat.Builder mBuilder =
-                    new NotificationCompat.Builder(getContext());
-            mBuilder.setContentIntent(pi);
-            mBuilder.setContentTitle(applicationName);
-            mBuilder.setContentText(getContext().getString(R.string.notification_body_template, title));
-            mBuilder.setOngoing(true);
-            mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
-
-            NotificationManager mNotificationManager =
-                    (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-            // NOTIFICATION_ID allows you to update the notification later on.
-            mNotificationManager.notify(mPlayer.getNotificationId(), mBuilder.build());
         }
     };
 
@@ -572,6 +534,68 @@ public class PlayerView extends RelativeLayout {
             updateLikeState(mPlayer.getPlay().getLikeState());
         }
     };
+
+    private class MyNotificationBuilder implements Player.NotificationBuilder {
+        private String applicationName;
+        private PendingIntent pendingIntent;
+        private String titleTemplate;
+
+        protected MyNotificationBuilder() {
+            int stringId = getContext().getApplicationInfo().labelRes;
+            applicationName = getContext().getString(stringId);
+
+            Intent i = null;
+            PackageManager manager = getContext().getPackageManager();
+            try {
+                i = manager.getLaunchIntentForPackage(getContext().getApplicationInfo().packageName);
+                if (i == null)
+                    throw new PackageManager.NameNotFoundException();
+
+                i.addCategory(Intent.CATEGORY_LAUNCHER);
+                i.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
+                        i.FLAG_ACTIVITY_SINGLE_TOP);
+
+                pendingIntent = PendingIntent.getActivity(getContext().getApplicationContext(), 0, i,
+                        PendingIntent.FLAG_UPDATE_CURRENT);
+
+            } catch (PackageManager.NameNotFoundException e) {
+                pendingIntent = null;
+            }
+
+            titleTemplate = getContext().getString(R.string.notification_body_template);
+        }
+
+        @Override
+        public Notification build(Context serviceContext, Play play) {
+            String title = mPlayer.getPlay().getAudioFile().getTrack().getTitle();
+
+            NotificationCompat.Builder mBuilder =
+                    new NotificationCompat.Builder(serviceContext);
+            mBuilder.setContentIntent(pendingIntent);
+            mBuilder.setContentTitle(applicationName);
+            mBuilder.setContentText(serviceContext.getString(R.string.notification_body_template, title));
+            mBuilder.setOngoing(true);
+            mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
+
+            // NOTIFICATION_ID allows you to update the notification later on.
+            return mBuilder.build();
+        }
+
+        @Override
+        public void destroy(Context serviceContext) {
+            NotificationManager mNotificationManager =
+                    (NotificationManager) serviceContext.getSystemService(Context.NOTIFICATION_SERVICE);
+            mNotificationManager.cancel(mNotificationBuilder.getNotificationId());
+        }
+
+        @Override
+        public int getNotificationId() {
+            return CUSTOM_NOTIFICATION_ID;
+        }
+
+    }
+
+    private Player.NotificationBuilder mNotificationBuilder = new MyNotificationBuilder();
 
     private void updateLikeState(Play.LikeState likeState) {
         if (likeState == null) {
