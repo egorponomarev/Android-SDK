@@ -8,10 +8,7 @@ import org.robolectric.Robolectric;
 
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.service.PlayerService;
-import fm.feed.android.playersdk.service.bus.EventMessage;
-import fm.feed.android.playersdk.service.util.AudioFocusManager;
 import fm.feed.android.playersdk.service.webservice.Webservice;
-import fm.feed.android.playersdk.service.webservice.util.ElapsedTimeManager;
 
 /**
  * Created by mharkins on 8/27/14.
@@ -60,13 +57,5 @@ public class FakePlayerService extends PlayerService {
 //
 //    }
 //
-    @Override
-    protected void updateNotification() {
-        eventBus.post(new EventMessage(EventMessage.Status.NOTIFICATION_WILL_SHOW));
-    }
 
-    @Override
-    protected void disableForeground() {
-
-    }
 }

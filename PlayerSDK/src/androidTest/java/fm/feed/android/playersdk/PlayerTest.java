@@ -24,16 +24,13 @@ import fm.feed.android.playersdk.mocks.FakeRestService;
 import fm.feed.android.playersdk.mocks.StubWebservice;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.PlayerService;
-import fm.feed.android.playersdk.service.task.PlayerAbstractTask;
 import fm.feed.android.playersdk.service.webservice.model.ClientResponse;
-import fm.feed.android.playersdk.service.webservice.model.FeedFMResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
 
-import static junit.framework.Assert.assertFalse;
-import static junit.framework.Assert.assertNull;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -182,7 +179,7 @@ public class PlayerTest {
 
         runOneTask(2);
 
-        assertNull(player.getPlay());
+        assertNotEquals(null, player.getPlay());
     }
 
     @Test
