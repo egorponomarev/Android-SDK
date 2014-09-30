@@ -18,6 +18,8 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  */
 public class SimpleNetworkTask<Response> extends NetworkAbstractTask<Object, Void, Response> {
     public interface SimpleNetworkTaskListener<Response> {
+        public String getTag();
+
         public void onStart();
 
         public Response performRequestSynchronous() throws FeedFMError;
@@ -75,6 +77,11 @@ public class SimpleNetworkTask<Response> extends NetworkAbstractTask<Object, Voi
         if (error != null && mListener != null) {
             mListener.onFail(error);
         }
+    }
+
+    @Override
+    public String getTag() {
+        return mListener.getTag();
     }
 
     @Override

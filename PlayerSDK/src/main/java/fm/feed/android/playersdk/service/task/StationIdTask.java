@@ -79,6 +79,11 @@ public class StationIdTask extends PlayerAbstractTask<Object, Void, Station> {
     }
 
     @Override
+    public String getTag() {
+        return StationIdTask.class.getSimpleName();
+    }
+
+    @Override
     public PlayerAbstractTask copy(int attempts) {
         PlayerAbstractTask task = new StationIdTask(getQueueManager(), mListener, mStationList, mCurrentStationId, mSelectedStationId);
         task.setAttemptCount(attempts);

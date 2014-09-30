@@ -546,6 +546,7 @@ public class PlayerService extends Service {
                     // Only publish the Play info if the Tuning is being done on the main queue (this means that this TuneTask isn't in the background).
                     if (!mMainQueue.hasActivePlayTask()) {
                         mPlayInfo.setCurrentPlay(play);
+                        mPlayInfo.setSkippable(false);
 
                         updateNotification(play);
 
@@ -586,6 +587,11 @@ public class PlayerService extends Service {
                     // First we need to mark this song as started.
 
                     SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+                        @Override
+                        public String getTag() {
+                            return "PlayStartTask";
+                        }
+
                         @Override
                         public void onStart() {
                             updateState(PlayInfo.State.REQUESTING_SKIP);
@@ -687,6 +693,11 @@ public class PlayerService extends Service {
 
                 SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                     @Override
+                    public String getTag() {
+                        return "PlayStartTask";
+                    }
+
+                    @Override
                     public void onStart() {
                     }
 
@@ -783,6 +794,11 @@ public class PlayerService extends Service {
 
                     SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                         @Override
+                        public String getTag() {
+                            return "CompleteTask";
+                        }
+
+                        @Override
                         public void onStart() {
 
                         }
@@ -850,6 +866,11 @@ public class PlayerService extends Service {
         if (play != null) {
             final SimpleNetworkTask<Boolean> skipTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
+                public String getTag() {
+                    return "SkipTask";
+                }
+
+                @Override
                 public void onStart() {
                     updateState(PlayInfo.State.REQUESTING_SKIP);
                 }
@@ -861,6 +882,8 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onSuccess(Boolean canSkip) {
+                    mPlayInfo.setSkippable(false);
+
                     if (canSkip) {
                         task.getQueueManager().remove(task);
 
@@ -879,8 +902,6 @@ public class PlayerService extends Service {
                 public void onFail(FeedFMError error) {
                     eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
                     handleError(error);
-
-                    // TODO: log error
                 }
             });
 
@@ -920,6 +941,11 @@ public class PlayerService extends Service {
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
+                public String getTag() {
+                    return "LikeTask";
+                }
+
+                @Override
                 public void onStart() {
 
                 }
@@ -955,6 +981,11 @@ public class PlayerService extends Service {
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
+                public String getTag() {
+                    return "UnlikeTask";
+                }
+
+                @Override
                 public void onStart() {
 
                 }
@@ -988,6 +1019,11 @@ public class PlayerService extends Service {
             final Play play = playTask.getPlay();
 
             SimpleNetworkTask task = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+                @Override
+                public String getTag() {
+                    return "DislikeTask";
+                }
+
                 @Override
                 public void onStart() {
 

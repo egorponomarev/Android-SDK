@@ -29,6 +29,8 @@ public class ElapsedTimeManager {
 
     private PlayTask mPlayTask;
 
+    private boolean stopped = true;
+
     private static ElapsedTimeManager sInstance = null;
 
     /**
@@ -42,6 +44,11 @@ public class ElapsedTimeManager {
 
             SimpleNetworkTask<Boolean> elapsedTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
                 @Override
+                public String getTag() {
+                    return "ElapsedTimeTask";
+                }
+
+                @Override
                 public void onStart() {
 
                 }
@@ -53,7 +60,9 @@ public class ElapsedTimeManager {
 
                 @Override
                 public void onSuccess(Boolean aBoolean) {
-                    updateElapsedTimes();
+                    if (!stopped) {
+                        updateElapsedTimes();
+                    }
                 }
 
                 @Override
@@ -83,11 +92,15 @@ public class ElapsedTimeManager {
     }
 
     public void start(PlayTask playTask) {
+        stopped = false;
+
         mPlayTask = playTask;
         updateElapsedTimes();
     }
 
     public void stop() {
+        stopped = true;
+
         mTimingHandler.removeCallbacks(mSendElapsedTime);
     }
 }

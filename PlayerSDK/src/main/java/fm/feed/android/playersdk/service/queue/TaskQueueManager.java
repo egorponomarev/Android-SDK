@@ -21,13 +21,13 @@ import fm.feed.android.playersdk.service.task.TuneTask;
 
 /**
  * The MIT License (MIT)
- *
+ * <p/>
  * Copyright (c) 2014 Feed Media, Inc
  * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- *
+ * <p/>
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
+ * <p/>
  * Created by mharkins on 9/2/14.
  */
 public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
@@ -156,7 +156,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
      * @return {@code true} if the {@code playerTask} was properly offered to the queue.
      */
     public boolean offerIfNotExist(PlayerAbstractTask playerTask) {
-        if (hasTaskType(playerTask.getClass())) {
+        if (hasTaskType(playerTask.getTag())) {
             return false;
         }
         return offer(playerTask);
@@ -171,7 +171,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
      * @return {@code true} if the {@code playerTask} was properly offered to the queue.
      */
     public boolean offerFirstIfNotExist(PlayerAbstractTask playerTask) {
-        if (hasTaskType(playerTask.getClass())) {
+        if (hasTaskType(playerTask.getTag())) {
             return false;
         }
         return offerFirst(playerTask);
@@ -242,13 +242,14 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
     /**
      * Checks in the Queue whether or not it contains an object of type {@code clazz}
      *
-     * @param clazz
+     * @param tag
+     *         Task identifier.
      *
      * @return
      */
-    public boolean hasTaskType(Class clazz) {
+    public boolean hasTaskType(String tag) {
         for (PlayerAbstractTask task : this) {
-            if (clazz.equals(task.getClass())) {
+            if (tag.equals(task.getTag())) {
                 return true;
             }
         }

@@ -69,6 +69,11 @@ public class ClientIdTask extends NetworkAbstractTask<Object, Void, String> {
     }
 
     @Override
+    public String getTag() {
+        return ClientIdTask.class.getSimpleName();
+    }
+
+    @Override
     public String toString() {
         return String.format("%s", ClientIdTask.class.getSimpleName());
     }

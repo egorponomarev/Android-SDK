@@ -71,6 +71,11 @@ public class PlacementIdTask extends NetworkAbstractTask<Object, Void, Placement
     }
 
     @Override
+    public String getTag() {
+        return PlacementIdTask.class.getSimpleName();
+    }
+
+    @Override
     public PlayerAbstractTask copy(int attempts) {
         PlayerAbstractTask task = new PlacementIdTask(getQueueManager(), mWebservice, mListener, mPlacementId);
         task.setAttemptCount(attempts);

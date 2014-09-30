@@ -278,6 +278,7 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
+        Log.d(TAG, "TASK CANCELLED: " + toString());
         if (error == null || (attempt >= Configuration.MAX_TASK_RETRY_ATTEMPTS)) {
 
             if (mListener != null) {
@@ -380,6 +381,11 @@ public class PlayTask extends SkippableTask<Object, Integer, Void> implements Me
     @Override
     public void onCompletion(MediaPlayer mp) {
         mCompleted = true;
+    }
+
+    @Override
+    public String getTag() {
+        return PlayTask.class.getSimpleName();
     }
 
     @Override

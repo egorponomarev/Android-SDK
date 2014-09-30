@@ -567,7 +567,7 @@ public class PlayerView extends RelativeLayout {
 
         @Override
         public Notification build(Context serviceContext, Play play) {
-            String title = mPlayer.getPlay().getAudioFile().getTrack().getTitle();
+            String title = play.getAudioFile().getTrack().getTitle();
 
             NotificationCompat.Builder mBuilder =
                     new NotificationCompat.Builder(serviceContext);

@@ -175,6 +175,7 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
 
     @Override
     protected void onTaskCancelled(FeedFMError error, int attempt) {
+        Log.d(TAG, "TASK CANCELLED: " + toString());
         if (error != null) {
             if (error.isPlayerError()) {
                 switch (error.getPlayerError()) {
@@ -238,6 +239,11 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     }
 
     @Override
+    public String getTag() {
+        return TuneTask.class.getSimpleName();
+    }
+
+    @Override
     public boolean onError(MediaPlayer mp, int what, int extra) {
         FeedFMMediaPlayer mediaPlayer = (FeedFMMediaPlayer) mp;
         Log.e(TAG, String.format("error playing track: [%s]: (%d, %d)", mediaPlayer.getPlay().getAudioFile().getTrack().getTitle(), what, extra));
@@ -281,6 +287,7 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
     }
 
     private void cleanup() {
+        mMediaPlayer = null;
     }
 
     @Override

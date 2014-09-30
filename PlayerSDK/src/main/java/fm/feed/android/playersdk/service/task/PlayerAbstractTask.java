@@ -67,6 +67,15 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
     @Deprecated
     @Override
     protected void onCancelled() {
+        handleCancelled(null);
+    }
+
+    @Override
+    protected void onCancelled(Result result) {
+        handleCancelled(result);
+    }
+
+    private void handleCancelled(Result result) {
         Log.i(getClass().getSimpleName(), String.format("%s, onCancelled...", mQueueManager));
 
         super.onCancelled();
@@ -95,6 +104,8 @@ public abstract class PlayerAbstractTask<Params, Progress, Result> extends Async
         mError = error;
         cancel(true);
     }
+
+    public abstract String getTag();
 
     protected void setAttemptCount(int attemptCount) {
         mAttemptCount = attemptCount;
