@@ -65,7 +65,6 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
 
     private Play mPlay;
 
-
     public TuneTask(Context context, TaskQueueManager queueManager, Webservice mWebservice, MediaPlayerPool mediaPlayerPool, TuneTaskListener listener, PlayInfo playInfo, String clientId) {
         this(context, queueManager, mWebservice, mediaPlayerPool, listener, playInfo, null, clientId);
     }

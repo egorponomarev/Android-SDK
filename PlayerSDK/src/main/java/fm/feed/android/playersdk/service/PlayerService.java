@@ -581,6 +581,9 @@ public class PlayerService extends Service {
                         mPlayInfo.setCurrentPlay(null);
 
                         disableForeground();
+
+                        // Remove the following PlayTask if it exists
+                        mMainQueue.removeAllPlayTasks();
                     }
 
                     // If we have an unknown error for this stream, forcefully skip this song.
@@ -594,7 +597,9 @@ public class PlayerService extends Service {
 
                         @Override
                         public void onStart() {
-                            updateState(PlayInfo.State.REQUESTING_SKIP);
+                            if (!mMainQueue.hasActivePlayTask()) {
+                                updateState(PlayInfo.State.REQUESTING_SKIP);
+                            }
                         }
 
                         @Override
@@ -607,17 +612,16 @@ public class PlayerService extends Service {
 
                         @Override
                         public void onSuccess(Boolean canSkip) {
-                            skip(tuneTask, true);
+                            // Only force skip if we are in the foreground.
+                            skip(tuneTask, true);//!mMainQueue.hasActivePlayTask());
                         }
 
                         @Override
                         public void onFail(FeedFMError error) {
-
+                            Log.d(TAG, "Failed to start task:" + tuneTask.getPlay() + ". Error: " + error.toString());
                         }
                     });
 
-                    // Remove the following PlayTask if it exists
-                    mMainQueue.removeAllPlayTasks();
                     mSecondaryQueue.offer(playStartTask);
                     mSecondaryQueue.next();
                 }
@@ -882,7 +886,9 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onSuccess(Boolean canSkip) {
-                    mPlayInfo.setSkippable(false);
+                    if (!force) {
+                        mPlayInfo.setSkippable(false);
+                    }
 
                     if (canSkip) {
                         task.getQueueManager().remove(task);
@@ -891,7 +897,10 @@ public class PlayerService extends Service {
                             task.cancel(true);
                         }
 
-                        play();
+                        // The skipped task might not be the one currently playing.
+                        if (!mMainQueue.hasActivePlayTask()) {
+                            play();
+                        }
                     } else {
                         onFail(null);
                     }
