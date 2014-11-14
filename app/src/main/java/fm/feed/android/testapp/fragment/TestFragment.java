@@ -55,8 +55,8 @@ public class TestFragment extends Fragment {
 
     private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
-    private static final String AUTH_TOKEN = "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42";
-    private static final String AUTH_SECRET = "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517";
+    private static final String AUTH_TOKEN = "c1c2e6dadf84a8bdee82ac618f23af88020c4667";
+    private static final String AUTH_SECRET = "887b155ef0a464b5f6e830dd85ee7eb33b061397";
 
     // Extra for the Save instance state.
     public static final String PLACEMENTS = "save_placements";

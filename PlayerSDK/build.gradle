@@ -111,6 +111,7 @@ artifacts {
     archives androidJavadocsJar
 }
 
+/*
 uploadArchives {
     configuration = configurations.archives
 
@@ -159,6 +160,7 @@ uploadArchives {
         }
     }
 }
+*/
 
 robolectric {
     // configure the set of classes for JUnit tests

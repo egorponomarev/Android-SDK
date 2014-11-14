@@ -52,10 +52,10 @@ import fm.feed.android.playersdk.util.UIUtils;
 public class PlayerView extends RelativeLayout {
     private static final String TAG = PlayerView.class.getSimpleName();
 
-    private static final int CUSTOM_NOTIFICATION_ID = 12341212;
+    private static final int CUSTOM_NOTIFICATION_ID = 8675309;
 
-    private static final String AUTH_TOKEN = "d40b7cc98a001fc9be8dd3fd32c3a0c495d0db42";
-    private static final String AUTH_SECRET = "b59c6d9c1b5a91d125f098ef9c2a7165dc1bd517";
+    private static final String AUTH_TOKEN = "7d86527ae873ff06276f5ca3a3e415fce10e0665";
+    private static final String AUTH_SECRET = "7cfb42a206222db05039027d3b417a4686c873e8";
 
     private AudioSettingsContentObserver mAudioSettingsContentObserver;
 
