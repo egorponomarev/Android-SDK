@@ -65,13 +65,35 @@ tracked through a couple queues:
     PlayTasks.
 
 There is an instance of each queue: tuningQueue, mainQueue (MainQueue),
-and secondaryQueue (TaskQueueManager). It looks like when we are
-requesting a play from the server that we don`t expect to immediately
+and secondaryQueue (TaskQueueManager). 
+
+The TaskQueueManager is a list of what are basically AsyncTasks
+that are executed serially, but different from an Android Looper
+in that you can cancel all existing queued up tasks or cancel
+the tasks based on priority. It has functions for you to be able
+to add a new task to the list, and
+remove other tasks that are at different priorities. Once you`ve 
+added tasks to the Queue, you run 'next()' to make sure the first
+task on the queue is started up. When a running, queued, task
+is complete, it will removed itself from the queue and call 'next()'
+on the Queue again to get the next task started.
+
+The things that you can queue up are:
+
+TuneTask - request a play from the feed.fm server, then create
+  a MediaPlayer with the URL for the audio. Send the MediaPlayer
+  instance to the TuneListener registered with this task.
+
+
+
+It looks like when we are requesting a play from the server that
+we don`t expect to immediately
 commence, that is done in the tuningQueue. When we`re getting a play from
 the server that we want to immediately commence, or we want to commence
 a play that is in the tuningQueue, we throw the play in the mainQueue.
 The secondaryQueue holds the next play that should commence upon
 completion of the play in the mainQueue.
+
 
 
 q`s:
@@ -80,14 +102,22 @@ q`s:
 
 Android notes:
 
-An AsyncTask is a task that gets started in the UI thread, then
-run in a background thread with periodict update notifications, then
-run again in the UI thread for post execution.
+Every thread gets a MessageQueue attached to it when Looper.prepare()
+is called. When you run Looper.loop(), the system just repeatedly pulling
+things off that queue and processing them. You can now create a
+Handler instance that will post things (Runnable or Message instances)
+to the queue. The Handler can throw things right on the queue to
+be run on the next loop, or you can set a delay or specific time
+so they run in the future.
 
-A Looper instance is attached to a MessageQueue and a Thread. It will
-repeatedly pull things from the MessageQueue and execute them. You can
-throw things into the MessageQueue with a Handler. The handler has
-methods to append things to the queue, put them in the front, schedule
-them to run in the future at a specific time or after some delay.
+The Android UI thread has a looper by default.
+
+An AsyncTask is a task that runs a new asynchronous thread and
+returns posts the results back to the UI thread. This class must be
+instantiated in the UI thread, and the instance must be started 
+in the UI thread. This class uses the Handler class to interact
+with the UI thread. This class may run multiple tasks in parallel
+or serially, depending on the SDK version - but you can use
+.executeOnExecutor() to enforce the parallelization you want.
 
 
