@@ -9,6 +9,23 @@ import java.util.Queue;
 import fm.feed.android.playersdk.service.FeedFMMediaPlayer;
 
 /**
+ * This class holds MediaPlayer instances. The instances that it holds
+ * are considered to be in one of 4 states:
+ *
+ *   - free = available to load and play something
+ *   - tuning = currently loading a remote URL
+ *   - tuned = all ready for playback
+ *   - playing = currently playing audio
+ *
+ * You can 'getTuningMediaPlayer()', which will retrieve a free player, mark
+ * it as 'tuning', and then return it. When that player has transitioned
+ * to the 'prepared' state (according to the MediaPlayer docs),
+ * it should be handed back to the pool, where it is considered 'tuned'.
+ * You can then 'getTunedMediaPlayer()', which is all ready for music
+ * playback. When you are done with the player, it should be 'free()'d
+ * so that it is thrown back in the 'free' state and available for
+ * reuse.
+ *
  * The MIT License (MIT)
  *
  * Copyright (c) 2014 Feed Media, Inc
