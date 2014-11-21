@@ -13,6 +13,7 @@ import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.NotificationCompat;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -27,6 +28,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
@@ -53,6 +55,8 @@ import fm.feed.android.testapp.R;
  */
 public class TestFragment extends Fragment {
 
+    private final static String TAG = Fragment.class.getSimpleName();
+
     private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
     private static final String AUTH_TOKEN = "c1c2e6dadf84a8bdee82ac618f23af88020c4667";
@@ -73,6 +77,7 @@ public class TestFragment extends Fragment {
     private Button mBtnLike;
     private Button mBtnUnlike;
     private Button mBtnDislike;
+    private Button mBtnHistory;
 
     private TextView mTxtTitle;
     private TextView mTxtArtist;
@@ -124,6 +129,7 @@ public class TestFragment extends Fragment {
         mBtnLike = (Button) rootView.findViewById(R.id.like);
         mBtnUnlike = (Button) rootView.findViewById(R.id.unlike);
         mBtnDislike = (Button) rootView.findViewById(R.id.dislike);
+        mBtnHistory = (Button) rootView.findViewById(R.id.history);
 
         mTxtTitle = (TextView) rootView.findViewById(R.id.title);
         mTxtArtist = (TextView) rootView.findViewById(R.id.artist);
@@ -156,6 +162,7 @@ public class TestFragment extends Fragment {
         mBtnLike.setOnClickListener(like);
         mBtnUnlike.setOnClickListener(unlike);
         mBtnDislike.setOnClickListener(dislike);
+        mBtnHistory.setOnClickListener(history);
 
         mPlacementsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         mStationsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
@@ -463,6 +470,18 @@ public class TestFragment extends Fragment {
         @Override
         public void onClick(View v) {
             mPlayer.dislike();
+        }
+    };
+
+    private View.OnClickListener history = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            Collection<Play> history = mPlayer.getPlayHistory();
+
+            Log.i(TAG, "Play history (most recent first):");
+            for (Play play : history) {
+                Log.i(TAG, "  -  " + play.getId() + ": " + play.getAudioFile().getTrack().getTitle());
+            }
         }
     };
 

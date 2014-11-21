@@ -10,6 +10,7 @@ import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
@@ -339,6 +340,14 @@ public class Player {
 
     public boolean hasStationList() {
         return mPlayInfo != null && mPlayInfo.getStationList() != null;
+    }
+
+    public List<Play> getPlayHistory() {
+        return (mPlayInfo == null) ? Collections.<Play>emptyList() : mPlayInfo.getPlayHistory();
+    }
+
+    public void setMaxPlayHistorySize(int newMaxHistoryLength) {
+        PlayInfo.setMaxPlayHistorySize(newMaxHistoryLength);
     }
 
     /**
