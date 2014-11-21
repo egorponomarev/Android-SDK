@@ -6,13 +6,17 @@
                 android:layout_marginTop="?attr/actionBarSize"
                 android:paddingLeft="5dp"
                 android:paddingRight="5dp"
-                tools:context=".MainActivity$PlaceholderFragment">
+                tools:context=".MainActivity$PlaceholderFragment"
+    android:gravity="top">
 
     <RelativeLayout
         android:id="@+id/buttons"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true">
 
         <Button
             android:id="@+id/tune"
@@ -79,18 +83,6 @@
             android:layout_below="@id/play"
             android:text="Dislike"/>
 
-
-        <ProgressBar
-            android:id="@+id/spinner"
-            style="?android:attr/progressBarStyleLarge"
-            android:indeterminateOnly="true"
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_below="@+id/play"
-            android:layout_above="@+id/title_prefix"
-            android:layout_toEndOf="@id/dislike"
-            android:layout_toRightOf="@id/dislike"
-            android:layout_centerHorizontal="true"/>
 
         <TextView
             android:id="@+id/title_prefix"
@@ -167,6 +159,15 @@
             android:layout_below="@id/album"
             android:layout_marginLeft="5dp"
             android:layout_marginRight="5dp"/>
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Log History"
+            android:id="@+id/history"
+            android:layout_alignBottom="@+id/dislike"
+            android:layout_toRightOf="@+id/dislike"
+            android:layout_toEndOf="@+id/dislike" />
     </RelativeLayout>
 
     <LinearLayout
@@ -192,7 +193,8 @@
         android:layout_width="fill_parent"
         android:layout_height="200dp"
         android:layout_alignParentBottom="true"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:id="@+id/linearLayout">
 
         <TextView
             android:layout_width="fill_parent"

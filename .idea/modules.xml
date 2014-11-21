@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/Android-SDK.iml" filepath="$PROJECT_DIR$/Android-SDK.iml" />
       <module fileurl="file://$PROJECT_DIR$/FeedFMPlayer.iml" filepath="$PROJECT_DIR$/FeedFMPlayer.iml" />
       <module fileurl="file://$PROJECT_DIR$/PlayerSDK/PlayerSDK.iml" filepath="$PROJECT_DIR$/PlayerSDK/PlayerSDK.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />

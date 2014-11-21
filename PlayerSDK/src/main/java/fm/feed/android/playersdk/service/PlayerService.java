@@ -533,6 +533,7 @@ public class PlayerService extends Service {
 
             // Tune in a separate Queue if we are already playing something.
             final TuneTask task = new TuneTask(getContext(), queueManager, mWebservice, mMediaPlayerPool, new TuneTask.TuneTaskListener() {
+
                 @Override
                 public void onTuneTaskBegin(TuneTask tuneTask) {
                     // Only publish the Play info if the Tuning is being done on the main queue (this means that this TuneTask isn't in the background).
@@ -575,12 +576,19 @@ public class PlayerService extends Service {
                     }
                 }
 
+                /*
+                 * If some unknown error happens, try to skip this play and continue.
+                 */
+
                 @Override
                 public void onUnkownError(final TuneTask tuneTask, FeedFMError feedFMError) {
                     if (!mMainQueue.hasActivePlayTask()) {
                         mPlayInfo.setCurrentPlay(null);
 
                         disableForeground();
+
+                        // Remove the following PlayTask if it exists
+                        mMainQueue.removeAllPlayTasks();
                     }
 
                     // If we have an unknown error for this stream, forcefully skip this song.
@@ -594,7 +602,9 @@ public class PlayerService extends Service {
 
                         @Override
                         public void onStart() {
-                            updateState(PlayInfo.State.REQUESTING_SKIP);
+                            if (!mMainQueue.hasActivePlayTask()) {
+                                updateState(PlayInfo.State.REQUESTING_SKIP);
+                            }
                         }
 
                         @Override
@@ -607,17 +617,16 @@ public class PlayerService extends Service {
 
                         @Override
                         public void onSuccess(Boolean canSkip) {
-                            skip(tuneTask, true);
+                            // Only force skip if we are in the foreground.
+                            skip(tuneTask, true);//!mMainQueue.hasActivePlayTask());
                         }
 
                         @Override
                         public void onFail(FeedFMError error) {
-
+                            Log.d(TAG, "Failed to start task:" + tuneTask.getPlay() + ". Error: " + error.toString());
                         }
                     });
 
-                    // Remove the following PlayTask if it exists
-                    mMainQueue.removeAllPlayTasks();
                     mSecondaryQueue.offer(playStartTask);
                     mSecondaryQueue.next();
                 }
@@ -680,8 +689,15 @@ public class PlayerService extends Service {
         }
 
         PlayTask task = mTaskFactory.newPlayTask(mMainQueue, mWebservice, getContext(), mMediaPlayerPool, mElapsedTimeManager, new PlayTask.PlayTaskListener() {
+            // if we get fully buffered and report the start to the remote server, we can send an early 'tune()'
+            // while we're still playing the current audio file.
+            private boolean fullyBuffered = false;
+            private boolean startReported = false;
+            private boolean earlyTuneSent = false;
+
             @Override
             public void onPlayBegin(PlayTask playTask, Play play) {
+
                 mForceSkipCount = 0;
                 mPlayInfo.setCurrentPlay(play);
 
@@ -692,6 +708,7 @@ public class PlayerService extends Service {
                 final String playId = play.getId();
 
                 SimpleNetworkTask playStartTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+
                     @Override
                     public String getTag() {
                         return "PlayStartTask";
@@ -721,6 +738,12 @@ public class PlayerService extends Service {
                     public void onSuccess(Boolean canSkip) {
                         boolean skippable = canSkip != null && canSkip;
                         updateSkipStatus(skippable);
+
+                        startReported = true;
+                        if (fullyBuffered && !earlyTuneSent) {
+                            earlyTuneSent = true;
+                            tune();
+                        }
 
                     }
 
@@ -779,7 +802,11 @@ public class PlayerService extends Service {
 
                 if (percent == 100) {
                     // Tune the next song once the buffering of the current song is complete.
-                    tune();
+                    fullyBuffered = true;
+                    if (startReported && !earlyTuneSent) {
+                        earlyTuneSent = true;
+                        tune();
+                    }
                 }
             }
 
@@ -836,6 +863,10 @@ public class PlayerService extends Service {
         mMainQueue.next();
     }
 
+    /*
+     * Ask the server if we can skip whatever we're currently doing.
+     */
+
     private void skip() {
         PlayerAbstractTask task = mMainQueue.peek();
 
@@ -845,6 +876,11 @@ public class PlayerService extends Service {
             eventBus.post(new EventMessage(EventMessage.Status.SKIP_FAILED));
         }
     }
+
+    /*
+     * Ask the feed server if we can skip this SkippableTask. If so, call 'play' again
+     * to move on to the next song. If not, let everybody know that the skip failed.
+     */
 
     private void skip(final SkippableTask task, final boolean force) {
         if (force) {
@@ -882,7 +918,9 @@ public class PlayerService extends Service {
 
                 @Override
                 public void onSuccess(Boolean canSkip) {
-                    mPlayInfo.setSkippable(false);
+                    if (!force) {
+                        mPlayInfo.setSkippable(false);
+                    }
 
                     if (canSkip) {
                         task.getQueueManager().remove(task);
@@ -891,7 +929,10 @@ public class PlayerService extends Service {
                             task.cancel(true);
                         }
 
-                        play();
+                        // The skipped task might not be the one currently playing.
+                        if (!mMainQueue.hasActivePlayTask()) {
+                            play();
+                        }
                     } else {
                         onFail(null);
                     }

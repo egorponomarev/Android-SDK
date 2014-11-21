@@ -67,4 +67,33 @@ public class Play {
     public void setLikeState(LikeState likeState) {
         this.likeState = likeState;
     }
+
+    @Override
+    public int hashCode() {
+        if (id == null) {
+            return 0;
+        } else {
+            return id.hashCode();
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (!(o instanceof Play)) {
+            return false;
+        }
+
+        Play oPlay = (Play) o;
+
+        if (((id != null) && (oPlay.id == null))
+                || ((id == null) && (oPlay.id != null))) {
+            return false;
+        } else {
+            return id.equals(oPlay.id);
+        }
+    }
 }

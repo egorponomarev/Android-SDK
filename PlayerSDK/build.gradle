@@ -21,7 +21,7 @@ apply plugin: 'robolectric'
 
 group = "fm.feed.android"
 archivesBaseName = "player-sdk"
-version = "1.1.2"
+version = "1.1.3"
 
 configurations {
     archives {
@@ -111,10 +111,13 @@ artifacts {
     archives androidJavadocsJar
 }
 
+/*
 uploadArchives {
     configuration = configurations.archives
 
     repositories.mavenDeployer {
+
+
         beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
         repository(url: sonatypeDeployRepo) {
@@ -162,6 +165,7 @@ uploadArchives {
         }
     }
 }
+*/
 
 robolectric {
     // configure the set of classes for JUnit tests

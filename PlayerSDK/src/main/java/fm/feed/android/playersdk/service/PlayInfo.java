@@ -2,6 +2,7 @@ package fm.feed.android.playersdk.service;
 
 import android.util.Log;
 
+import java.util.LinkedList;
 import java.util.List;
 
 import fm.feed.android.playersdk.model.Placement;
@@ -91,6 +92,9 @@ public class PlayInfo {
 
     private boolean mSkippable;
 
+    private static int maxPlayHistorySize = 10;
+    private LinkedList<Play> playHistory = new LinkedList<Play>();
+
     protected PlayInfo(String sdkVersion) {
         this.mSdkVersion = sdkVersion;
 
@@ -131,6 +135,14 @@ public class PlayInfo {
 
     protected void setCurrentPlay(Play currentPlay) {
         this.mPlay = currentPlay;
+
+         if ((currentPlay != null) && !playHistory.contains(currentPlay)) {
+            while (playHistory.size() >= (maxPlayHistorySize - 1)) {
+                playHistory.remove(playHistory.size() - 1);
+            }
+
+            playHistory.add(0, currentPlay);
+        }
     }
 
     protected void setState(State state) {
@@ -217,4 +229,32 @@ public class PlayInfo {
     public State getState() {
         return mState;
     }
+
+    /**
+     * retrieve play history
+     *
+     * @return
+     */
+
+    public List<Play> getPlayHistory() {
+        if (playHistory.size() > maxPlayHistorySize) {
+            while (playHistory.size() > maxPlayHistorySize) {
+                playHistory.remove(playHistory.size() - 1);
+            }
+        }
+
+        return playHistory;
+    }
+
+    /*
+     * This is static so you can set the max size before we've
+     * created a PlayInfo object. If you had multiple players
+     * this might be non-optimal, but you can't do that in the
+     * SDK now anyway.
+     */
+
+    public static void setMaxPlayHistorySize(int newDefaultMaxHistorySize) {
+        maxPlayHistorySize = newDefaultMaxHistorySize;
+    }
+
 }

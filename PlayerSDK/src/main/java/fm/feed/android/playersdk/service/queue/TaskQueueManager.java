@@ -20,14 +20,22 @@ import fm.feed.android.playersdk.service.task.StationIdTask;
 import fm.feed.android.playersdk.service.task.TuneTask;
 
 /**
- * The MIT License (MIT)
- * <p/>
- * Copyright (c) 2014 Feed Media, Inc
- * Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
- * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
- * <p/>
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- * <p/>
+ *
+ * This TaskQueueManager keeps track of a list of PlayerAbstractTasks, which
+ * are all basically AsyncTasks that are communicating with the Feed.fm servers
+ * or a MediaPlayer in a secondary thread. After 'offer()'ing a task to the
+ * queue, call 'next()' to make sure that the first task in the queue is
+ * started up. When that task completes, it calls 'next()' on the queue to
+ * make sure subsequent tasks are started up.
+ *
+ * Each instance of a TQM has its own Executor for the tasks that it runs, so
+ * tasks thrown into different queues will be run concurrently. Tasks within
+ * a single queue will be run serially.
+ *
+ * This class assigns a priority to the different tasks that are placed in it,
+ * and addition of a higher prioritiy class can cause lower priority tasks to
+ * be removed from the queue.
+ *
  * Created by mharkins on 9/2/14.
  */
 public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
