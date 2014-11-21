@@ -39,7 +39,7 @@ PlayerService holds on to an instance of PlayerInfo that basically
 denotes the state of the player (current placement, station, song, e.t.c).
 PlayerService updates that object as things change.  When the PlayerService
 starts up or resumes, it posts the PlayerInfo instance on the bus so the
-Player class has a reference to it.
+Player class gets a reference to it.
 
 The PlayerService handles all the communication with the Feed.fm
 REST API through an instance of webservice.Webservice, which uses
@@ -71,53 +71,31 @@ The TaskQueueManager is a list of what are basically AsyncTasks
 that are executed serially, but different from an Android Looper
 in that you can cancel all existing queued up tasks or cancel
 the tasks based on priority. It has functions for you to be able
-to add a new task to the list, and
-remove other tasks that are at different priorities. Once you`ve 
-added tasks to the Queue, you run 'next()' to make sure the first
-task on the queue is started up. When a running, queued, task
-is complete, it will removed itself from the queue and call 'next()'
-on the Queue again to get the next task started.
+to add a new task to the list, and remove other tasks that are at
+different priorities. Once you`ve added tasks to the queue, you
+run 'next()' to make sure the next task on the queue is started
+up. When a running, queued, task is complete, it will remove
+itself from the queue and call 'next()' on the queue again to
+get the next task started. If a task is failing, it can duplicate
+itself and put the copy back at the front of the queue.
 
 The things that you can queue up are:
 
-TuneTask - request a play from the feed.fm server, then create
-  a MediaPlayer with the URL for the audio. Send the MediaPlayer
-  instance to the TuneListener registered with this task.
+TuneTask - request a play from the feed.fm server, then prepare
+  a MediaPlayer with the play`s audio URL. When the MediaPlayer
+  is ready for playback, throw it in the 'tuned' MediaPlayerPool
+  so it can be retrieved for playback.
 
+PlayTask - grab a tuned MediaPlayer from the MediaPlayerPool and
+  play it while monitoring connectivity. 
 
+....
 
-It looks like when we are requesting a play from the server that
-we don`t expect to immediately
-commence, that is done in the tuningQueue. When we`re getting a play from
-the server that we want to immediately commence, or we want to commence
-a play that is in the tuningQueue, we throw the play in the mainQueue.
-The secondaryQueue holds the next play that should commence upon
-completion of the play in the mainQueue.
-
-
-
-q`s:
-  in PlayerService.tune() in the onMetaDataLoaded() handler
-  when creating a TuneTask, why is setSkippable set to false by default?
-
-Android notes:
-
-Every thread gets a MessageQueue attached to it when Looper.prepare()
-is called. When you run Looper.loop(), the system just repeatedly pulling
-things off that queue and processing them. You can now create a
-Handler instance that will post things (Runnable or Message instances)
-to the queue. The Handler can throw things right on the queue to
-be run on the next loop, or you can set a delay or specific time
-so they run in the future.
-
-The Android UI thread has a looper by default.
-
-An AsyncTask is a task that runs a new asynchronous thread and
-returns posts the results back to the UI thread. This class must be
-instantiated in the UI thread, and the instance must be started 
-in the UI thread. This class uses the Handler class to interact
-with the UI thread. This class may run multiple tasks in parallel
-or serially, depending on the SDK version - but you can use
-.executeOnExecutor() to enforce the parallelization you want.
+The mainQueue contains things that affect what the user perceives
+(such as the current play or current song). The tuningQueue runs
+TuneTasks to get music queued up for when the current song completes.
+The secondaryQueue runs tasks that might be visible by the user
+but should run parallel to the primary queue (such as liking/disliking
+the current song or reporting elapsed time to the feed server)
 
 
