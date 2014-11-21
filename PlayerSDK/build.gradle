@@ -130,7 +130,7 @@ uploadArchives {
         pom.project {
             name 'Feed.fm client library for Android'
             packaging 'aar'
-            description 'This is an Android library for making use of the Feed.fm \'music as a service\' REST API. This library retrieves and handles playback of audio files.'
+            description 'This is an Android library for making use of the Feed.fm \'music as a service\' REST API. This library retrieves and handles playback of audio files and has a simple UI to serve as the foundation for your own music player.'
             url 'http://developer.feed.fm/documentation'
 
             scm {
@@ -148,6 +148,11 @@ uploadArchives {
             }
 
             developers {
+                developer {
+                    id 'feedfm'
+                    name 'Eric Lambrecht'
+                    email 'eric@feed.fm'
+                }
                 developer {
                     id 'MartinH'
                     name 'Martin Harkins'
