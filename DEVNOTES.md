@@ -98,4 +98,8 @@ The secondaryQueue runs tasks that might be visible by the user
 but should run parallel to the primary queue (such as liking/disliking
 the current song or reporting elapsed time to the feed server)
 
+...
+
+SonaType release notes: http://central.sonatype.org/pages/gradle.html
+
 

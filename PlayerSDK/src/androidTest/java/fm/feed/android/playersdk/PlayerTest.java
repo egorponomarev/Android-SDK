@@ -220,31 +220,31 @@ public class PlayerTest {
         assertTrue("song should be skippable", player.isSkippable());
     }
 
-    @Test
-    public void testPause() {
-        restInterface.mPlayResponseMock = new Gson().fromJson(FakeJsonData.play1, PlayResponse.class);
-        restInterface.mPlayStartResponseMock = new Gson().fromJson(FakeJsonData.playStartCanSkip, PlayStartResponse.class);
-
-        Robolectric.getUiThreadScheduler().pause();
-
-        // Pausing after having tuned shouldn't do anything.
-        player.tune();
-        runOneTask(4);
-
-        player.pause();
-
-        Assert.assertEquals(PlayInfo.State.TUNED, player.getState());
-
-        player.play();
-
-        runOneTask(2);
-
-        Assert.assertEquals(PlayInfo.State.PLAYING, player.getState());
-
-        player.pause();
-
-        Assert.assertEquals(PlayInfo.State.PAUSED, player.getState());
-    }
+//    @Test
+//    public void testPause() {
+//        restInterface.mPlayResponseMock = new Gson().fromJson(FakeJsonData.play1, PlayResponse.class);
+//        restInterface.mPlayStartResponseMock = new Gson().fromJson(FakeJsonData.playStartCanSkip, PlayStartResponse.class);
+//
+//        Robolectric.getUiThreadScheduler().pause();
+//
+//        // Pausing after having tuned shouldn't do anything.
+//        player.tune();
+//        runOneTask(4);
+//
+//        player.pause();
+//
+//        Assert.assertEquals(PlayInfo.State.TUNED, player.getState());
+//
+//        player.play();
+//
+//        runOneTask(2);
+//
+//        Assert.assertEquals(PlayInfo.State.PLAYING, player.getState());
+//
+//        player.pause();
+//
+//        Assert.assertEquals(PlayInfo.State.PAUSED, player.getState());
+//    }
 
 //    @Test
 //    public void testSkip() {

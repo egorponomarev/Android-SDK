@@ -21,7 +21,15 @@ apply plugin: 'robolectric'
 
 group = "fm.feed.android"
 archivesBaseName = "player-sdk"
-version = "1.1.3"
+version = "1.1.4"
+
+def getRepositoryUsername() {
+  return hasProperty('sonatypeUsername') ? sonatypeUsername : "";
+}
+
+def getRepositoryPassword() {
+  return hasProperty('sonatypePassword') ? sonatypePassword : "";
+}
 
 configurations {
     archives {
@@ -111,7 +119,6 @@ artifacts {
     archives androidJavadocsJar
 }
 
-/*
 uploadArchives {
     configuration = configurations.archives
 
@@ -120,14 +127,14 @@ uploadArchives {
 
         beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-        repository(url: sonatypeDeployRepo) {
-            authentication(userName: sonatypeUsername,
-                    password: sonatypePassword)
+        repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2") {
+            authentication(userName: getRepositoryUsername(),
+            password: getRepositoryPassword())
         }
 
-        snapshotRepository(url: sonatypeSnapshotRepo) {
-            authentication(userName: sonatypeUsername,
-                    password: sonatypePassword)
+        snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
+            authentication(userName: getRepositoryUsername(),
+            password: getRepositoryPassword())
         }
 
         pom.project {
@@ -165,7 +172,6 @@ uploadArchives {
         }
     }
 }
-*/
 
 robolectric {
     // configure the set of classes for JUnit tests
