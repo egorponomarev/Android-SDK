@@ -34,7 +34,6 @@ following things to be posted, which it passes on to clients.
   ProgressUpdate - update on playback progress
   FeedFMError - something bad happened in the PlayerService
 
-
 PlayerService holds on to an instance of PlayerInfo that basically
 denotes the state of the player (current placement, station, song, e.t.c).
 PlayerService updates that object as things change.  When the PlayerService
@@ -97,9 +96,5 @@ TuneTasks to get music queued up for when the current song completes.
 The secondaryQueue runs tasks that might be visible by the user
 but should run parallel to the primary queue (such as liking/disliking
 the current song or reporting elapsed time to the feed server)
-
-...
-
-SonaType release notes: http://central.sonatype.org/pages/gradle.html
 
 
