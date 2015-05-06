@@ -97,4 +97,10 @@ The secondaryQueue runs tasks that might be visible by the user
 but should run parallel to the primary queue (such as liking/disliking
 the current song or reporting elapsed time to the feed server)
 
+....
+
+The way this was implemented with the various Queues is overly complex.
+This code should more closely follow the pattern in the iOS and Javascript
+SDKs.
+
 

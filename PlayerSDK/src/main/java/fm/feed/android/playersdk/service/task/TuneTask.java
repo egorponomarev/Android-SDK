@@ -123,7 +123,7 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
             mMediaPlayer.setPlay(mPlay);
             mMediaPlayer.setOnPreparedListener(this);
 
-            Log.i(TAG, String.format(">>>>>>>>>>>>>>>MediaPlayer.preparing (%d): %s....", getAttemptCount(), mPlay.getAudioFile().getTrack().getTitle()));
+            Log.d(TAG, String.format("MediaPlayer.preparing (%d): %s....", getAttemptCount(), mPlay.getAudioFile().getTrack().getTitle()));
 
             mMediaPlayer.setDataSource(mPlay.getAudioFile().getUrl());
 
@@ -154,9 +154,9 @@ public class TuneTask extends SkippableTask<Object, Integer, FeedFMMediaPlayer> 
 
     @Override
     protected void onTaskFinished(FeedFMMediaPlayer feedFMMediaPlayer) {
-        Log.i(TAG, String.format(">>>>>>>>>>>>>>>>>>>...MediaPlayer.preparing: %s", mPlay.getAudioFile().getTrack().getTitle()));
+        Log.d(TAG, String.format("...MediaPlayer.preparing: %s", mPlay.getAudioFile().getTrack().getTitle()));
 
-        Log.i(TAG, String.format("%s, onTaskFinished", getQueueManager()));
+        Log.d(TAG, String.format("%s, onTaskFinished", getQueueManager()));
 
         if (feedFMMediaPlayer != null) {
             feedFMMediaPlayer.setOnErrorListener(null);

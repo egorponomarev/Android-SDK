@@ -146,6 +146,7 @@ public class PlayerService extends Service {
 
     @Override
     public void onCreate() {
+        Log.e(TAG, "PlayerService created");
         super.onCreate();
 
         mInitialized = false;
@@ -154,6 +155,8 @@ public class PlayerService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.e(TAG, "PlayerService started");
+
         mValidStart = false;
 
         if (intent != null) {
@@ -231,6 +234,7 @@ public class PlayerService extends Service {
 
     @Override
     public void onDestroy() {
+        Log.e(TAG, "PlayerService destroyed!");
         super.onDestroy();
 
         // Was it a legit Service Startup?
@@ -483,14 +487,17 @@ public class PlayerService extends Service {
         String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
 
         if (clientId != null) { // TODO: remove that!
+            mWebservice.setClientId(clientId);
             mPlayInfo.setClientId(clientId);
             Log.i(TAG, "Retrieved existing Client ID from storage");
+
         } else {
             ClientIdTask task = new ClientIdTask(mMainQueue, mWebservice, new ClientIdTask.OnClientIdChanged() {
                 @Override
                 public void onSuccess(String clientId) {
                     mDataPersister.putString(DataPersister.Key.clientId, clientId);
                     // TODO: perhaps encrypt clientId first.
+                    mWebservice.setClientId(clientId);
                     mPlayInfo.setClientId(clientId);
                     Log.i(TAG, "Retrieved new Client ID from server");
                 }

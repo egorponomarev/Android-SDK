@@ -34,4 +34,13 @@
         android:layout_below="@id/showcase_fullscreen"
         android:text="Showcase - Sliding Bottom Player"
         android:onClick="showBottomPlayer"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Get PlayInfo"
+        android:id="@+id/button"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true"
+        android:onClick="checkPlayStatus" />
 </RelativeLayout>

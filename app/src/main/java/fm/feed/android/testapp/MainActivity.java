@@ -6,11 +6,15 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 
+import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.PlayerError;
+import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.testapp.fragment.MainFragment;
 import fm.feed.android.testapp.fragment.SlidingBottomFragment;
 import fm.feed.android.testapp.fragment.SlidingFragment;
@@ -19,8 +23,13 @@ import fm.feed.android.testapp.fragment.TestFragment;
 
 public class MainActivity extends ActionBarActivity {
 
+    private static final String TAG = MainActivity.class.getSimpleName();
+
+    private Player player;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
 
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
@@ -90,6 +99,39 @@ public class MainActivity extends ActionBarActivity {
         ft.addToBackStack(tag);
 
         ft.commit();
+    }
+
+    public void checkPlayStatus(View v) {
+        if (player == null) {
+            player = Player.getInstance(null, new Player.PlayerListener() {
+                @Override
+                public void onPlayerInitialized(PlayInfo playInfo) {
+                    // nada
+                }
+
+                @Override
+                public Player.NotificationBuilder getNotificationBuilder() {
+                    return null;
+                }
+
+                @Override
+                public void onPlaybackStateChanged(PlayInfo.State state) {
+
+                }
+
+                @Override
+                public void onSkipStatusChange(boolean skippable) {
+
+                }
+
+                @Override
+                public void onError(PlayerError playerError) {
+
+                }
+            }, null, null);
+        }
+
+        Log.i(TAG, "do we have playInfo? " + player.hasPlay());
     }
 
     /**

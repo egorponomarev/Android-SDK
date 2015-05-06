@@ -54,8 +54,8 @@ public class PlayerView extends RelativeLayout {
 
     private static final int CUSTOM_NOTIFICATION_ID = 8675309;
 
-    private static final String AUTH_TOKEN = "7d86527ae873ff06276f5ca3a3e415fce10e0665";
-    private static final String AUTH_SECRET = "7cfb42a206222db05039027d3b417a4686c873e8";
+    private static final String AUTH_TOKEN = "demo";
+    private static final String AUTH_SECRET = "demo";
 
     private AudioSettingsContentObserver mAudioSettingsContentObserver;
 

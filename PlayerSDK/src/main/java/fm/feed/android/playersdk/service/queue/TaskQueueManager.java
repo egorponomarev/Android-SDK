@@ -38,6 +38,7 @@ import fm.feed.android.playersdk.service.task.TuneTask;
  *
  * Created by mharkins on 9/2/14.
  */
+
 public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
     private static final String TAG = TaskQueueManager.class.getSimpleName();
 
@@ -134,7 +135,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
      * @return {@code true} if the {@code playerTask} was properly offered to the queue.
      */
     public boolean offerUnique(PlayerAbstractTask playerTask) {
-        Log.i(TAG, toString() + ":offerUnique...");
+        Log.d(TAG, toString() + ":offerUnique...");
         printQueue();
 
 
@@ -150,7 +151,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
         boolean resval = offer(playerTask);
 
         printQueue();
-        Log.i(TAG, toString() + ":...offerUnique");
+        Log.d(TAG, toString() + ":...offerUnique");
 
         return resval;
     }
@@ -187,13 +188,13 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
 
     @Override
     public boolean offer(PlayerAbstractTask o) {
-        Log.i(TAG, toString() + ":offer...");
+        Log.d(TAG, toString() + ":offer...");
         printQueue();
 
         boolean retval = super.offer(o);
         o.setQueueManager(this);
 
-        Log.i(TAG, toString() + ":...offer");
+        Log.d(TAG, toString() + ":...offer");
         printQueue();
 
         return retval;
@@ -214,7 +215,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
      */
     public void clearLowerPriorities(PlayerAbstractTask playerTask) {
         synchronized (this) {
-            Log.i(TAG, toString() + ":clearLowerPriorities...");
+            Log.d(TAG, toString() + ":clearLowerPriorities...");
             printQueue();
 
             List<PlayerAbstractTask> tasksToRemove = new ArrayList<PlayerAbstractTask>();
@@ -229,7 +230,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
 
             tasksToRemove.removeAll(tasksToRemove);
             printQueue();
-            Log.i(TAG, toString() + ":...clearLowerPriorities");
+            Log.d(TAG, toString() + ":...clearLowerPriorities");
         }
     }
 
@@ -302,7 +303,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
     }
 
     public void printQueue() {
-        Log.i(TAG, getQueueListStr());
+        Log.d(TAG, getQueueListStr());
 
     }
 }

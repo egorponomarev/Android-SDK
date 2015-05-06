@@ -24,6 +24,7 @@ import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
 import fm.feed.android.playersdk.service.webservice.util.WebserviceUtils;
+import retrofit.RequestInterceptor;
 import retrofit.RestAdapter;
 import retrofit.RetrofitError;
 import retrofit.client.OkClient;
@@ -51,6 +52,7 @@ public class Webservice {
     private static final String TAG = Webservice.class.getSimpleName();
 
     private Credentials mCredentials;
+    private String mClientId;
 
     protected RestInterface mRestService;
 
@@ -70,15 +72,25 @@ public class Webservice {
                 .setEndpoint(apiUrl + apiVersion)
 
                 .setConverter(new GsonConverter(gson))
+                .setRequestInterceptor(new AddClientIdRequestInterceptor())
                 .build();
 
 
         mRestService = restAdapter.create(RestInterface.class);
     }
 
+    private class AddClientIdRequestInterceptor implements RequestInterceptor {
+        public void intercept(RequestFacade request) {
+            if (mClientId != null) {
+                request.addHeader("Cookie", "cid=" + mClientId);
+            }
+        }
+    }
+
     public void setCredentials(Credentials credentials) {
         mCredentials = credentials;
     }
+    public void setClientId(String clientId) { mClientId = clientId; }
 
     protected String getAuthStr() {
         return WebserviceUtils.getAuth(mCredentials);
