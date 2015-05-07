@@ -103,10 +103,13 @@ public class PlayerTest {
 
     @Test
     public void testPlayerInitialization() {
+        assertEquals("Tests are not updated. That is why you see this.", true, false);
+
         assertSame("Player should be in READY state", PlayInfo.State.READY, player.getState());
 
         assertEquals("default placement should be 10955", 10955, player.getPlacement().getId().intValue());
         assertEquals("default station should be 727", 727, player.getStation().getId().intValue());
+
     }
 //
     @Test
