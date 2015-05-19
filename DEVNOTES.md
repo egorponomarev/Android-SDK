@@ -2,14 +2,15 @@ Notes on how this is structured:
 
 While clients interact with the Player class, all the real work
 is done in the webservice.PlayerService class, which is an
-Android 'Service'.
+Android 'Service'. The service is started as soon
+as a Player.setTokens() call is made.
 
-The PlayerService class does not allow binding. Instead, it
-communicates with the app through a shared singleton bus (created with
-'Otto', by the folks at Square) referred to as the 'event bus'. 
-The Player and PlayerService classes register listeners and
-post events to the bus. Much of the stuff passed over the bus
-is defined in fm.feed.android.playersdk.service.bus.
+The PlayerService class does not perform binding. 
+Instead, it communicates with the app through a shared
+singleton bus (created with 'Otto', by the folks at Square) referred
+to as the 'event bus'.  The Player and PlayerService classes
+register listeners and post events to the bus. Much of the stuff
+passed over the bus is defined in fm.feed.android.playersdk.service.bus.
 
 The Player sends the following events to the PlayerService
 over the bus, which the PlayerService responds to:
@@ -61,7 +62,7 @@ tracked through a couple queues:
     the head of the queue.
   MainQueue extends TuningQueue - adds extra hasActivePlayTask()
     hasPlayTask(), and removeAllPlayTasks() methods for managing
-    PlayTasks.
+    PlayTasks. 
 
 There is an instance of each queue: tuningQueue, mainQueue (MainQueue),
 and secondaryQueue (TaskQueueManager). 
@@ -97,10 +98,15 @@ The secondaryQueue runs tasks that might be visible by the user
 but should run parallel to the primary queue (such as liking/disliking
 the current song or reporting elapsed time to the feed server)
 
+You can peek() into the mainQueue to see what song is currently
+being played.
+
 ....
 
 The way this was implemented with the various Queues is overly complex.
 This code should more closely follow the pattern in the iOS and Javascript
 SDKs.
+
+....
 
 

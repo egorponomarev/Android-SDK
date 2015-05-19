@@ -59,9 +59,6 @@ public class TestFragment extends Fragment {
 
     private static final int CUSTOM_NOTIFICATION_ID = 12341212;
 
-    private static final String AUTH_TOKEN = "c1c2e6dadf84a8bdee82ac618f23af88020c4667";
-    private static final String AUTH_SECRET = "887b155ef0a464b5f6e830dd85ee7eb33b061397";
-
     // Extra for the Save instance state.
     public static final String PLACEMENTS = "save_placements";
 
@@ -110,11 +107,7 @@ public class TestFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        /**
-         * Initializes the Player Object.
-         * Starts the foreground Service (music will keep running when app is killed, unless mPlayer.pause() is called prior to that).
-         */
-        mPlayer = Player.getInstance(getActivity(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET);
+        mPlayer = Player.getInstance();
     }
 
     @Override

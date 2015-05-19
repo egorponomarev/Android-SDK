@@ -15,8 +15,11 @@ import android.util.Log;
 import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import fm.feed.android.playersdk.Player;
 import fm.feed.android.playersdk.R;
@@ -182,11 +185,13 @@ public class PlayerService extends Service {
                 mInitialized = true;
             }
             resume(intent);
+
         } else {
             stopSelf();
         }
 
-        return super.onStartCommand(intent, flags, startId);
+        // if the app gets killed, the user has to restart things
+        return START_NOT_STICKY;
     }
 
     @Override
@@ -220,6 +225,8 @@ public class PlayerService extends Service {
         registerReceiver(mConnectivityBroadcastReceiver, new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION));
 
         eventBus.register(this);
+
+        logEvent("serviceLaunched");
     }
 
     /**
@@ -234,11 +241,11 @@ public class PlayerService extends Service {
 
     @Override
     public void onDestroy() {
-        Log.e(TAG, "PlayerService destroyed!");
-        super.onDestroy();
 
         // Was it a legit Service Startup?
         if (mValidStart) {
+            logEvent("serviceDestroyed");
+
             releaseAudioManager();
 
             mMainQueue.clear();
@@ -253,6 +260,10 @@ public class PlayerService extends Service {
         }
 
         mInitialized = false;
+
+        Log.e(TAG, "PlayerService destroyed!");
+
+        super.onDestroy();
     }
 
 
@@ -1019,6 +1030,49 @@ public class PlayerService extends Service {
         } else {
             Log.w(TAG, "Could not Like track. No active Play");
         }
+    }
+
+    private void logEvent(final String event, String ... parameters) {
+        if (parameters.length > 0) {
+            Map<String, String> map = new HashMap<String, String>();
+            for (int i = 0; i < parameters.length - 1; i += 2) {
+                map.put(parameters[i], parameters[i+1]);
+            }
+            logEvent(event, map);
+
+        } else {
+            logEvent(event, Collections.EMPTY_MAP);
+        }
+    }
+
+    private void logEvent(final String event, final Map<String, String> parameters) {
+        SimpleNetworkTask logEventTask = new SimpleNetworkTask<Boolean>(mSecondaryQueue, mWebservice, new SimpleNetworkTask.SimpleNetworkTaskListener<Boolean>() {
+            @Override
+            public String getTag() { return "LogEventTask"; }
+
+            @Override
+            public void onStart() {
+
+            }
+
+            @Override
+            public Boolean performRequestSynchronous() throws FeedFMError {
+                Log.e(TAG, "going to send session event");
+                return mWebservice.logEvent(event, parameters);
+            }
+
+            @Override
+            public void onSuccess(Boolean aBoolean) {
+                // nobody cares
+            }
+
+            @Override
+            public void onFail(FeedFMError error) {
+                // nobody cares
+            }
+        });
+        mSecondaryQueue.offer(logEventTask);
+        mSecondaryQueue.next();
     }
 
     private void unlike() {

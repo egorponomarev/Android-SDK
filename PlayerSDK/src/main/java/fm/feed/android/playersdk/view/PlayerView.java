@@ -361,7 +361,7 @@ public class PlayerView extends RelativeLayout {
     }
 
     private void initializePlayer() {
-        mPlayer = Player.getInstance(getContext(), mPlayerListener, AUTH_TOKEN, AUTH_SECRET);
+        mPlayer = Player.getInstance();
         mPlayer.registerPlayerListener(mPlayerListener);
         mPlayer.registerNavListener(mNavListener);
         mPlayer.registerSocialListener(mSocialListener);

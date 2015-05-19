@@ -32,6 +32,10 @@ public class MainActivity extends ActionBarActivity {
 
         super.onCreate(savedInstanceState);
 
+        // tune in to our station
+        Player.setTokens(getApplicationContext(), "demo", "demo");
+        player = Player.getInstance();
+
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
 
         setContentView(R.layout.activity_main);
@@ -102,35 +106,6 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void checkPlayStatus(View v) {
-        if (player == null) {
-            player = Player.getInstance(null, new Player.PlayerListener() {
-                @Override
-                public void onPlayerInitialized(PlayInfo playInfo) {
-                    // nada
-                }
-
-                @Override
-                public Player.NotificationBuilder getNotificationBuilder() {
-                    return null;
-                }
-
-                @Override
-                public void onPlaybackStateChanged(PlayInfo.State state) {
-
-                }
-
-                @Override
-                public void onSkipStatusChange(boolean skippable) {
-
-                }
-
-                @Override
-                public void onError(PlayerError playerError) {
-
-                }
-            }, null, null);
-        }
-
         Log.i(TAG, "do we have playInfo? " + player.hasPlay());
     }
 
@@ -167,7 +142,7 @@ public class MainActivity extends ActionBarActivity {
         TestFragment fragment = (TestFragment) fm.findFragmentByTag(TestFragment.class.getSimpleName());
 
         if (fragment == null) {
-            int[] placements = {10955, 10960};
+            int[] placements = {11485};
             fragment = TestFragment.newFragment(placements);
         }
         showFragment(fragment, TestFragment.class.getSimpleName());

@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.squareup.okhttp.OkHttpClient;
 
+import java.util.Map;
 import java.util.concurrent.Executors;
 
 import fm.feed.android.playersdk.R;
@@ -54,6 +55,8 @@ public class Webservice {
     private Credentials mCredentials;
     private String mClientId;
 
+    private Gson gson;
+
     protected RestInterface mRestService;
 
     public Webservice(Context context) {
@@ -62,7 +65,7 @@ public class Webservice {
 
         OkHttpClient okHttpClient = new OkHttpClient();
 
-        Gson gson = new GsonBuilder()
+        gson = new GsonBuilder()
                 .registerTypeAdapter(FeedFMError.class, new FeedFMErrorDeserializer()).create();
 
         RestAdapter restAdapter = new RestAdapter.Builder()
@@ -210,6 +213,22 @@ public class Webservice {
         return r.get();
     }
 
+    public Boolean logEvent(final String event, final Map<String, String> parameters) throws FeedFMError {
+        RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
+            @Override
+            public FeedFMResponse execute() throws RetrofitError {
+                if ((parameters == null) || (parameters.size() == 0)) {
+                    return mRestService.logEvent(getAuthStr(), event);
+
+                } else {
+                    return mRestService.logEvent(getAuthStr(), event, gson.toJson(parameters));
+
+                }
+            }
+        };
+        return r.get();
+    }
+
     public Boolean like(final String playId) throws FeedFMError {
         RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
             @Override
@@ -300,6 +319,18 @@ public class Webservice {
         @POST("/play/{id}/dislike")
         public FeedFMResponse dislike(@Header("Authorization") String authorization,
                                       @Path("id") String playId);
+
+        @FormUrlEncoded
+        @POST("/session/event")
+        public FeedFMResponse logEvent(@Header("Authorization") String authorization,
+                                       @Field("event") String event,
+                                       @Field("parameters") String parameters);
+
+        @FormUrlEncoded
+        @POST("/session/event")
+        public FeedFMResponse logEvent(@Header("Authorization") String authorization,
+                                       @Field("event") String event);
+
     }
 
     public interface Callback<T> {

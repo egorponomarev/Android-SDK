@@ -47,28 +47,17 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
  * Interface controlling the Feed Media Web-radio
+ *
  * <h1>Class Overview</h1>
- * To get started:
+ * To get started, set the authentication tokens in your app as early as possible
+ * (in Application.onCreate would be best, but you can also do this in your
+ * Activity.onCreate as well):
  * <pre>
- * <code> final Player player = Player.getInstance(getContext(), new Player.PlayerListener() {
  *
- *      {@literal @}Override public void onPlayerInitialized(PlayInfo playInfo) {
- *          player.play();
- *      }
- *
- *      {@literal @}Override public void onPlaybackStateChanged(PlayInfo.State state) {
- *          // Called when the playback changes state
- *      }
- *
- *      {@literal @}Override public void onError(PlayerError playerError) {
- *          // Called when there is an error
- *      }
- *
- *      {@literal @}Override public void onNotificationWillShow(int notificationId) {
- *          // Called when the Foreground Service notification is created
- *      }
- *  }, AUTH_TOKEN, AUTH_SECRET, CUSTOM_NOTIFICATION_ID);
- * </code></pre>
+ * <code>
+ *     Player.setTokens(getContext(), "demo", "demo");
+ * </code>
+ * </pre>
  * </p>
  */
 public class Player {
@@ -97,20 +86,19 @@ public class Player {
 
     private boolean mRequiresAuthentication;
 
-    protected Player(Context context, Bus bus, String token, String secret) {
-        mEventBus = bus;
+    /*
+     * Save credentials and create and pass on to new PlayerService
+     */
+
+    protected Player(Context context, Credentials credz) {
+        mCredentials = credz;
+
+        mEventBus = BusProvider.getInstance();
         mRequiresAuthentication = false;
 
         mPrivateServiceListener = new PlayerServiceListener();
         mEventBus.register(mPrivateServiceListener);
 
-        mCredentials = new Credentials(token, secret);
-
-        startPlayerService(context);
-    }
-
-    protected void startPlayerService(Context context) {
-        // Start the Service
         Intent intent = new Intent(context, PlayerService.class);
         intent.putExtra(PlayerService.ExtraKeys.timestamp.toString(), new Date().getTime());
         intent.putExtra(PlayerService.ExtraKeys.buildType.toString(), mDebug.name());
@@ -118,18 +106,45 @@ public class Player {
         context.startService(intent);
     }
 
+    /*
+     * Assign authentication tokens for talking to the Feed.fm service and kick off
+     * the Service that does the talking. This should be called before getInstance()
+     * and should never be called with different token/secret values during the lifetime
+     * of the app. Normally this will only be called at the start of your Main Activity.
+     */
+
+    public static void setTokens(Context context, String token, String secret) {
+        if (mInstance != null) {
+            Credentials credz = mInstance.mCredentials;
+
+            if (!token.equals(credz.getToken()) || !secret.equals(credz.getSecret())) {
+                Log.e(TAG, "Attempted to set token and secret to " + token + " and " + secret + ", but they are already set to " + credz.getToken() + " and " + credz.getSecret());
+            }
+
+        } else {
+            Credentials credz = new Credentials(token, secret);
+
+            if (!credz.isValid()) {
+                Log.e(TAG, "Invalid credentials were passed to Player.setTokens()");
+
+            } else {
+                mInstance = new Player(context, credz);
+            }
+
+        }
+    }
+
     /**
-     * Get a Singleton instance of the {@link fm.feed.android.playersdk.Player}.
-     *
-     * @param context
+     * Get a Singleton instance of the {@link fm.feed.android.playersdk.Player}. First
+     * make sure {@link fm.feed.android.playersdk.Player#setTokens} has been called.
      *
      * @return
      */
-    public static Player getInstance(Context context, PlayerListener playerListener, String token, String secret) {
+    public static Player getInstance() {
         if (mInstance == null) {
-            mInstance = new Player(context, BusProvider.getInstance(), token, secret);
+            Log.e(TAG, "A Player.getInstance() call was made before Player.setTokens() was called!");
         }
-        mInstance.registerPlayerListener(playerListener);
+
         return mInstance;
     }
 
@@ -173,41 +188,6 @@ public class Player {
      */
     public boolean isInitialized() {
         return mPlayInfo != null;
-    }
-
-    /**
-     * Assigns to the player the token and secret credentials needed for communicating with the service
-     * <p>
-     * This call is required for any use of the service.<br/>
-     * It should be called after {@link fm.feed.android.playersdk.Player.PlayerListener#onPlayerInitialized(fm.feed.android.playersdk.service.PlayInfo)} has been called.<br/>
-     * </p>
-     * <p>
-     * Setting the credentials will download your default {@link fm.feed.android.playersdk.model.Placement} from the server; containing the list of your {@link Station}s.
-     * </p>
-     * <p>
-     * The {@code token} and {@code secret} are available through your Feed.FM account:
-     * <ol>
-     * <li>Select an App in <b><a href="http://developer.feed.fm/dashboard">Your Apps and Websites</a></b></li>
-     * <li>Go to tab <b>Developer Codes and IDs</b></li>
-     * <li>Save the {@code token} and {@code secret} statically in your app.</li>
-     * </ol>
-     * </p>
-     *
-     * @param token
-     *         Generated when your Feed.FM app is created on your Feed.FM dashboard.
-     * @param secret
-     *         Generated when your Feed.FM app is created on your Feed.FM dashboard.
-     */
-    public void setCredentials(String token, String secret) {
-        Credentials credentials = new Credentials(token, secret);
-        if (credentials.isValid()) {
-            mEventBus.post(credentials);
-        } else {
-            PlayerError playerError = new PlayerError(PlayerErrorEnum.INVALID_CREDENTIALS);
-            for (PlayerListener listener : mPlayerListeners) {
-                listener.onError(playerError);
-            }
-        }
     }
 
     /**
@@ -391,6 +371,7 @@ public class Player {
     }
 
     // TODO: find a way to make this private and not break the Unit Tests
+
     public class PlayerServiceListener {
         public PlayerServiceListener() {
         }
@@ -408,7 +389,15 @@ public class Player {
             }
 
             if (mRequiresAuthentication) {
-                setCredentials(mCredentials.getToken(), mCredentials.getSecret());
+                if (mCredentials.isValid()) {
+                    mEventBus.post(mCredentials);
+                } else {
+                    PlayerError playerError = new PlayerError(PlayerErrorEnum.INVALID_CREDENTIALS);
+                    for (PlayerListener listener : mPlayerListeners) {
+                        listener.onError(playerError);
+                    }
+                }
+
             } else {
                 for (PlayerListener listener : mPlayerListeners) {
                     listener.onPlayerInitialized(playInfo);
