@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="fm.feed.android.testapp"
+          package="fm.feed.android.SampleApp"
           android:versionCode="5"
           android:versionName="@string/sdk_version">
 

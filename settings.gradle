@@ -1,1 +1,1 @@
-include ':app', ':PlayerSDK'
+include ':SampleApp', ':PlayerSDK'

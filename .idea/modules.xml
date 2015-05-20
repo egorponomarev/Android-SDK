@@ -4,7 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/Android-SDK.iml" filepath="$PROJECT_DIR$/Android-SDK.iml" />
       <module fileurl="file://$PROJECT_DIR$/PlayerSDK/PlayerSDK.iml" filepath="$PROJECT_DIR$/PlayerSDK/PlayerSDK.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/app/SampleApp.iml" filepath="$PROJECT_DIR$/app/SampleApp.iml" />
     </modules>
   </component>
 </project>
