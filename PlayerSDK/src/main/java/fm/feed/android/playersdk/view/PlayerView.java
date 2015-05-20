@@ -96,10 +96,10 @@ public class PlayerView extends RelativeLayout {
     private void init(AttributeSet attrs) {
         TypedArray a = getContext().obtainStyledAttributes(
                 attrs,
-                R.styleable.PlayerView);
+                R.styleable.FeedFmPlayerView);
 
-        mAutoPlay = a.getBoolean(R.styleable.PlayerView_autoPlay, false);
-        mHandlesNotification = a.getBoolean(R.styleable.PlayerView_handlesNotification, true);
+        mAutoPlay = a.getBoolean(R.styleable.FeedFmPlayerView_autoPlay, false);
+        mHandlesNotification = a.getBoolean(R.styleable.FeedFmPlayerView_handlesNotification, true);
 
         //Don't forget this
         a.recycle();
@@ -191,7 +191,7 @@ public class PlayerView extends RelativeLayout {
     }
 
     private void initializeView() {
-        RelativeLayout rootView = (RelativeLayout) inflate(getContext(), R.layout.view_player, this);
+        RelativeLayout rootView = (RelativeLayout) inflate(getContext(), R.layout.feed_fm_player_view, this);
         mTitle = (TextView) rootView.findViewById(R.id.pu_title);
         mArtist = (TextView) rootView.findViewById(R.id.pu_artist);
         mAlbum = (TextView) rootView.findViewById(R.id.pu_album);

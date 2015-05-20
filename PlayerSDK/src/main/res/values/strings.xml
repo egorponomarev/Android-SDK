@@ -27,5 +27,7 @@
     <string name="accessibility_volume_muted">Volume Muted</string>
     <string name="accessibility_volume_on">Volume On</string>
 
+    <string name="accessibility_back">Back</string>
+    <string name="accessibility_close">Close</string>
 
 </resources>

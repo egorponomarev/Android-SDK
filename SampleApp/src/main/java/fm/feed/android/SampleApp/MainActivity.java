@@ -13,8 +13,8 @@ import android.view.Window;
 
 import fm.feed.android.playersdk.Player;
 import fm.feed.android.SampleApp.fragment.MainFragment;
-import fm.feed.android.SampleApp.fragment.SlidingBottomFragment;
-import fm.feed.android.SampleApp.fragment.SlidingFragment;
+import fm.feed.android.playersdk.fragment.SlidingBottomPlayerFragment;
+import fm.feed.android.playersdk.fragment.SlidingPlayerFragment;
 import fm.feed.android.SampleApp.fragment.TestFragment;
 
 
@@ -29,9 +29,13 @@ public class MainActivity extends ActionBarActivity {
 
         super.onCreate(savedInstanceState);
 
-        // tune in to our station
-        Player.setTokens(getApplicationContext(), "demo", "demo"); // try "badgeo" to force the player to be unavailable
-        player = Player.getInstance();
+        if (player == null) {
+            // We set the player tokens in the Application subclass, but
+            // you could do it here as well:
+            //Player.setTokens(getApplicationContext(), "demo", "demo");
+
+            player = Player.getInstance();
+        }
 
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
 
@@ -74,7 +78,7 @@ public class MainActivity extends ActionBarActivity {
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
 
-        if (fragment instanceof SlidingFragment) {
+        if (fragment instanceof SlidingPlayerFragment) {
             ft.setCustomAnimations(R.anim.slide_in_left, R.anim.slide_out_right, R.anim.slide_in_right, R.anim.slide_out_left);
         }
 
@@ -91,7 +95,7 @@ public class MainActivity extends ActionBarActivity {
 
         FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
 
-        if (fragment instanceof SlidingBottomFragment) {
+        if (fragment instanceof SlidingBottomPlayerFragment) {
             ft.setCustomAnimations(R.anim.slide_in_top, R.anim.slide_out_bottom, R.anim.slide_in_bottom, R.anim.slide_out_top);
         }
 
@@ -112,12 +116,12 @@ public class MainActivity extends ActionBarActivity {
      */
     public void showSlidingPlayer(View v) {
         FragmentManager fm = getSupportFragmentManager();
-        SlidingFragment fragment = (SlidingFragment) fm.findFragmentByTag(SlidingFragment.class.getSimpleName());
+        SlidingPlayerFragment fragment = (SlidingPlayerFragment) fm.findFragmentByTag(SlidingPlayerFragment.class.getSimpleName());
 
         if (fragment == null) {
-            fragment = new SlidingFragment();
+            fragment = new SlidingPlayerFragment();
         }
-        showFragment(fragment, SlidingFragment.class.getSimpleName());
+        showFragment(fragment, SlidingPlayerFragment.class.getSimpleName());
     }
 
     /**
@@ -150,12 +154,12 @@ public class MainActivity extends ActionBarActivity {
      */
     public void showBottomPlayer(View v) {
         FragmentManager fm = getSupportFragmentManager();
-        SlidingBottomFragment fragment = (SlidingBottomFragment) fm.findFragmentByTag(SlidingBottomFragment.class.getSimpleName());
+        SlidingBottomPlayerFragment fragment = (SlidingBottomPlayerFragment) fm.findFragmentByTag(SlidingBottomPlayerFragment.class.getSimpleName());
 
         if (fragment == null) {
-            fragment = new SlidingBottomFragment();
+            fragment = new SlidingBottomPlayerFragment();
         }
-        addFragment(fragment, SlidingBottomFragment.class.getSimpleName());
+        addFragment(fragment, SlidingBottomPlayerFragment.class.getSimpleName());
     }
 
     @Override

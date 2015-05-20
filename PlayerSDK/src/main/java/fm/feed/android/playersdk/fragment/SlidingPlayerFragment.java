@@ -1,4 +1,4 @@
-package fm.feed.android.SampleApp.fragment;
+package fm.feed.android.playersdk.fragment;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -17,7 +17,7 @@ import com.caverock.androidsvg.SVGParseException;
 
 import fm.feed.android.playersdk.util.UIUtils;
 import fm.feed.android.playersdk.view.PlayerView;
-import fm.feed.android.SampleApp.R;
+import fm.feed.android.playersdk.R;
 
 /**
  * The MIT License (MIT)
@@ -30,7 +30,7 @@ import fm.feed.android.SampleApp.R;
  * <p/>
  * Created by mharkins on 9/23/14.
  */
-public class SlidingFragment extends Fragment {
+public class SlidingPlayerFragment extends Fragment {
     private static final int DEFAULT_SVG_SIZE_DP = 26;
 
     @Override
@@ -46,7 +46,7 @@ public class SlidingFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        RelativeLayout rootView = (RelativeLayout) inflater.inflate(R.layout.fragment_sliding, container, false);
+        RelativeLayout rootView = (RelativeLayout) inflater.inflate(R.layout.feed_fm_sliding_player_fragment, container, false);
 
         /**
          * Override default PlayerView Shared Subject title
