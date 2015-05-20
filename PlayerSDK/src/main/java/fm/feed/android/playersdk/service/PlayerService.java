@@ -30,11 +30,11 @@ import fm.feed.android.playersdk.model.Session;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
+import fm.feed.android.playersdk.service.bus.ChangeStation;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
 import fm.feed.android.playersdk.service.bus.LogEvent;
-import fm.feed.android.playersdk.service.bus.OutNotificationBuilder;
-import fm.feed.android.playersdk.service.bus.OutStationWrap;
+import fm.feed.android.playersdk.service.bus.ChangeNotificationBuilder;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
 import fm.feed.android.playersdk.service.constant.ApiErrorEnum;
@@ -44,7 +44,6 @@ import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.queue.TuningQueue;
 import fm.feed.android.playersdk.service.task.ClientIdTask;
 import fm.feed.android.playersdk.service.task.CreateSessionTask;
-import fm.feed.android.playersdk.service.task.PlacementIdTask;
 import fm.feed.android.playersdk.service.task.PlayTask;
 import fm.feed.android.playersdk.service.task.PlayerAbstractTask;
 import fm.feed.android.playersdk.service.task.SimpleNetworkTask;
@@ -330,13 +329,13 @@ public class PlayerService extends Service {
 
     @Subscribe
     @SuppressWarnings("unused")
-    public void setNotificationBuilder(OutNotificationBuilder notificationBuilderWrapper) {
+    public void setNotificationBuilder(ChangeNotificationBuilder notificationBuilderWrapper) {
         this.mNotificationBuilder = notificationBuilderWrapper.getObject();
     }
 
     @Subscribe
     @SuppressWarnings("unused")
-    public void setStationId(OutStationWrap wrapper) {
+    public void setStationId(ChangeStation wrapper) {
         Station s = wrapper.getObject();
         final Integer stationId = s.getId();
 
@@ -467,6 +466,14 @@ public class PlayerService extends Service {
 
             @Override
             public void onFail(FeedFMError error) {
+                Log.i(TAG, "Unable to perform CreateSession");
+
+                // let everybody know that we're boned
+                mPlayInfo.setState(PlayInfo.State.UNAVAILABLE);
+
+                eventBus.post(mPlayInfo);
+
+                // pass the error down
                 handleError(error);
             }
         });

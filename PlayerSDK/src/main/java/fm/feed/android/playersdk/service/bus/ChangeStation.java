@@ -1,6 +1,6 @@
 package fm.feed.android.playersdk.service.bus;
 
-import fm.feed.android.playersdk.model.Placement;
+import fm.feed.android.playersdk.model.Station;
 
 /**
  * The MIT License (MIT)
@@ -13,8 +13,8 @@ import fm.feed.android.playersdk.model.Placement;
  *
  * Created by mharkins on 8/22/14.
  */
-public class OutPlacementWrap extends Wrap<Placement> {
-    public OutPlacementWrap(Placement mObject) {
+public class ChangeStation extends Wrap<Station> {
+    public ChangeStation(Station mObject) {
         super(mObject);
     }
 }

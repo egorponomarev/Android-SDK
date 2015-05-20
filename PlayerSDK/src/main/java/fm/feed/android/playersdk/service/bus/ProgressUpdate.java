@@ -13,6 +13,7 @@ import fm.feed.android.playersdk.model.Play;
  *
  * Created by mharkins on 8/28/14.
  */
+
 public class ProgressUpdate {
     private int mElapsedTime;
     private int mTotalTime;

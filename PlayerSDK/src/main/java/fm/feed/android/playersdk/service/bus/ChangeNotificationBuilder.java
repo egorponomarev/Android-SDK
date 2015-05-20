@@ -1,6 +1,6 @@
 package fm.feed.android.playersdk.service.bus;
 
-import fm.feed.android.playersdk.model.Station;
+import fm.feed.android.playersdk.NotificationBuilder;
 
 /**
  * The MIT License (MIT)
@@ -13,8 +13,8 @@ import fm.feed.android.playersdk.model.Station;
  *
  * Created by mharkins on 8/22/14.
  */
-public class OutStationWrap extends Wrap<Station> {
-    public OutStationWrap(Station mObject) {
+public class ChangeNotificationBuilder extends Wrap<NotificationBuilder> {
+    public ChangeNotificationBuilder(NotificationBuilder mObject) {
         super(mObject);
     }
 }

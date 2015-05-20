@@ -22,11 +22,11 @@ import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.service.PlayerService;
 import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
+import fm.feed.android.playersdk.service.bus.ChangeStation;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
 import fm.feed.android.playersdk.service.bus.LogEvent;
-import fm.feed.android.playersdk.service.bus.OutNotificationBuilder;
-import fm.feed.android.playersdk.service.bus.OutStationWrap;
+import fm.feed.android.playersdk.service.bus.ChangeNotificationBuilder;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
@@ -198,7 +198,7 @@ public class Player {
      */
 
     public void setNotificationBuilder(NotificationBuilder nb) {
-        mEventBus.post(new OutNotificationBuilder(nb));
+        mEventBus.post(new ChangeNotificationBuilder(nb));
     }
 
     /*
@@ -299,7 +299,7 @@ public class Player {
      */
     public void setStationId(Integer stationId) {
         if (isAvailable()) {
-            mEventBus.post(new OutStationWrap(new Station(stationId)));
+            mEventBus.post(new ChangeStation(new Station(stationId)));
         }
     }
 
@@ -522,9 +522,11 @@ public class Player {
         public void onServiceReady(PlayInfo playInfo) {
             mPlayInfo = playInfo;
 
-            if (mPlayInfo.getState() != PlayInfo.State.UNAVAILABLE) {
-                sendPlayerAvailability(true);
+            boolean available = (mPlayInfo.getState() != PlayInfo.State.UNAVAILABLE);
 
+            sendPlayerAvailability(available);
+
+            if (available) {
                 mainThreadHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -535,6 +537,7 @@ public class Player {
                 });
             }
 
+            // pass on any queued up log events
             while (mLogEvents.size() > 0) {
                 LogEvent event = mLogEvents.remove(0);
                 mEventBus.post(event);
