@@ -78,7 +78,6 @@ public class Placement {
         return mStationList;
     }
 
-    //TODO: remove this
     public void setStationList(List<Station> mStationList) {
         this.mStationList = mStationList;
     }

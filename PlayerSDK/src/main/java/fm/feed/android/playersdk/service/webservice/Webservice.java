@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
+import fm.feed.android.playersdk.model.Session;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.webservice.adapter.FeedFMErrorDeserializer;
@@ -24,6 +25,7 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMUnkownRetrofitEr
 import fm.feed.android.playersdk.service.webservice.model.PlacementResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayResponse;
 import fm.feed.android.playersdk.service.webservice.model.PlayStartResponse;
+import fm.feed.android.playersdk.service.webservice.model.SessionResponse;
 import fm.feed.android.playersdk.service.webservice.util.WebserviceUtils;
 import retrofit.RequestInterceptor;
 import retrofit.RestAdapter;
@@ -104,6 +106,17 @@ public class Webservice {
             @Override
             public ClientResponse execute() throws RetrofitError {
                 return mRestService.getClientId(
+                        getAuthStr());
+            }
+        };
+        return r.get();
+    }
+
+    public Session createSession() throws FeedFMError {
+        RequestWrapper<SessionResponse, Session> r = new RequestWrapper<SessionResponse, Session>() {
+            @Override
+            public SessionResponse execute() throws RetrofitError {
+                return mRestService.createSession(
                         getAuthStr());
             }
         };
@@ -213,22 +226,6 @@ public class Webservice {
         return r.get();
     }
 
-    public Boolean logEvent(final String event, final Map<String, String> parameters) throws FeedFMError {
-        RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
-            @Override
-            public FeedFMResponse execute() throws RetrofitError {
-                if ((parameters == null) || (parameters.size() == 0)) {
-                    return mRestService.logEvent(getAuthStr(), event);
-
-                } else {
-                    return mRestService.logEvent(getAuthStr(), event, gson.toJson(parameters));
-
-                }
-            }
-        };
-        return r.get();
-    }
-
     public Boolean like(final String playId) throws FeedFMError {
         RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
             @Override
@@ -257,6 +254,22 @@ public class Webservice {
             public FeedFMResponse execute() throws RetrofitError {
                 return mRestService.dislike(
                         getAuthStr(), playId);
+            }
+        };
+        return r.get();
+    }
+
+    public Boolean logEvent(final String event, final Map<String, String> parameters) throws FeedFMError {
+        RequestWrapper<FeedFMResponse, Boolean> r = new RequestWrapper<FeedFMResponse, Boolean>() {
+            @Override
+            public FeedFMResponse execute() throws RetrofitError {
+                if ((parameters == null) || (parameters.size() == 0)) {
+                    return mRestService.logEvent(getAuthStr(), event);
+
+                } else {
+                    return mRestService.logEvent(getAuthStr(), event, gson.toJson(parameters));
+
+                }
             }
         };
         return r.get();
@@ -331,6 +344,8 @@ public class Webservice {
         public FeedFMResponse logEvent(@Header("Authorization") String authorization,
                                        @Field("event") String event);
 
+        @POST("/session")
+        public SessionResponse createSession(@Header("Authorization") String authorization);
     }
 
     public interface Callback<T> {

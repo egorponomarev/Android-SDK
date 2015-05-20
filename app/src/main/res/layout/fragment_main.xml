@@ -12,11 +12,13 @@
               tools:context=".fragment.MainFragment">
 
     <Button
+        android:id="@+id/show_test_ui"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_alignParentBottom="true"
         android:text="Test UI"
+        android:enabled="false"
         android:onClick="showTestUI"/>
 
     <Button
@@ -25,22 +27,27 @@
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:text="Showcase - Sliding Fullscreen Player"
+        android:enabled="false"
         android:onClick="showSlidingPlayer"/>
 
     <Button
+        android:id="@+id/showcase_halfscreen"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
         android:layout_below="@id/showcase_fullscreen"
         android:text="Showcase - Sliding Bottom Player"
+        android:enabled="false"
         android:onClick="showBottomPlayer"/>
 
-    <Button
+    <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Get PlayInfo"
-        android:id="@+id/button"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:text="Sorry, the player isn&apos;t available in your area"
+        android:id="@+id/unavailable_text"
         android:layout_centerVertical="true"
         android:layout_centerHorizontal="true"
-        android:onClick="checkPlayStatus" />
+        android:visibility="invisible" />
+
 </RelativeLayout>

@@ -1,10 +1,6 @@
 package fm.feed.android.testapp.fragment;
 
-import android.app.Notification;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
@@ -12,7 +8,6 @@ import android.net.NetworkInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -32,14 +27,15 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import fm.feed.android.playersdk.NavListener;
 import fm.feed.android.playersdk.Player;
 import fm.feed.android.playersdk.PlayerError;
-import fm.feed.android.playersdk.model.Placement;
+import fm.feed.android.playersdk.PlayerListener;
+import fm.feed.android.playersdk.SocialListener;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.util.TimeUtils;
-import fm.feed.android.testapp.MainActivity;
 import fm.feed.android.testapp.R;
 
 /**
@@ -57,14 +53,8 @@ public class TestFragment extends Fragment {
 
     private final static String TAG = Fragment.class.getSimpleName();
 
-    private static final int CUSTOM_NOTIFICATION_ID = 12341212;
-
-    // Extra for the Save instance state.
-    public static final String PLACEMENTS = "save_placements";
 
     private Player mPlayer;
-
-    private int[] mPlacements;
 
     // Views
     private Button mBtnTune;
@@ -87,20 +77,12 @@ public class TestFragment extends Fragment {
     private ProgressBar mProgressBar;
 
     private ListView mStationsView;
-    private ListView mPlacementsView;
 
     public Button mBtnToggleWifi;
 
     private int mSelectedStationIndex = -1;
-    private int mSelectedPlacementsIndex = -1;
 
     public TestFragment() {
-    }
-
-    public static TestFragment newFragment(int[] placements) {
-        TestFragment fragment = new TestFragment();
-        fragment.mPlacements = placements;
-        return fragment;
     }
 
     @Override
@@ -133,11 +115,6 @@ public class TestFragment extends Fragment {
         mTxtDuration = (TextView) rootView.findViewById(R.id.duration);
 
         mStationsView = (ListView) rootView.findViewById(R.id.stations);
-        mPlacementsView = (ListView) rootView.findViewById(R.id.placements);
-
-        if (savedInstanceState != null) {
-            mPlacements = savedInstanceState.getIntArray(PLACEMENTS);
-        }
 
         mBtnToggleWifi = (Button) rootView.findViewById(R.id.wifi);
 
@@ -157,7 +134,6 @@ public class TestFragment extends Fragment {
         mBtnDislike.setOnClickListener(dislike);
         mBtnHistory.setOnClickListener(history);
 
-        mPlacementsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         mStationsView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
 
         mBtnToggleWifi.setOnClickListener(new View.OnClickListener() {
@@ -174,33 +150,6 @@ public class TestFragment extends Fragment {
                 wifi.setWifiEnabled(!isConnected); // true or false to activate/deactivate wifi
 
                 mBtnToggleWifi.setText(!isConnected ? "Wifi ON" : "Wifi OFF");
-            }
-        });
-
-        List<HashMap<String, Integer>> fillMaps = new ArrayList<HashMap<String, Integer>>();
-        for (Integer p : mPlacements) {
-            HashMap<String, Integer> map = new HashMap<String, Integer>();
-            map.put("Placement", p);
-            fillMaps.add(map);
-        }
-
-        final SimpleAdapter adapter = new SimpleAdapter(
-                getActivity(),
-                fillMaps,
-                android.R.layout.simple_list_item_1,
-                new String[]{"Placement"},
-                new int[]{android.R.id.text1});
-        mPlacementsView.setAdapter(adapter);
-        mPlacementsView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                mSelectedPlacementsIndex = position;
-
-                HashMap<String, Integer> item = (HashMap<String, Integer>) adapter.getItem(position);
-                Integer placementId = item.get("Placement");
-                Toast.makeText(getActivity(), placementId.toString(), Toast.LENGTH_LONG).show();
-                mPlayer.setPlacementId(placementId);
-
             }
         });
 
@@ -235,11 +184,9 @@ public class TestFragment extends Fragment {
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-
-        outState.putIntArray(PLACEMENTS, mPlacements);
     }
 
-    private Player.PlayerListener mPlayerListener = new Player.PlayerListener() {
+    private PlayerListener mPlayerListener = new PlayerListener() {
         @Override
         public void onPlayerInitialized(PlayInfo playInfo) {
             updateTitle(playInfo);
@@ -250,48 +197,6 @@ public class TestFragment extends Fragment {
             if (playInfo.getPlay() != null) {
                 mNavigationListener.onTrackChanged(playInfo.getPlay());
             }
-        }
-
-        @Override
-        public Player.NotificationBuilder getNotificationBuilder() {
-            Player.NotificationBuilder notificationBuilder = new Player.NotificationBuilder() {
-                @Override
-                public Notification build(Context serviceContext, Play play) {
-                    int stringId = getActivity().getApplicationInfo().labelRes;
-                    String applicationName = getString(stringId);
-
-                    Intent intent = new Intent(getActivity().getApplicationContext(), MainActivity.class);
-                    intent.setAction(Intent.ACTION_MAIN);
-
-                    intent.addFlags(Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT |
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP);
-                    PendingIntent pi = PendingIntent.getActivity(getActivity().getApplicationContext(), 0, intent,
-                            PendingIntent.FLAG_UPDATE_CURRENT);
-
-                    NotificationCompat.Builder mBuilder =
-                            new NotificationCompat.Builder(getActivity());
-                    mBuilder.setContentIntent(pi);
-                    mBuilder.setContentTitle(applicationName);
-                    mBuilder.setContentText("Playing: " + play.getAudioFile().getTrack().getTitle());
-                    mBuilder.setOngoing(true);
-                    mBuilder.setSmallIcon(android.R.drawable.ic_media_play);
-
-                    return mBuilder.build();
-                }
-
-                @Override
-                public void destroy(Context serviceContext) {
-                    NotificationManager mNotificationManager =
-                            (NotificationManager) getActivity().getSystemService(Context.NOTIFICATION_SERVICE);
-                    mNotificationManager.cancel(CUSTOM_NOTIFICATION_ID);
-                }
-
-                @Override
-                public int getNotificationId() {
-                    return CUSTOM_NOTIFICATION_ID;
-                }
-            };
-            return null; // Don't return a notification builder as we want to be using the one in PlayerView
         }
 
         @Override
@@ -334,22 +239,12 @@ public class TestFragment extends Fragment {
     };
 
 
-    private Player.NavListener mNavigationListener = new Player.NavListener() {
-        @Override
-        public void onPlacementChanged(Placement placement, List<Station> stationList) {
-            mPlacementsView.setSelection(mSelectedPlacementsIndex);
-
-            resetTrackInfo();
-            updateStations(stationList);
-
-        }
-
+    private NavListener mNavigationListener = new NavListener() {
         @Override
         public void onStationChanged(Station station) {
             resetTrackInfo();
             mStationsView.setSelection(mSelectedStationIndex);
             Toast.makeText(getActivity(), String.format("Station set to: %s (%s)", station.getName(), station.getId()), Toast.LENGTH_LONG).show();
-
         }
 
         @Override
@@ -384,7 +279,7 @@ public class TestFragment extends Fragment {
         }
     };
 
-    private Player.SocialListener mSocialListener = new Player.SocialListener() {
+    private SocialListener mSocialListener = new SocialListener() {
         @Override
         public void onLiked() {
             Toast.makeText(getActivity(), "Liked!", Toast.LENGTH_LONG).show();

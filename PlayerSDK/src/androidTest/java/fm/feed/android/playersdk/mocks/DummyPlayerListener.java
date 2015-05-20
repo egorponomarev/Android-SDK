@@ -2,8 +2,11 @@ package fm.feed.android.playersdk.mocks;
 
 import java.util.List;
 
-import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.NavListener;
+import fm.feed.android.playersdk.NotificationBuilder;
 import fm.feed.android.playersdk.PlayerError;
+import fm.feed.android.playersdk.PlayerListener;
+import fm.feed.android.playersdk.SocialListener;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
@@ -12,7 +15,7 @@ import fm.feed.android.playersdk.service.PlayInfo;
 /**
  * Created by mharkins on 8/27/14.
  */
-public class DummyPlayerListener implements Player.PlayerListener, Player.NavListener, Player.SocialListener {
+public class DummyPlayerListener implements PlayerListener, NavListener, SocialListener {
     public boolean didCallPlayerInitialized = false;
     public boolean didCallPlacementChanged = false;
     public boolean didCallStationChanged = false;
@@ -67,7 +70,7 @@ public class DummyPlayerListener implements Player.PlayerListener, Player.NavLis
     }
 
     @Override
-    public Player.NotificationBuilder getNotificationBuilder() {
+    public NotificationBuilder getNotificationBuilder() {
         return null;
     }
 

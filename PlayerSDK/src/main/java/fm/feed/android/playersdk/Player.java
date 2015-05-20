@@ -1,6 +1,5 @@
 package fm.feed.android.playersdk;
 
-import android.app.Notification;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Handler;
@@ -13,9 +12,10 @@ import com.squareup.otto.Subscribe;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.PlayInfo;
@@ -24,12 +24,11 @@ import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.LogEvent;
 import fm.feed.android.playersdk.service.bus.OutNotificationBuilder;
-import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
-import fm.feed.android.playersdk.service.constant.PlayerErrorEnum;
 import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
 
 /**
@@ -40,26 +39,62 @@ import fm.feed.android.playersdk.service.webservice.model.FeedFMError;
  * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- *
- * Created by mharkins on 8/21/14.
- *
- */
+ **/
 
 /**
- * Interface controlling the Feed Media Web-radio
  *
+ * Top Level Interface controlling Feed Media Playback
+ * *
  * <h1>Class Overview</h1>
- * To get started, set the authentication tokens in your app as early as possible
- * (in Application.onCreate would be best, but you can also do this in your
- * Activity.onCreate as well):
- * <pre>
  *
- * <code>
- *     Player.setTokens(getContext(), "demo", "demo");
- * </code>
+ * To get started, set the authentication tokens in your app as early as possible
+ * (in Application.onCreate would be best, but you could also do this in your
+ * Activity.onCreate as well):
+ *
+ * <pre>
+ *     <code>
+ *         Player.setTokens(getContext(), "demo", "demo");
+ *     </code>
  * </pre>
+ *
+ * The player will initialize right after that call, and try to contact Feed.fm to get
+ * information about the available stations and confirm that the client may
+ * receive music. Until the player gets that response, there isn't anything it
+ * will do, aside from register event listeners.
+ *
+ * To be notified when the player has either successfully contacted Feed.fm and confirmed
+ * it can play back music, or when the player is unable to get permission from Feed.fm
+ * to play music, use the onPlayerAvailability() method:
+  *
+ * <pre>
+ *     <code>
+ *         Player player = Player.getInstance();
+ *
+ *         player.onPlayerAvailability(new PlayerAvailabilityListener() {
+ *            public void onAvailable() {
+ *                // player is ready for playback
+ *
+ *                // enable player UI here
+ *
+ *                // start loading a song in the background for immediate future playback:
+ *                player.tune();
+ *
+ *                // ... or load and start a song immediately:
+ *                player.play();
+ *            }
+ *
+ *            public void onUnavailable() {
+ *                // Player is not licensed for playback in this area or an
+ *                // error occurred on initialization. Perhaps hide the player
+ *                // or turn on local music.
+ *            }
+ *         });
+ *     </code>
+ * </pre>
+ *
  * </p>
  */
+
 public class Player {
     public static final String TAG = Player.class.getSimpleName();
 
@@ -70,13 +105,17 @@ public class Player {
 
     private PlayerService.BuildType mDebug = PlayerService.BuildType.DEBUG;
 
-    protected PlayerServiceListener mPrivateServiceListener;
+    protected PlayerServiceListener mPlayerServiceListener;
     protected Bus mEventBus;
 
     // PLayer Listener
     private List<PlayerListener> mPlayerListeners = new ArrayList<PlayerListener>();
     private List<NavListener> mNavListeners = new ArrayList<NavListener>();
     private List<SocialListener> mSocialListeners = new ArrayList<SocialListener>();
+    private List<PlayerAvailabilityListener> mPlayerAvailabilityListeners = new ArrayList<PlayerAvailabilityListener>();
+
+    // Queue up logging events until we've got something to send them out
+    private List<LogEvent> mLogEvents = new ArrayList<LogEvent>();
 
     private Handler mainThreadHandler = new Handler(Looper.getMainLooper());
 
@@ -84,33 +123,33 @@ public class Player {
 
     private Credentials mCredentials;
 
-    private boolean mRequiresAuthentication;
-
     /*
      * Save credentials and create and pass on to new PlayerService
      */
 
-    protected Player(Context context, Credentials credz) {
+    private Player(Context context, Credentials credz) {
         mCredentials = credz;
 
         mEventBus = BusProvider.getInstance();
-        mRequiresAuthentication = false;
 
-        mPrivateServiceListener = new PlayerServiceListener();
-        mEventBus.register(mPrivateServiceListener);
+        mPlayerServiceListener = new PlayerServiceListener();
+        mEventBus.register(mPlayerServiceListener);
 
         Intent intent = new Intent(context, PlayerService.class);
         intent.putExtra(PlayerService.ExtraKeys.timestamp.toString(), new Date().getTime());
         intent.putExtra(PlayerService.ExtraKeys.buildType.toString(), mDebug.name());
+        intent.putExtra(PlayerService.ExtraKeys.token.toString(), credz.getToken());
+        intent.putExtra(PlayerService.ExtraKeys.secret.toString(), credz.getSecret());
 
         context.startService(intent);
     }
 
     /*
      * Assign authentication tokens for talking to the Feed.fm service and kick off
-     * the Service that does the talking. This should be called before getInstance()
+     * a Service that does the talking. This should be called before getInstance()
      * and should never be called with different token/secret values during the lifetime
-     * of the app. Normally this will only be called at the start of your Main Activity.
+     * of the app. Multiple calls won't have any effect. This should be called as early
+     * in the life of your app as possible.
      */
 
     public static void setTokens(Context context, String token, String secret) {
@@ -148,21 +187,60 @@ public class Player {
         return mInstance;
     }
 
+    /*
+     * Music can continue to play while our containing app is 'background'ed so, by
+     * default, we create a Notification that shows the currently playing song and
+     * gives the user a way to return back to the app to interact with the player.
+     * This method lets you specify your own class that will style the Notification
+     * that is shown during music playback.
+     *
+     * A null builder will prevent the library from creating Notifications.
+     */
+
+    public void setNotificationBuilder(NotificationBuilder nb) {
+        mEventBus.post(new OutNotificationBuilder(nb));
+    }
+
+    /*
+     * After the Player is created, it must contact the feed.fm service to confirm
+     * that the client may play music. If the services responds in the affirmative, then
+     * the 'onAvailable()' method is executed, else the 'onUnavailable()' method is
+     * executed.  The state of the player is remembered, so this method can be called
+     * well after the player has started.
+     *
+     * The callback methods are always executed asynchronously.
+     */
+
+    public void onPlayerAvailability(PlayerAvailabilityListener pal) {
+        mPlayerAvailabilityListeners.add(pal);
+
+        if (mPlayInfo != null) {
+            sendPlayerAvailability(mPlayInfo.getState() != PlayInfo.State.UNAVAILABLE);
+
+        } // else waiting for initialization
+    }
+
+    private void sendPlayerAvailability(final boolean available) {
+        // always posted to the run loop rather than sometimes immediate and sometimes async.
+        mainThreadHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                while (mPlayerAvailabilityListeners.size() > 0) {
+                    PlayerAvailabilityListener pal = mPlayerAvailabilityListeners.remove(0);
+
+                    if (available) {
+                        pal.onAvailable();
+                    } else {
+                        pal.onUnavailable();
+                    }
+                }
+            }
+        });
+    }
+
     public void registerPlayerListener(PlayerListener playerListener) {
         if (!mPlayerListeners.contains(playerListener)) {
             mPlayerListeners.add(playerListener);
-        }
-    }
-
-    public void registerSocialListener(SocialListener socialListener) {
-        if (!mSocialListeners.contains(socialListener)) {
-            mSocialListeners.add(socialListener);
-        }
-    }
-
-    public void registerNavListener(NavListener navListener) {
-        if (!mNavListeners.contains(navListener)) {
-            mNavListeners.add(navListener);
         }
     }
 
@@ -170,8 +248,22 @@ public class Player {
         mPlayerListeners.remove(playerListener);
     }
 
+
+    public void registerSocialListener(SocialListener socialListener) {
+        if (!mSocialListeners.contains(socialListener)) {
+            mSocialListeners.add(socialListener);
+        }
+    }
+
     public void unregisterSocialListener(SocialListener socialListener) {
         mSocialListeners.remove(socialListener);
+    }
+
+
+    public void registerNavListener(NavListener navListener) {
+        if (!mNavListeners.contains(navListener)) {
+            mNavListeners.add(navListener);
+        }
     }
 
     public void unregisterNavListener(NavListener navListener) {
@@ -179,37 +271,17 @@ public class Player {
     }
 
     /**
-     * Returns whether or not the PlayerService is initialized yet.
+     * Returns whether or not the PlayerService is initialized and available for
+     * playback.
      * <p>
-     * If not ready yet; the Player will not have the {@link fm.feed.android.playersdk.service.PlayInfo} initialized; and the {@link fm.feed.android.playersdk.service.PlayInfo.State} will be null.
+     * If not ready yet; the Player will not have the {@link fm.feed.android.playersdk.service.PlayInfo} initialized or the {@link fm.feed.android.playersdk.service.PlayInfo.State} will be UNAVAILABLE.
      * </p>
      *
      * @return {@code true} if initialized, {@code false} otherwise.
      */
-    public boolean isInitialized() {
-        return mPlayInfo != null;
-    }
 
-    /**
-     * Tells the server which placement to pull playable stations from
-     * <p>Will start playback automatically once the {@link fm.feed.android.playersdk.model.Placement} information has been retrieved.</p>
-     * <p>
-     * This is an optional call, as a default placement is associated with the authentication credentials.
-     * </p>
-     * <p>
-     * The {@code placementId} is available through your Feed.FM account:
-     * <ol>
-     * <li>Select an App in <b><a href="http://developer.feed.fm/dashboard">Your Apps and Websites</a></b></li>
-     * <li>Go to tab <b>Developer Codes and IDs</b></li>
-     * <li>Use the <b>placement ID</b> as a parameter</li>
-     * </ol>
-     * </p>
-     *
-     * @param placementId
-     *         The placement ID for this App
-     */
-    public void setPlacementId(Integer placementId) {
-        mEventBus.post(new OutPlacementWrap(new Placement(placementId)));
+    public boolean isAvailable() {
+        return (mPlayInfo != null) && (mPlayInfo.getState() != PlayInfo.State.UNAVAILABLE);
     }
 
     /**
@@ -226,7 +298,9 @@ public class Player {
      *         The station identifier to play music from.
      */
     public void setStationId(Integer stationId) {
-        mEventBus.post(new OutStationWrap(new Station(stationId)));
+        if (isAvailable()) {
+            mEventBus.post(new OutStationWrap(new Station(stationId)));
+        }
     }
 
     /**
@@ -236,7 +310,9 @@ public class Player {
      * </p>
      */
     public void tune() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.TUNE));
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.TUNE));
+        }
     }
 
     /**
@@ -250,14 +326,18 @@ public class Player {
      * </p>
      */
     public void play() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.PLAY));
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.PLAY));
+        }
     }
 
     /**
      * Pauses playback
      */
     public void pause() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.PAUSE));
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.PAUSE));
+        }
     }
 
     /**
@@ -266,21 +346,27 @@ public class Player {
      * <p> Check on {@link fm.feed.android.playersdk.Player#isSkippable()} to know if the user can skip the track.</p>
      */
     public void skip() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.SKIP));
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.SKIP));
+        }
     }
 
     /**
      * Indicates to the server that the user likes the current song
      */
     public void like() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.LIKE));
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.LIKE));
+        }
     }
 
     /**
      * Indicates to the server that the user no longer likes the current song
      */
     public void unlike() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.UNLIKE));
+        }
     }
 
     /**
@@ -288,16 +374,9 @@ public class Player {
      * <p>Initiates a {@link fm.feed.android.playersdk.Player#skip()}</p>
      */
     public void dislike() {
-        mEventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
-    }
-
-    /**
-     * Current {@link fm.feed.android.playersdk.model.Placement} information
-     *
-     * @return The current {@link fm.feed.android.playersdk.model.Placement} information.
-     */
-    public Placement getPlacement() {
-        return mPlayInfo != null ? mPlayInfo.getPlacement() : null;
+        if (isAvailable()) {
+            mEventBus.post(new PlayerAction(PlayerAction.ActionType.DISLIKE));
+        }
     }
 
     /**
@@ -306,7 +385,7 @@ public class Player {
      * @return The list of {@link fm.feed.android.playersdk.model.Station}s for the current {@link fm.feed.android.playersdk.model.Placement}.
      */
     public List<Station> getStationList() {
-        return mPlayInfo != null ? mPlayInfo.getStationList() : null;
+        return isAvailable() ? mPlayInfo.getStationList() : null;
     }
 
     /**
@@ -315,16 +394,16 @@ public class Player {
      * @return The current {@link fm.feed.android.playersdk.model.Station}
      */
     public Station getStation() {
-        return mPlayInfo != null ? mPlayInfo.getStation() : null;
+        return isAvailable() ? mPlayInfo.getStation() : null;
     }
 
 
     public boolean hasStationList() {
-        return mPlayInfo != null && mPlayInfo.getStationList() != null;
+        return isAvailable() && mPlayInfo.getStationList() != null;
     }
 
     public List<Play> getPlayHistory() {
-        return (mPlayInfo == null) ? Collections.<Play>emptyList() : mPlayInfo.getPlayHistory();
+        return isAvailable() ? mPlayInfo.getPlayHistory() : Collections.<Play>emptyList();
     }
 
     public void setMaxPlayHistorySize(int newMaxHistoryLength) {
@@ -337,7 +416,7 @@ public class Player {
      * @return {@code true} if there is a current {@link fm.feed.android.playersdk.model.Play}, {@code false} otherwise.
      */
     public boolean hasPlay() {
-        return mPlayInfo != null && mPlayInfo.getPlay() != null;
+        return isAvailable() && mPlayInfo.getPlay() != null;
     }
 
     /**
@@ -346,7 +425,7 @@ public class Player {
      * @return The current {@link fm.feed.android.playersdk.model.Play}.
      */
     public Play getPlay() {
-        return mPlayInfo != null ? mPlayInfo.getPlay() : null;
+        return isAvailable() ? mPlayInfo.getPlay() : null;
     }
 
     /**
@@ -358,7 +437,7 @@ public class Player {
      * @return {@code true} if track can be skipped, {@code false} otherwise.
      */
     public boolean isSkippable() {
-        return mPlayInfo != null && mPlayInfo.isSkippable();
+        return isAvailable() && mPlayInfo.isSkippable();
     }
 
     /**
@@ -367,41 +446,98 @@ public class Player {
      * @return The current {@link fm.feed.android.playersdk.service.PlayInfo.State}.
      */
     public PlayInfo.State getState() {
-        return mPlayInfo != null ? mPlayInfo.getState() : null;
+        return isAvailable() ? mPlayInfo.getState() : null;
     }
 
-    // TODO: find a way to make this private and not break the Unit Tests
+    /**
+     * Send an event to the Feed.fm server for logging
+     */
+
+    public void logEvent(String event, String ... parameters) {
+        LogEvent le;
+
+        if (parameters.length > 0) {
+            Map<String, String> map = new HashMap<String, String>();
+            for (int i = 0; i < parameters.length - 1; i += 2) {
+                map.put(parameters[i], parameters[i+1]);
+            }
+
+            le = new LogEvent(event, map);
+
+        } else {
+            le = new LogEvent(event);
+        }
+
+        if (mPlayInfo == null) {
+            mLogEvents.add(le);
+
+        } else {
+            mEventBus.post(le);
+        }
+
+    }
+
+    /**
+     * Tell the feed.fm servers that the app has started.
+     *
+     * This is used for computing session times with and without music.
+     */
+
+    public void logLaunched() {
+        logEvent("launched", "from", "tokens");
+    }
+
+    /**
+     * Tell the feedfm servers that the app resumed after the user switched
+     * to another app.
+     *
+     * This is used for computing session times with and without music.
+     */
+
+    public void logResumed() {
+        logEvent("launched", "from", "enter foreground");
+    }
+
+    /**
+     * Tell the feed.fm servers that the app was put in the background.
+     *
+     * This is used for computing session times with and without music.
+     */
+
+    public void logBackgrounded() {
+        boolean playing = ((mPlayInfo != null) && (mPlayInfo.getState() == PlayInfo.State.PLAYING));
+
+        logEvent("backgrounded", "playing", "" + playing);
+    }
+
+
+    /**
+     * This class watches the bus for events from the PlayerService
+     */
 
     public class PlayerServiceListener {
-        public PlayerServiceListener() {
-        }
 
         @SuppressWarnings("unused")
         @Subscribe
         public void onServiceReady(PlayInfo playInfo) {
             mPlayInfo = playInfo;
 
-            mRequiresAuthentication = !mPlayInfo.hasCredentials();
+            if (mPlayInfo.getState() != PlayInfo.State.UNAVAILABLE) {
+                sendPlayerAvailability(true);
 
-            NotificationBuilder notificationBuilder = mPlayerListeners.isEmpty() ? null : mPlayerListeners.get(0).getNotificationBuilder();
-            if (notificationBuilder != null) {
-                mEventBus.post(new OutNotificationBuilder(notificationBuilder));
+                mainThreadHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        for (PlayerListener listener : mPlayerListeners) {
+                            listener.onPlayerInitialized(mPlayInfo);
+                        }
+                    }
+                });
             }
 
-            if (mRequiresAuthentication) {
-                if (mCredentials.isValid()) {
-                    mEventBus.post(mCredentials);
-                } else {
-                    PlayerError playerError = new PlayerError(PlayerErrorEnum.INVALID_CREDENTIALS);
-                    for (PlayerListener listener : mPlayerListeners) {
-                        listener.onError(playerError);
-                    }
-                }
-
-            } else {
-                for (PlayerListener listener : mPlayerListeners) {
-                    listener.onPlayerInitialized(playInfo);
-                }
+            while (mLogEvents.size() > 0) {
+                LogEvent event = mLogEvents.remove(0);
+                mEventBus.post(event);
             }
         }
 
@@ -451,31 +587,6 @@ public class Player {
                         default:
                             break;
 
-                    }
-                }
-            });
-        }
-
-        @SuppressWarnings("unused")
-        @Subscribe
-        public void onPlacementChanged(final Placement placement) {
-            if (mRequiresAuthentication) {
-                mainThreadHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        for (PlayerListener listener : mPlayerListeners) {
-                            listener.onPlayerInitialized(mPlayInfo);
-                        }
-                    }
-                });
-                mRequiresAuthentication = false;
-            }
-
-            mainThreadHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    for (NavListener listener : mNavListeners) {
-                        listener.onPlacementChanged(placement, placement.getStationList());
                     }
                 }
             });
@@ -536,7 +647,6 @@ public class Player {
         @SuppressWarnings("unused")
         @Subscribe
         public void onError(final FeedFMError error) {
-            // TODO: filter errors a bit.
             mainThreadHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -548,176 +658,4 @@ public class Player {
         }
     }
 
-    /**
-     * Implement this interface to get callbacks from the Player
-     */
-    public interface PlayerListener {
-
-        /**
-         * Called when the {@link Player} is initialized and authenticated with the server
-         *
-         * @param playInfo
-         *         The {@link fm.feed.android.playersdk.service.PlayInfo} object containing the play state as well as other information pertaining to the library.
-         */
-        public void onPlayerInitialized(PlayInfo playInfo);
-
-        /**
-         * The {@link fm.feed.android.playersdk.Player.NotificationBuilder} that will handle creating the play notifications.
-         *
-         * @return The {@link fm.feed.android.playersdk.Player.NotificationBuilder} that will handle creating the play notifications.
-         * If {@code null} the radio will not keep playing when the application is killed.
-         */
-        public NotificationBuilder getNotificationBuilder();
-
-        /**
-         * Called when the playback state changes
-         * <p>
-         * Can be one of:
-         * <ul>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#WAITING} - Player is Waiting for Metadata from the Server</li>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#READY} - Player is ready to play music</li>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#PAUSED} - Audio playback is currently paused</li>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#PLAYING} - Audio playback is currently processing</li>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#STALLED} - Audio Playback has paused due to lack of audio data from the server</li>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#COMPLETE} - The player has run out of available music to play</li>
-         * <li>{@link fm.feed.android.playersdk.service.PlayInfo.State#REQUESTING_SKIP} - The player is waiting for the server to say if the current song can be skipped</li>
-         * </ul>
-         * </p>
-         *
-         * @param state
-         *         {@link fm.feed.android.playersdk.service.PlayInfo.State} of the Player.
-         */
-        public void onPlaybackStateChanged(PlayInfo.State state);
-
-        /**
-         * Called when the Skip status has changed.
-         * <p>
-         * Users can only skip an X number of times within a certain timeperiod
-         * </p>
-         * <p>
-         * Skip status can also be accessed with {@link Player#isSkippable()}
-         * </p>
-         *
-         * @param skippable
-         *         Skip Status
-         */
-        public void onSkipStatusChange(boolean skippable);
-
-        /**
-         * Called when there is an unhandled error.
-         *
-         * @param playerError
-         */
-        public void onError(PlayerError playerError);
-    }
-
-    /**
-     * Implement this interface to get callbacks from the Player
-     */
-    public interface NavListener {
-        /**
-         * Called when the placement has changed
-         *
-         * @param placement
-         *         The currently selected {@link fm.feed.android.playersdk.model.Placement}
-         * @param stationList
-         *         The new list of {@link fm.feed.android.playersdk.model.Station}s for this {@link fm.feed.android.playersdk.model.Placement}
-         */
-        public void onPlacementChanged(Placement placement, List<Station> stationList);
-
-        /**
-         * Called when the new {@link fm.feed.android.playersdk.model.Station} has been set
-         *
-         * @param station
-         *         The currently selected {@link fm.feed.android.playersdk.model.Station}.
-         */
-        public void onStationChanged(Station station);
-
-        /**
-         * Called when a new {@link fm.feed.android.playersdk.model.Play} has started buffering
-         *
-         * @param play
-         *         The new {@link fm.feed.android.playersdk.model.Play}
-         */
-        public void onTrackChanged(Play play);
-
-        /**
-         * Called when the user has reached the end of the selected {@link Station}
-         */
-        public void onEndOfPlaylist();
-
-        /**
-         * Called when a {@link Player#skip()} has failed
-         */
-        public void onSkipFailed();
-
-        /**
-         * Called repeatedly while the Audio is being buffered
-         *
-         * @param play
-         *         The current {@link fm.feed.android.playersdk.model.Play}
-         * @param percentage
-         *         The percentage buffered
-         */
-        public void onBufferUpdate(Play play, int percentage);
-
-        /**
-         * Called repeatedly while the Audio is playing
-         *
-         * @param play
-         *         The current {@link fm.feed.android.playersdk.model.Play}
-         * @param elapsedTime
-         *         How far along in the track the current {@link fm.feed.android.playersdk.model.Play} is.
-         * @param totalTime
-         *         The duration of the track.
-         */
-        public void onProgressUpdate(Play play, int elapsedTime, int totalTime);
-    }
-
-    /**
-     * Social related events
-     */
-    public interface SocialListener {
-        /**
-         * Called when the song has been liked
-         */
-        public void onLiked();
-
-        /**
-         * Called when the song has been unliked
-         */
-        public void onUnliked();
-
-        /**
-         * Called when the song has been disliked
-         */
-        public void onDisliked();
-    }
-
-    /**
-     * The notification builder used by the Service to enable foreground (running radio while app is killed)
-     */
-    public interface NotificationBuilder {
-        /**
-         * Called when the Service will show the Persistent notification with a new play
-         * <p>
-         * Provide your own implementation of the Notification based on the {@link fm.feed.android.playersdk.model.Play}
-         * </p>
-         * <p>
-         * See <a href="http://developer.android.com/guide/components/services.html#Foreground">Running a Service in the Foreground</a> for more details.
-         * </p>
-         *
-         * @param serviceContext the Service context.
-         * @param play the current Play
-         */
-        public Notification build(Context serviceContext, Play play);
-
-        /**
-         * Called when the notification should disappear to allow the service to shut down.
-         * @param serviceContext
-         */
-        public void destroy(Context serviceContext);
-
-        public int getNotificationId();
-    }
 }

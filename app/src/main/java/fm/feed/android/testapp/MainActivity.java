@@ -11,8 +11,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
+import android.widget.Button;
+import android.widget.Toast;
 
 import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.PlayerAvailabilityListener;
 import fm.feed.android.playersdk.PlayerError;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.testapp.fragment.MainFragment;
@@ -33,7 +36,7 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
 
         // tune in to our station
-        Player.setTokens(getApplicationContext(), "demo", "demo");
+        Player.setTokens(getApplicationContext(), "demo", "demo"); // try "badgeo" to force the player to be unavailable
         player = Player.getInstance();
 
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
@@ -49,7 +52,6 @@ public class MainActivity extends ActionBarActivity {
          */
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -105,10 +107,6 @@ public class MainActivity extends ActionBarActivity {
         ft.commit();
     }
 
-    public void checkPlayStatus(View v) {
-        Log.i(TAG, "do we have playInfo? " + player.hasPlay());
-    }
-
     /**
      * "Showcase - Sliding Fullscreen Player" Button Callback
      * <p>
@@ -142,8 +140,7 @@ public class MainActivity extends ActionBarActivity {
         TestFragment fragment = (TestFragment) fm.findFragmentByTag(TestFragment.class.getSimpleName());
 
         if (fragment == null) {
-            int[] placements = {11485};
-            fragment = TestFragment.newFragment(placements);
+            fragment = new TestFragment();
         }
         showFragment(fragment, TestFragment.class.getSimpleName());
     }

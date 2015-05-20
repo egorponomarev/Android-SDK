@@ -5,6 +5,7 @@ import android.content.Context;
 import com.squareup.otto.Bus;
 
 import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.PlayerListener;
 
 /**
  * Created by mharkins on 8/27/14.
@@ -15,6 +16,7 @@ public class FakePlayer extends Player {
 
     private DummyBusProvider mDummyBusProvider;
 
+    /*
     private FakePlayer(Context context, Bus bus, PlayerListener playerListener, String token, String secret) {
         super(context, bus, token, secret);
         registerPlayerListener(playerListener);
@@ -29,6 +31,8 @@ public class FakePlayer extends Player {
     }
 
     public PlayerServiceListener getPrivateServiceListener() {
-        return mPrivateServiceListener;
+        return mPlayerServiceListener;
     }
+        */
+
 }

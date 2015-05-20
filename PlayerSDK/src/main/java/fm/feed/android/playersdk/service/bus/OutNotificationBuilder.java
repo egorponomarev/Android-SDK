@@ -1,6 +1,6 @@
 package fm.feed.android.playersdk.service.bus;
 
-import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.NotificationBuilder;
 
 /**
  * The MIT License (MIT)
@@ -13,8 +13,8 @@ import fm.feed.android.playersdk.Player;
  *
  * Created by mharkins on 8/22/14.
  */
-public class OutNotificationBuilder extends Wrap<Player.NotificationBuilder> {
-    public OutNotificationBuilder(Player.NotificationBuilder mObject) {
+public class OutNotificationBuilder extends Wrap<NotificationBuilder> {
+    public OutNotificationBuilder(NotificationBuilder mObject) {
         super(mObject);
     }
 }

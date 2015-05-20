@@ -2,6 +2,7 @@ package fm.feed.android.playersdk.service;
 
 import android.annotation.SuppressLint;
 import android.app.Notification;
+import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -16,22 +17,23 @@ import com.squareup.otto.Bus;
 import com.squareup.otto.Subscribe;
 
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import fm.feed.android.playersdk.Player;
+import fm.feed.android.playersdk.DefaultNotificationBuilder;
+import fm.feed.android.playersdk.NotificationBuilder;
 import fm.feed.android.playersdk.R;
 import fm.feed.android.playersdk.model.Placement;
 import fm.feed.android.playersdk.model.Play;
+import fm.feed.android.playersdk.model.Session;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.bus.BufferUpdate;
 import fm.feed.android.playersdk.service.bus.BusProvider;
 import fm.feed.android.playersdk.service.bus.Credentials;
 import fm.feed.android.playersdk.service.bus.EventMessage;
+import fm.feed.android.playersdk.service.bus.LogEvent;
 import fm.feed.android.playersdk.service.bus.OutNotificationBuilder;
-import fm.feed.android.playersdk.service.bus.OutPlacementWrap;
 import fm.feed.android.playersdk.service.bus.OutStationWrap;
 import fm.feed.android.playersdk.service.bus.PlayerAction;
 import fm.feed.android.playersdk.service.bus.ProgressUpdate;
@@ -41,6 +43,7 @@ import fm.feed.android.playersdk.service.queue.MainQueue;
 import fm.feed.android.playersdk.service.queue.TaskQueueManager;
 import fm.feed.android.playersdk.service.queue.TuningQueue;
 import fm.feed.android.playersdk.service.task.ClientIdTask;
+import fm.feed.android.playersdk.service.task.CreateSessionTask;
 import fm.feed.android.playersdk.service.task.PlacementIdTask;
 import fm.feed.android.playersdk.service.task.PlayTask;
 import fm.feed.android.playersdk.service.task.PlayerAbstractTask;
@@ -89,10 +92,9 @@ public class PlayerService extends Service {
     protected PlayInfo mPlayInfo;
     protected DataPersister mDataPersister;
 
-    protected Player.NotificationBuilder mNotificationBuilder;
+    protected NotificationBuilder mNotificationBuilder;
 
     protected boolean mInitialized;
-    protected boolean mValidStart;
 
     protected int mForceSkipCount = 0;
 
@@ -105,7 +107,9 @@ public class PlayerService extends Service {
 
     public static enum ExtraKeys {
         timestamp,
-        buildType;
+        buildType,
+        token,
+        secret;
 
         ExtraKeys() {
         }
@@ -147,63 +151,58 @@ public class PlayerService extends Service {
         }
     };
 
+
+    //
+    //
+    // Service lifecycle events
+    //
+    //
+
     @Override
     public void onCreate() {
         Log.e(TAG, "PlayerService created");
         super.onCreate();
 
+        mNotificationBuilder = new DefaultNotificationBuilder();
+
         mInitialized = false;
-        mValidStart = false;
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.e(TAG, "PlayerService started");
+        if (mInitialized || (intent == null)) {
+            Log.i(TAG, "PlayerService onStartCommand: already started or null intent sent");
 
-        mValidStart = false;
+            // Our code uses a singleton to create the service, so technically
+            // this should never be started twice. Any secondary starts are initiated
+            // by the OS and I think can be ignored.
 
-        if (intent != null) {
-            long now = new Date().getTime();
-            long intentTimestamp = intent.getLongExtra(ExtraKeys.timestamp.toString(), 0);
-
-            // if it's been more than a second since the Service was called to start, cancel.
-            // It's the android back stack relaunching the Intent.
-            if (now - intentTimestamp < 1000) {
-                mValidStart = true;
-            }
+            return START_NOT_STICKY;
         }
 
-        if (mValidStart) {
-            try {
-                mDebug = BuildType.valueOf(intent.getStringExtra(ExtraKeys.buildType.toString()));
-            } catch (IllegalArgumentException e) {
-                mDebug = BuildType.RELEASE;
-            }
+        Log.i(TAG, "PlayerService onStartCommand: starting up");
 
-            if (!mInitialized) {
-                init();
-                mInitialized = true;
-            }
-            resume(intent);
-
-        } else {
-            stopSelf();
+        try {
+            mDebug = BuildType.valueOf(intent.getStringExtra(ExtraKeys.buildType.toString()));
+        } catch (IllegalArgumentException e) {
+            mDebug = BuildType.RELEASE;
         }
+
+        String token = intent.getStringExtra(ExtraKeys.token.toString());
+        String secret = intent.getStringExtra(ExtraKeys.secret.toString());
+        Credentials credz = new Credentials(token, secret);
+
+        onFirstStartCommand(credz);
+
+        mInitialized = true;
+
+        createSession();
 
         // if the app gets killed, the user has to restart things
         return START_NOT_STICKY;
     }
 
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
-
-    protected Context getContext() {
-        return this;
-    }
-
-    protected void init() {
+    protected void onFirstStartCommand(Credentials credz) {
         mPlayInfo = new PlayInfo(getString(R.string.sdk_version));
 
         mDataPersister = new DataPersister(getContext());
@@ -226,24 +225,20 @@ public class PlayerService extends Service {
 
         eventBus.register(this);
 
+        mWebservice.setCredentials(credz);
+
         logEvent("serviceLaunched");
     }
 
-    /**
-     * Resend the Player information onto the Event bus. This is to allow the Client application to capture the current state of the application.
-     *
-     * @param intent
-     */
-    private void resume(Intent intent) {
-        eventBus.post(mPlayInfo);
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
-
 
     @Override
     public void onDestroy() {
 
-        // Was it a legit Service Startup?
-        if (mValidStart) {
+        if (mInitialized) {
             logEvent("serviceDestroyed");
 
             releaseAudioManager();
@@ -254,6 +249,7 @@ public class PlayerService extends Service {
 
             mMediaPlayerPool.release();
 
+            // TODO: is it ever the case that this service will quit but the app doesn't?
             eventBus.unregister(this);
 
             unregisterReceiver(mConnectivityBroadcastReceiver);
@@ -266,6 +262,9 @@ public class PlayerService extends Service {
         super.onDestroy();
     }
 
+    protected Context getContext() {
+        return this;
+    }
 
     protected void updateNotification(Play play) {
         // If there is no notification builder, then don't enable foreground
@@ -284,7 +283,9 @@ public class PlayerService extends Service {
             return;
         }
 
-        mNotificationBuilder.destroy(this);
+        NotificationManager mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        mNotificationManager.cancel(mNotificationBuilder.getNotificationId());
+
         stopForeground(true);
     }
 
@@ -323,91 +324,14 @@ public class PlayerService extends Service {
      */
 
     @Subscribe
-    @SuppressWarnings("unused")
-    public void setCredentials(Credentials credentials) {
-        mWebservice.setCredentials(credentials);
-
-        getClientId();
-        setPlacement(null, false); // Get the default placement information
+    public void logEvent(LogEvent event) {
+        logEvent(event.getEvent(), event.getParams());
     }
 
     @Subscribe
     @SuppressWarnings("unused")
     public void setNotificationBuilder(OutNotificationBuilder notificationBuilderWrapper) {
         this.mNotificationBuilder = notificationBuilderWrapper.getObject();
-    }
-
-    @Subscribe
-    @SuppressWarnings("unused")
-    public void setPlacementId(OutPlacementWrap wrapper) {
-        Placement p = wrapper.getObject();
-
-        setPlacement(p, true);
-    }
-
-    /**
-     * Sets the Placement of the web-radio
-     * <p>
-     * If {@link fm.feed.android.playersdk.model.Placement} is {@code null}, the default placement will be selected.<br/>
-     * Will start playing automatically if a track was in play.
-     * </p>
-     *
-     * @param p
-     *         If {@code null}, the default placement will be selected.
-     * @param isUserInteraction
-     *         if true {@code}, will resume (if currently playing) play on the new placement.
-     */
-    private void setPlacement(Placement p, final boolean isUserInteraction) {
-        final Integer placementId = p != null ? p.getId() : null;
-        final boolean wasPlaying = isPlayingPlaylist();
-        PlacementIdTask task = new PlacementIdTask(mMainQueue, mWebservice, new PlacementIdTask.OnPlacementIdChanged() {
-            @Override
-            public void onSuccess(Placement placement) {
-                mPlayInfo.setStationList(placement.getStationList());
-
-                boolean didChangePlacement =
-                        mPlayInfo.getPlacement() == null ||
-                                !mPlayInfo.getPlacement().getId().equals(placement.getId());
-                if (didChangePlacement) {
-                    // Save user Placement
-                    mPlayInfo.setPlacement(placement);
-                    List<Station> stationList = placement.getStationList();
-                    if (!stationList.isEmpty()) {
-                        mPlayInfo.setStation(stationList.get(0));
-                    } else {
-                        mPlayInfo.setStation(null);
-                    }
-                }
-
-                updateState(PlayInfo.State.READY);
-
-                eventBus.post(mPlayInfo.getPlacement());
-                eventBus.post(mPlayInfo.getStation());
-
-                // Only start play if music was already playing.
-                if (isUserInteraction && wasPlaying) {
-                    play();
-                }
-            }
-
-            @Override
-            public void onFail(FeedFMError error) {
-                // TODO: log error
-                handleError(error);
-            }
-        }, placementId);
-
-
-        // PlacementIdTask cancels everything but:
-        // - ClientIdTask
-        mMainQueue.clearLowerPriorities(task);
-
-        // Cancel any Tunings that might be taking place
-        mTuningQueue.clear();
-        mMediaPlayerPool.releaseTunedPlayers();
-
-        mMainQueue.offerUnique(task);
-        mMainQueue.next();
     }
 
     @Subscribe
@@ -489,6 +413,73 @@ public class PlayerService extends Service {
                 dislike();
                 break;
         }
+    }
+
+    public void createSession() {
+        String clientId = mDataPersister.getString(DataPersister.Key.clientId, null);
+
+        if (clientId != null) {
+            mWebservice.setClientId(clientId);
+        }
+
+        CreateSessionTask task = new CreateSessionTask(mMainQueue, mWebservice, new CreateSessionTask.OnSessionCreated() {
+            @Override
+            public void onSuccess(Session session) {
+                Log.i(TAG, "Created new session");
+
+                mDataPersister.putString(DataPersister.Key.clientId, session.getClientId());
+                mWebservice.setClientId(session.getClientId());
+                mPlayInfo.setClientId(session.getClientId());
+
+                Log.i(TAG, "Retrieved new session from server");
+
+                if (!session.isAvailable()) {
+                    mPlayInfo.setState(PlayInfo.State.UNAVAILABLE);
+
+                    eventBus.post(mPlayInfo);
+
+                    return;
+                }
+
+                Placement placement = session.getPlacement();
+
+                mPlayInfo.setStationList(placement.getStationList());
+
+                mPlayInfo.setPlacement(placement);
+
+                List<Station> stationList = placement.getStationList();
+                if (!stationList.isEmpty()) {
+                    mPlayInfo.setStation(stationList.get(0));
+                } else {
+                    mPlayInfo.setStation(null);
+                }
+
+                // tell everybody we're up and running
+                eventBus.post(mPlayInfo);
+
+                // starting state
+                updateState(PlayInfo.State.READY);
+
+                // share the placement and station info
+                eventBus.post(mPlayInfo.getPlacement());
+                eventBus.post(mPlayInfo.getStation());
+            }
+
+            @Override
+            public void onFail(FeedFMError error) {
+                handleError(error);
+            }
+        });
+
+        // Getting a new Session will cancel whatever task is currently in progress.
+        mMainQueue.clearLowerPriorities(task);
+
+        // Cancel any Tunings that might be taking place
+        mTuningQueue.clear();
+        mMediaPlayerPool.releaseTunedPlayers();
+
+        mMainQueue.offerUnique(task);
+        mMainQueue.next();
     }
 
     /*
@@ -1057,7 +1048,6 @@ public class PlayerService extends Service {
 
             @Override
             public Boolean performRequestSynchronous() throws FeedFMError {
-                Log.e(TAG, "going to send session event");
                 return mWebservice.logEvent(event, parameters);
             }
 

@@ -12,6 +12,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 import fm.feed.android.playersdk.service.task.ClientIdTask;
+import fm.feed.android.playersdk.service.task.CreateSessionTask;
 import fm.feed.android.playersdk.service.task.PlacementIdTask;
 import fm.feed.android.playersdk.service.task.PlayTask;
 import fm.feed.android.playersdk.service.task.PlayerAbstractTask;
@@ -53,13 +54,16 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
     /**
      * <ul>
      * <li> {@link fm.feed.android.playersdk.service.task.ClientIdTask} will cancel every other task. </li>
-     * <li> {@link fm.feed.android.playersdk.service.task.PlacementIdTask} will cancel every task but a {@link fm.feed.android.playersdk.service.task.ClientIdTask} </li>
+     * <li> {@link fm.feed.android.playersdk.service.task.CreateSessionTask} will cancel every other task. </li>
+     * <li> {@link fm.feed.android.playersdk.service.task.PlacementIdTask} will cancel every task but {@link fm.feed.android.playersdk.service.task.ClientIdTask}
+     *   or {@link fm.feed.android.playersdk.service.task.CreateSessionTask}</li>
      * </ul>
      */
     public TaskQueueManager(String identifier) {
         this.mIdentifier = identifier;
 
         List<Class> allClasses = new ArrayList<Class>();
+        allClasses.add(CreateSessionTask.class);
         allClasses.add(ClientIdTask.class);
         allClasses.add(PlacementIdTask.class);
         allClasses.add(PlayTask.class);
@@ -67,12 +71,14 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
         allClasses.add(SimpleNetworkTask.class);
         allClasses.add(StationIdTask.class);
 
-        List<Class> allExceptClientId = new ArrayList<Class>();
-        allExceptClientId.addAll(copyWithout(allClasses, new Class[]{ClientIdTask.class}));
+        List<Class> allExceptClientIdAndCreateSession = new ArrayList<Class>();
+        allExceptClientIdAndCreateSession.addAll(copyWithout(allClasses, new Class[]{ClientIdTask.class}));
+        allExceptClientIdAndCreateSession.remove(CreateSessionTask.class);
 
-        mPriorityMap.put(ClientIdTask.class, new ArrayList<Class>());
-        mPriorityMap.put(PlacementIdTask.class, allExceptClientId);
-        mPriorityMap.put(StationIdTask.class, allExceptClientId);
+        mPriorityMap.put(ClientIdTask.class, allClasses);
+        mPriorityMap.put(CreateSessionTask.class, allClasses);
+        mPriorityMap.put(PlacementIdTask.class, allExceptClientIdAndCreateSession);
+        mPriorityMap.put(StationIdTask.class, allExceptClientIdAndCreateSession);
 
         mPaused = false;
     }

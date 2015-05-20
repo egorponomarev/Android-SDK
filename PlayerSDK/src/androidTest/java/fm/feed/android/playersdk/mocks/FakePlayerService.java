@@ -18,7 +18,7 @@ public class FakePlayerService extends PlayerService {
 
     @Override
     protected void init() {
-        super.init();
+        super.onFirstStartCommand();
 
         mWebservice = webservice;
         mPlayInfo = new DummyPlayInfo(getString(R.string.sdk_version));

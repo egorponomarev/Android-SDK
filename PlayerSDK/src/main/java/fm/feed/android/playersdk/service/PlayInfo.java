@@ -76,7 +76,11 @@ public class PlayInfo {
         /**
          * The player is waiting for the server to say if the current song can be skipped
          */
-        REQUESTING_SKIP
+        REQUESTING_SKIP,
+        /**
+         * The player is not available in this region
+         */
+        UNAVAILABLE
     }
 
     private String mSdkVersion;
