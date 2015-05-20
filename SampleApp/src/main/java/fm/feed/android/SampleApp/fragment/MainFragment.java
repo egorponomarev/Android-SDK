@@ -1,4 +1,4 @@
-package fm.feed.android.testapp.fragment;
+package fm.feed.android.SampleApp.fragment;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -7,12 +7,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
-import android.widget.Toast;
 
 import fm.feed.android.playersdk.Player;
 import fm.feed.android.playersdk.PlayerAvailabilityListener;
-import fm.feed.android.testapp.MainActivity;
-import fm.feed.android.testapp.R;
+import fm.feed.android.SampleApp.R;
 
 /**
  * A placeholder fragment containing a simple view.

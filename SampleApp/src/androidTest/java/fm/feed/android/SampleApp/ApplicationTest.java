@@ -1,4 +1,4 @@
-package fm.feed.android.testapp;
+package fm.feed.android.SampleApp;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

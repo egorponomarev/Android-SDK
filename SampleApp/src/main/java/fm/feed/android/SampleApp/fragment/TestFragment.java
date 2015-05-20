@@ -1,4 +1,4 @@
-package fm.feed.android.testapp.fragment;
+package fm.feed.android.SampleApp.fragment;
 
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
@@ -36,7 +36,7 @@ import fm.feed.android.playersdk.model.Play;
 import fm.feed.android.playersdk.model.Station;
 import fm.feed.android.playersdk.service.PlayInfo;
 import fm.feed.android.playersdk.util.TimeUtils;
-import fm.feed.android.testapp.R;
+import fm.feed.android.SampleApp.R;
 
 /**
  * The MIT License (MIT)

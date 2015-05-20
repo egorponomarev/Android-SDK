@@ -1,4 +1,4 @@
-package fm.feed.android.testapp;
+package fm.feed.android.SampleApp;
 
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -6,22 +6,16 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
-import android.widget.Button;
-import android.widget.Toast;
 
 import fm.feed.android.playersdk.Player;
-import fm.feed.android.playersdk.PlayerAvailabilityListener;
-import fm.feed.android.playersdk.PlayerError;
-import fm.feed.android.playersdk.service.PlayInfo;
-import fm.feed.android.testapp.fragment.MainFragment;
-import fm.feed.android.testapp.fragment.SlidingBottomFragment;
-import fm.feed.android.testapp.fragment.SlidingFragment;
-import fm.feed.android.testapp.fragment.TestFragment;
+import fm.feed.android.SampleApp.fragment.MainFragment;
+import fm.feed.android.SampleApp.fragment.SlidingBottomFragment;
+import fm.feed.android.SampleApp.fragment.SlidingFragment;
+import fm.feed.android.SampleApp.fragment.TestFragment;
 
 
 public class MainActivity extends ActionBarActivity {

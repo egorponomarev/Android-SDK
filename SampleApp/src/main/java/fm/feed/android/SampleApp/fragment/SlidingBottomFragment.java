@@ -1,4 +1,4 @@
-package fm.feed.android.testapp.fragment;
+package fm.feed.android.SampleApp.fragment;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -11,7 +11,7 @@ import android.view.animation.AnimationUtils;
 import android.widget.RelativeLayout;
 
 import fm.feed.android.playersdk.view.PlayerView;
-import fm.feed.android.testapp.R;
+import fm.feed.android.SampleApp.R;
 
 /**
  * The MIT License (MIT)
