@@ -628,9 +628,6 @@ public class PlayerService extends Service {
                             return mWebservice.playStarted(tuneTask.getPlay().getId());
                         }
 
-                        private void updateSkipStatus(boolean canSkip) {
-                        }
-
                         @Override
                         public void onSuccess(Boolean canSkip) {
                             // Only force skip if we are in the foreground.
@@ -743,7 +740,7 @@ public class PlayerService extends Service {
                         if (mMainQueue.hasActivePlayTask()) {
                             PlayTask playTask = (PlayTask) mMainQueue.peek();
 
-                            if (playTask.getPlay() != null && playTask.getPlay().getId() == playId) {
+                            if (playTask.getPlay() != null && playTask.getPlay().getId().equals(playId)) {
                                 playTask.setSkippable(canSkip);
                             }
                             updateSkippable(canSkip);
