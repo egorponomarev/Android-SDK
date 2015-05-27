@@ -23,7 +23,7 @@ project.
   Under the 'Order and Export' tab, make sure the following are __unchecked__:
 'Android Dependencies', 'appcompat_v7'. Make sure that the 'Android Private Libraries' is __checked__.
 
-* Click 'OK' to save your changes.
+  Click 'OK' to save your changes.
 
 * Now you need to make the SDK available to your project. Click on your
 project in the 'Package Explorer', then right click and select
