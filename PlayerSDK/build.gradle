@@ -132,3 +132,12 @@ uploadArchives {
 
 }
 
+// pick out all the jars so we can build an eclipse project
+
+task copyToLib(type: Copy) {
+    into "$buildDir/outputs/libs"
+    from configurations.compile
+}
+assemble.dependsOn copyToLib
+
+
