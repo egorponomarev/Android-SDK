@@ -65,4 +65,9 @@ introduction here:
 
   to build a minimal app that plays music.
 
+* You can also download a full Eclipse workspace with the SDK and a sample
+app here:
+
+  https://developer.feed.fm/FeedFM-SampleApp-eclipse.zip
+
 
