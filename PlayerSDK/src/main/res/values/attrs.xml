@@ -4,4 +4,16 @@
         <attr name="autoPlay" format="boolean"/>
         <attr name="handlesNotification" format="boolean"/>
     </declare-styleable>
+
+    <declare-styleable name="FeedFmEmptyTimeTextView">
+        <attr name="textForNoTime" format="string"/>
+    </declare-styleable>
+
+    <declare-styleable name="FeedFmMetadataTextView">
+        <attr name="format" format="string"/>
+    </declare-styleable>
+
+    <declare-styleable name="FeedFmStationButton">
+        <attr name="stationName" format="string"/>
+    </declare-styleable>
 </resources>

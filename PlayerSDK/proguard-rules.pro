@@ -15,3 +15,47 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+
+## androidsvg - ignore the ref to its R class
+-dontwarn com.caverock.androidsvg.**
+
+## okhttp
+-keep class com.squareup.okhttp.** { *; }
+-keep interface com.squareup.okhttp.** { *; }
+-dontwarn com.squareup.okhttp.**
+
+## otto
+-keepattributes *Annotation*, Signature, Exception
+-keepclassmembers class fm.feed.** {
+    @com.squareup.otto.Subscribe public *;
+    @com.squareup.otto.Produce public *;
+}
+
+## okio
+# https://github.com/square/okio/issues/42
+-dontwarn java.nio.file.*
+-dontwarn org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement
+
+## retrofit
+# http://square.github.io/retrofit/
+
+-dontwarn retrofit.**
+-keep class retrofit.** { *; }
+#-keepattributes Signature
+#-keepattributes Exceptions
+
+## gson
+# http://google-gson.googlecode.com/svn/trunk/examples/android-proguard-example/proguard.cfg
+
+# added above, with the *Annotation* rule
+#-keepattributes Signature
+
+-keep class sun.misc.Unsafe { *; }
+#-keep class com.google.gson.stream.** { *; }
+
+-keep class fm.feed.android.playersdk.service.webservice.model.* { *; }
+-keep class fm.feed.android.playersdk.model.* { *; }
+
+-keep class fm.feed.android.playersdk.fragment.* { *; }
+-keep class fm.feed.android.playersdk.view.* { *; }

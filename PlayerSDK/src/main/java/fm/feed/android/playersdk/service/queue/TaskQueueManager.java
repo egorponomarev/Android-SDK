@@ -1,5 +1,6 @@
 package fm.feed.android.playersdk.service.queue;
 
+import android.annotation.TargetApi;
 import android.os.Build;
 import android.util.Log;
 
@@ -99,6 +100,7 @@ public class TaskQueueManager extends LinkedList<PlayerAbstractTask> {
         return mPaused;
     }
 
+    @TargetApi(Build.VERSION_CODES.HONEYCOMB)
     public void next() {
         if (isPaused()) {
             return;
